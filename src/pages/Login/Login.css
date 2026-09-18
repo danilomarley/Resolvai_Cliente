@@ -1,0 +1,128 @@
+/* Container que ocupa toda a tela com o fundo azul escuro da lateral */
+.login-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  width: 100vw;
+  background-color: #0B1727; /* Azul escuro inspirado na sua sidebar. Troque por var(--bg-sidebar) se existir */
+  padding: 1rem;
+}
+
+/* Card centralizado com bordas arredondadas e sombra suave */
+.login-card {
+  background-color: #ffffff;
+  width: 100%;
+  max-width: 420px;
+  padding: 2.5rem 2rem;
+  border-radius: 16px; /* Bordas arredondadas conforme solicitado */
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+/* Replicando visualmente a logo da imagem */
+.logo-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.logo-icon {
+  background-color: #F97316; /* Laranja da logo */
+  color: white;
+  font-weight: 700;
+  font-size: 1.25rem;
+  height: 32px;
+  width: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+}
+
+.logo-text {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0B1727;
+  margin: 0;
+}
+
+.login-header p {
+  color: #64748b;
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+/* Estilos do formulário */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.input-group label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.input-group input {
+  padding: 0.75rem 1rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px; /* Inputs também arredondados */
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s;
+  /* Use a fonte Rajdhani que você já configurou no projeto */
+  font-family: inherit; 
+}
+
+.input-group input:focus {
+  border-color: #1D4ED8; /* Azul principal do seu layout */
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.forgot-password {
+  font-size: 0.875rem;
+  color: #1D4ED8;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.forgot-password:hover {
+  text-decoration: underline;
+}
+
+/* Botão de envio usando o estilo do botão "+ Criar pedido" */
+.btn-primary {
+  background-color: #1D4ED8; /* Azul claro/vibrante da dashboard */
+  color: white;
+  border: none;
+  padding: 0.875rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-top: 0.5rem;
+}
+
+.btn-primary:hover {
+  background-color: #1e40af;
+}
