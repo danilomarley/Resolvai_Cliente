@@ -1,0 +1,208 @@
+.scope-panel {
+  padding: 22px;
+}
+.scope-panel-title {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.scope-panel-title h2 {
+  font-size: 19px;
+  font-weight: 600;
+}
+.scope-panel-title p {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+.scope-panel dl {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.scope-field {
+  padding: 10px 12px;
+  background: #f6f8fb;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+.scope-field.filled {
+  background: #f1f6fd;
+  border-color: #dce6f5;
+}
+.scope-field dt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--color-muted);
+  margin-bottom: 3px;
+}
+.scope-field dt > svg {
+  color: var(--color-success);
+}
+.scope-field dd {
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--color-muted);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.scope-field.filled dd {
+  color: var(--color-text);
+}
+.scope-tip {
+  display: flex;
+  gap: 8px;
+  color: var(--color-muted);
+  font-size: 13px;
+  margin: 18px 0;
+  line-height: 1.5;
+}
+.scope-tip > svg {
+  margin-top: 2px;
+}
+.scope-panel > .button {
+  width: 100%;
+}
+.scope-panel > .button:disabled {
+  background: #e9edf3;
+  border-color: #dce3ed;
+  color: #6b7890;
+  opacity: 1;
+  box-shadow: none;
+}
+.scope-photos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 15px;
+}
+.scope-photos figure {
+  min-width: 0;
+  position: relative;
+}
+.scope-photos img {
+  width: 100%;
+  aspect-ratio: 4/3;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #edf2f8;
+}
+.scope-photos figcaption {
+  font-size: 12px;
+  color: var(--color-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.scope-photos button {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 29px;
+  height: 29px;
+  display: grid;
+  place-items: center;
+  background: white;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+}
+.scope-review-fields {
+  padding: 24px;
+}
+.scope-review-fields > h2 {
+  font-size: 21px;
+  font-weight: 600;
+}
+.scope-review-fields > .modal-description {
+  margin: 5px 0 20px;
+  font-size: 14px;
+}
+.scope-form-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+.scope-form-pair label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.scope-field-hint {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+.scope-review-actions {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-border);
+}
+.scope-preview-title {
+  font-size: 21px;
+  margin: 12px 0 8px;
+  overflow-wrap: anywhere;
+}
+.scope-preview-description {
+  color: var(--color-muted);
+  font-size: 14px;
+  margin-bottom: 20px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.scope-photos-title {
+  margin: 20px 0 10px;
+  font-size: 16px;
+}
+.scope-review .info-box {
+  margin-top: 20px;
+}
+.order-scope-details {
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+}
+.order-scope-details dl > div {
+  margin: 12px 0;
+}
+.order-scope-details dt {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+.order-scope-details dd {
+  font-size: 15px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+@media (max-width: 1150px) {
+  .scope-panel {
+    padding: 18px;
+  }
+}
+@media (max-width: 950px) {
+  .scope-panel dl {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 560px) {
+  .scope-panel dl,
+  .scope-form-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .scope-review-fields {
+    padding: 18px;
+  }
+  .scope-review-actions .button {
+    width: 100%;
+  }
+}
