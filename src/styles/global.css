@@ -1,5 +1,10 @@
 @import './variables.css';
 
+p,
+.texto {
+  font-family: var(--font-secondary);
+}
+
 * {
   margin: 0;
   padding: 0;
