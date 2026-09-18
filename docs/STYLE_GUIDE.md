@@ -4,7 +4,7 @@ Implementação da [issue #31 — Definir style guide da tela do contratante](ht
 
 ## Identidade e cores
 
-O azul inferior da referência é a cor primária; o azul escuro é a cor de texto; o laranja é a secundária; o branco frio é o fundo. Os valores abaixo são aproximações visuais da imagem recebida, centralizadas em [`src/styles/variables.css`](../src/styles/variables.css).
+O azul inferior da referência é a cor primária; o azul escuro é a cor de texto; o laranja é a secundária; o branco frio é o fundo. O azul escuro `#0F1C2E` e o laranja `#FF5C1A` foram confirmados no SVG original da marca e no HTML de referência. O azul primário e o fundo permanecem aproximações da paleta enviada. Os tokens estão centralizados em [`src/styles/variables.css`](../src/styles/variables.css).
 
 | Token                                      | Cor                   | Uso                                                  |
 | ------------------------------------------ | --------------------- | ---------------------------------------------------- |
@@ -12,7 +12,7 @@ O azul inferior da referência é a cor primária; o azul escuro é a cor de tex
 | `--color-primary-hover`                    | `#103970`             | Hover das ações principais                           |
 | `--color-primary-soft`                     | `#EDF3FB`             | Fundo de ícones e destaques discretos                |
 | `--color-text`                             | `#0F1C2E`             | Texto principal, fundo da navegação e base do banner |
-| `--color-secondary`                        | `#FF5E14`             | Acentos de marca, detalhes e ícones decorativos      |
+| `--color-secondary`                        | `#FF5C1A`             | Acentos de marca, detalhes e ícones decorativos      |
 | `--color-secondary-soft`                   | `#FFF0E8`             | Superfícies de destaque secundário                   |
 | `--color-background`                       | `#F5F8FC`             | Fundo geral, branco frio da referência               |
 | `--color-surface`                          | `#FFFFFF`             | Cartões, cabeçalho e diálogos                        |
@@ -25,6 +25,10 @@ O azul inferior da referência é a cor primária; o azul escuro é a cor de tex
 O laranja identifica a marca; não deve ser usado como texto pequeno sobre fundo branco. Para status, usar as cores semânticas acompanhadas de rótulo. No banner escuro, o botão usa a variação azul `#1B57A7` para destacar a ação. As ilustrações podem usar tonalidades derivadas do azul.
 
 ## Tipografia
+
+A barra lateral usa diretamente os arquivos fornecidos `public/brand/isotipo.svg` e `public/brand/texto.svg`, sem alterar os traçados, as cores ou a composição. O isotipo ocupa um quadrado de 48 px, com moldura azul e sombra para destacar seu fundo azul escuro da barra lateral. O arquivo de texto mantém o slogan original imediatamente abaixo de “ResolvAI”; não adicionar uma segunda versão do slogan em HTML. Não exibir a legenda redundante “Portal do contratante”. Preservar as proporções com `object-fit: contain`. A cópia da marca completa permanece em `public/brand/resolvai-original.svg`.
+
+O slogan “Conectando quem precisa a quem resolve” aparece no rodapé. O HTML `VisualizacaoPrototipo/index.html` e a página vinculada `cliente-web.html` orientam a estrutura e a linguagem do contratante. O histórico é identificado explicitamente por “Serviços concluídos”, com a descrição “Serviços finalizados, valores e avaliações”.
 
 **Rajdhani** em toda a interface, incluindo botões, formulários e números. A fonte é distribuída localmente pelo pacote `@fontsource/rajdhani`, com subconjunto latino e pesos 400, 500, 600 e 700. O carregamento usa `font-display: swap`, com fallback `system-ui, sans-serif`.
 
@@ -63,7 +67,7 @@ Priorizar frases curtas, acentuação correta e linguagem direta. Usar `pt-BR` n
 
 ### Navegação
 
-Barra lateral escura com item selecionado em azul. Separar navegação principal de gerenciamento. Conta e ajuda ficam no rodapé da barra. No celular, abrir o menu por botão; permitir fechamento por Escape e manter a navegação por Tab dentro dele.
+Barra lateral escura com item selecionado em azul. Separar navegação principal de gerenciamento. O cartão da conta fica sempre visível no rodapé e é o único acesso ao perfil na barra lateral. Não adicionar um item “Meu perfil” redundante. Manter a logo fixa no topo e a ajuda como um botão compacto acima do perfil; não usar os antigos cartões “Meu espaço” e “Conte com a gente”. O menu cabe sem rolagem nas resoluções comuns; somente a lista de navegação pode rolar em alturas muito pequenas, com uma barra discreta. No celular, abrir o menu por botão; permitir fechamento por Escape e manter a navegação por Tab dentro dele.
 
 ### Indicadores
 
@@ -78,6 +82,20 @@ Serviços concluídos exibem profissional, valor e nota. O histórico permite co
 ### Formulários e diálogos
 
 Usar `dialog` nativo, nome acessível, fechamento por Escape e retorno do foco ao controle de origem. Inputs com rótulos, campos obrigatórios e limite de caracteres. Formulários e mensagens apresentam retorno visual das ações.
+
+### Criação de pedido com IA simulada
+
+Seguir o fluxo de `cliente-web.html`: conversa guiada e painel “Escopo em construção”, seguidos de uma tela de revisão. Essa jornada usa uma página própria, e não o formulário simples em um modal.
+
+Chamar a ação de **“Criar pedido”** no menu, no botão principal e no cabeçalho. A assistência faz parte de toda criação; não apresentar um modo separado “com IA”. A indicação “IA simulada” fica dentro da jornada para explicar o funcionamento desta demonstração.
+
+1. Escolher categoria e descrever o problema.
+2. Informar detalhes do ambiente (ou indicar que não sabe), localização e urgência.
+3. Anexar até quatro fotos JPG, PNG ou WebP de até 5 MB cada, ou continuar sem fotos.
+4. Revisar título, descrição, categoria, localização, urgência e sugestão de escopo. Todos esses dados são editáveis; voltar à conversa não descarta as edições da revisão.
+5. Publicar o pedido apenas na sessão da demonstração. O acompanhamento preserva o escopo revisado e as fotos.
+
+Exibir “IA simulada” e explicar que as perguntas e sugestões são predefinidas. Não indicar que uma IA analisou fotos ou produziu um diagnóstico. Usar escopos ilustrativos por categoria, sujeitos à confirmação com o profissional. Conversa e resumo ficam lado a lado no desktop e empilhados em telas menores.
 
 ## Responsividade
 
@@ -103,3 +121,4 @@ IA, autenticação, envio a profissionais, contratação, assinatura de contrato
 - Diálogos: fechamento por Escape e restauração do foco.
 - Verificação automática com axe-core para WCAG 2 A/AA e 2.1 AA, sem violações nas verificações do dashboard desktop, dashboard mobile e formulário de pedido. Essa verificação não substitui uma auditoria completa de acessibilidade.
 - Capturas desktop e mobile revisadas visualmente.
+- Conversa guiada, validação de respostas, detalhes e fotos opcionais, revisão editável, retorno à conversa e publicação com preservação de escopo e fotos verificados no Chrome. Verificação axe-core sem violações na conversa desktop/mobile e na revisão.

@@ -4,6 +4,14 @@ Dashboard responsivo em React, TypeScript e Vite, baseado no protótipo do contr
 
 ## Executar
 
+### Abrir com dois cliques no Windows
+
+Na pasta do projeto, abra **`iniciar-prototipo.cmd`**. Ele inicia o servidor e abre o navegador automaticamente, sem precisar copiar um link. Mantenha a janela do terminal aberta enquanto usa o protótipo; feche-a ou pressione `Ctrl+C` para encerrar.
+
+O arquivo usa o Node.js instalado no computador ou, neste workspace, a versão portátil em `../.tools/node.exe`. Em uma nova instalação, prepare as dependências com `npm ci` antes de executá-lo. Se a porta padrão estiver ocupada, o Vite escolhe outra e abre o endereço correto.
+
+### Abrir pelo terminal
+
 Requer Node.js 20.19+ ou 22.12+ e npm.
 
 ```sh
@@ -12,6 +20,8 @@ npm run dev
 ```
 
 Abra o endereço local exibido pelo Vite.
+
+Para abrir o navegador automaticamente pelo terminal, use `npm run dev -- --open`.
 
 ## Verificar
 
@@ -28,11 +38,14 @@ Consulte [docs/STYLE_GUIDE.md](docs/STYLE_GUIDE.md) para cores, tipografia, bot�
 - `src/styles/variables.css`: tokens de identidade visual.
 - `src/styles/global.css`: estilos e adaptações responsivas.
 - `src/components/`: ícones, ilustração e diálogo acessível.
+- `src/components/OrderAssistant.tsx`: conversa demonstrativa para criação e revisão do escopo.
 - `src/data/dashboard.ts`: dados de demonstração.
 - `src/App.tsx`: dashboard e interações da sessão.
 
 ## Funcionalidades da demonstração
 
-Busca e filtros de pedidos, criação de um novo pedido, consulta de propostas, acompanhamento de serviço, histórico, notificações, edição de perfil, conversa local e central de ajuda.
+Busca e filtros de pedidos, criação de pedido com assistente simulado, consulta de propostas, acompanhamento de serviço, histórico, notificações, edição de perfil, conversa local e central de ajuda.
+
+O fluxo “Criar pedido” segue o protótipo original: categoria, problema, detalhes do ambiente, localização, urgência e fotos opcionais. O escopo aparece durante a conversa e pode ser editado na revisão antes de publicar. As perguntas e sugestões são predefinidas, sem IA conectada. O pedido criado preserva as informações e as fotos na sessão.
 
 Os dados são ilustrativos e as alterações são descartadas ao recarregar. O projeto ainda não se conecta a backend, autenticação, IA, pagamentos ou envio de mensagens a profissionais. A fonte Rajdhani é servida localmente, sem depender do Google Fonts.

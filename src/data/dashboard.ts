@@ -1,5 +1,12 @@
 import type { IconName } from '../components/Icon'
 
+export type OrderScope = {
+  details: string
+  urgency: string
+  specifications: string
+  photos: File[]
+}
+
 export type Order = {
   id: number
   title: string
@@ -10,6 +17,7 @@ export type Order = {
   deadline: string
   icon: IconName
   description: string
+  scope?: OrderScope
 }
 export const initialOrders: Order[] = [
   {
