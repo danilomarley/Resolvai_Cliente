@@ -17,7 +17,7 @@
 
   /* Tipografia */
   --font-main: 'Rajdhani', system-ui, sans-serif;
-  --font-secondary: Georgia, 'Times New Roman', serif;
+  --font-secondary: 'Inter', system-ui, sans-serif;
   --font-size-sm: 0.875rem;
   --font-size-md: 1rem;
   --font-size-lg: 1.5rem;

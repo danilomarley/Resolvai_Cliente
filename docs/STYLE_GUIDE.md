@@ -26,11 +26,11 @@ O laranja identifica a marca; não deve ser usado como texto pequeno sobre fundo
 
 ## Tipografia
 
-A barra lateral usa diretamente os arquivos fornecidos `public/brand/isotipo.svg` e `public/brand/texto.svg`, sem alterar os traçados, as cores ou a composição. O isotipo ocupa um quadrado de 48 px, com moldura azul e sombra para destacar seu fundo azul escuro da barra lateral. O arquivo de texto mantém o slogan original imediatamente abaixo de “ResolvAI”; não adicionar uma segunda versão do slogan em HTML. Não exibir a legenda redundante “Portal do contratante”. Preservar as proporções com `object-fit: contain`. A cópia da marca completa permanece em `public/brand/resolvai-original.svg`.
+A barra lateral renderiza diretamente o conteúdo de `public/brand/resolvai-original.svg`, sem modificar seus traçados, composição, slogan ou proporções. A fonte Alexandria regular é carregada localmente por `@fontsource/alexandria` para o texto do slogan dentro do SVG. A imagem é inserida como SVG inline para compartilhar essa fonte com a página; não separar ou recriar o slogan em HTML.
 
 O slogan “Conectando quem precisa a quem resolve” aparece no rodapé. O HTML `VisualizacaoPrototipo/index.html` e a página vinculada `cliente-web.html` orientam a estrutura e a linguagem do contratante. O histórico é identificado explicitamente por “Serviços concluídos”, com a descrição “Serviços finalizados, valores e avaliações”.
 
-**Rajdhani** em toda a interface, incluindo botões, formulários e números. A fonte é distribuída localmente pelo pacote `@fontsource/rajdhani`, com subconjunto latino e pesos 400, 500, 600 e 700. O carregamento usa `font-display: swap`, com fallback `system-ui, sans-serif`.
+**Rajdhani** nos títulos e indicadores numéricos (pesos 600 e 700). **Inter** nos textos, navegação, botões, formulários e metadados (pesos 400, 500, 600 e 700), substituindo Georgia. As fontes são distribuídas localmente por `@fontsource`, com subconjunto latino e `font-display: swap`. Os tokens `--font-main` e `--font-secondary` definem, respectivamente, a fonte de títulos e a de leitura.
 
 | Elemento                       | Escala              | Peso    |
 | ------------------------------ | ------------------- | ------- |
@@ -38,10 +38,10 @@ O slogan “Conectando quem precisa a quem resolve” aparece no rodapé. O HTML
 | Título do banner               | 30–39 px            | 600     |
 | Indicadores numéricos          | 32–37 px            | 600     |
 | Títulos de seção               | 19–20 px            | 600     |
-| Corpo, navegação e formulários | 14–16 px            | 500     |
+| Corpo, navegação e formulários | 14–16 px            | 400–500 |
 | Botão principal                | 15 px               | 600     |
-| Texto auxiliar e metadados     | 10–13 px            | 500–600 |
-| Rótulos de navegação e marca   | 9–10 px, caixa alta | 600     |
+| Texto auxiliar e metadados     | 12–13 px            | 500–600 |
+| Rótulos de navegação e marca   | 12 px, caixa alta | 600     |
 
 Priorizar frases curtas, acentuação correta e linguagem direta. Usar `pt-BR` na página, vírgula decimal e formatação monetária brasileira. Metadados pequenos não devem conter instruções essenciais.
 
@@ -122,3 +122,21 @@ IA, autenticação, envio a profissionais, contratação, assinatura de contrato
 - Verificação automática com axe-core para WCAG 2 A/AA e 2.1 AA, sem violações nas verificações do dashboard desktop, dashboard mobile e formulário de pedido. Essa verificação não substitui uma auditoria completa de acessibilidade.
 - Capturas desktop e mobile revisadas visualmente.
 - Conversa guiada, validação de respostas, detalhes e fotos opcionais, revisão editável, retorno à conversa e publicação com preservação de escopo e fotos verificados no Chrome. Verificação axe-core sem violações na conversa desktop/mobile e na revisão.
+
+## Organização dos estilos
+
+Os estilos estão separados por responsabilidade, com as regras responsivas junto de cada parte:
+
+- `src/styles/global.css`: reset, tipografia, controles, foco e redução de movimento.
+- `src/styles/layout.css`: estrutura da página, barra lateral e cabeçalho. A variável `--sidebar-width` mantém a largura do menu e o deslocamento do conteúdo sincronizados.
+- `src/styles/controls.css`: botões, painéis, ícones e estados compartilhados.
+- `src/styles/dashboard.css`: saudação, banner, grade principal e rodapé.
+- `src/styles/dashboard-cards.css`: indicadores e serviços concluídos.
+- `src/styles/orders.css`: filtros e cartões de pedidos.
+- `src/styles/dialogs.css`: diálogos, formulários, mensagens e avisos.
+- `src/components/OrderAssistant.css`: conversa e navegação da criação do pedido.
+- `src/components/OrderScope.css`: resumo, fotos e revisão do escopo; importado pelo CSS do assistente.
+
+A ordem de carregamento está definida em `src/main.tsx`.
+
+O `src/App.tsx` coordena os dados da sessão e a navegação. Os componentes em `src/components/dashboard/` organizam a barra lateral (`Sidebar`), a visão geral (`DashboardOverview`), os filtros e pedidos (`OrdersPanel`) e os diálogos (`DashboardDialogs`). Os tipos compartilhados ficam em `src/types/dashboard.ts`. Mensagens, rascunho e interesse em propostas permanecem no componente de diálogos, que continua montado mesmo quando nenhuma janela está aberta.

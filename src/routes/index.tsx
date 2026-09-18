@@ -7,7 +7,8 @@ export function AppRoutes() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="/" element={<Dashboard />} />
+        {/* Rota principal apontando para o Dashboard */}
+        <Route path="/" element={<Dashboard />} /> 
       </Routes>
     </BrowserRouter>
   );
