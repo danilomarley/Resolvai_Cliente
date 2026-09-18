@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="100%" height="100%" viewBox="0 0 1600 1600" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+    <g transform="matrix(1,0,0,1,0,-1911.4)">
+        <g id="Isotipo" transform="matrix(1.247038,0,0,1.314734,0,-849.97095)">
+            <rect x="0" y="2100.327" width="1283.041" height="1216.977" style="fill:none;"/>
+            <g transform="matrix(0.937225,0,0,0.888967,-4444.572961,-2506.18149)">
+                <rect x="4742.269" y="5181.867" width="1368.978" height="1368.978" style="fill:rgb(15,28,46);"/>
+            </g>
+            <g transform="matrix(2.630979,0,0,2.495509,-13721.983114,-11093.461456)">
+                <g transform="matrix(366.666667,0,0,366.666667,5319.126307,5659.180377)">
+                    <path d="M0.389,-0.701C0.484,-0.701 0.558,-0.679 0.61,-0.636C0.662,-0.592 0.688,-0.53 0.688,-0.45C0.688,-0.365 0.662,-0.3 0.61,-0.253C0.558,-0.206 0.484,-0.182 0.389,-0.182L0.282,-0.182L0.282,-0L0.05,-0L0.05,-0.701L0.389,-0.701ZM0.389,-0.358C0.414,-0.358 0.434,-0.365 0.447,-0.381C0.461,-0.396 0.468,-0.416 0.468,-0.443C0.468,-0.469 0.461,-0.489 0.447,-0.504C0.434,-0.518 0.414,-0.525 0.389,-0.525L0.282,-0.525L0.282,-0.358L0.389,-0.358ZM0.33,-0.265L0.554,-0.265L0.715,-0L0.453,-0L0.33,-0.265Z" style="fill:rgb(255,92,26);fill-rule:nonzero;"/>
+                </g>
+                <g transform="matrix(366.666667,0,0,366.666667,5584.95964,5659.180377)">
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>
