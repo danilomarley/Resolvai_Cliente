@@ -1,5 +1,4 @@
 import { useEffect, useRef, type Dispatch, type SetStateAction } from 'react'
-import originalLogo from '../../../public/brand/resolvai-original.svg?raw'
 import { Icon, type IconName } from '../Icon'
 import type { Dialog, Profile } from '../../types/dashboard'
 
@@ -93,12 +92,7 @@ export function Sidebar({
               navigate('Visão geral')
             }}
           >
-            <span
-              className="brand-wordmark"
-              role="img"
-              aria-label="ResolvAI — Conectando quem precisa a quem resolve"
-              dangerouslySetInnerHTML={{ __html: originalLogo }}
-            />
+           <img src="/brand/resolvai-original.svg" alt="ResolvAI" />
           </a>
           <nav>
             <p className="nav-label">PRINCIPAL</p>

@@ -1,38 +1,50 @@
 import { FormEvent, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom"; 
 import "../../styles/login.css"; 
 import { Icon } from "../../components/Icon"; 
 import { supabase } from "../../services/supabase";
 
-export function Login() {
+export function Cadastro() {
   const navigate = useNavigate();
-
+  
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  async function handleLogin(event: FormEvent) {
+  async function handleRegister(event: FormEvent) {
     event.preventDefault();
-    setError("");
+    setError(""); 
+
+    if (password !== confirmPassword) {
+      setError("As senhas não coincidem. Verifique e tente novamente.");
+      return;
+    }
 
     try {
       setLoading(true);
       
-      // Valida o login no Supabase
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      // Registo simples no Supabase (Autenticação)
+      const { error: authError } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            full_name: name,
+          }
+        }
       });
 
-      if (signInError) throw signInError;
+      if (authError) throw authError;
 
-      // Login efetuado com sucesso! Redireciona para o Dashboard (rota principal "/")
-      navigate("/");
-
+      // Se o registo for um sucesso, redireciona o utilizador para fazer o login
+      navigate("/login");
+      
     } catch (err: any) {
-      setError("E-mail ou senha incorretos.");
+      setError(err.message || "Ocorreu um erro ao criar a conta.");
     } finally {
       setLoading(false);
     }
@@ -46,16 +58,31 @@ export function Login() {
             <div className="logo-icon">R</div>
             <h1 className="logo-text">ResolvAI</h1>
           </div>
-          <p>Bem-vindo de volta! Faça login na sua conta.</p>
+          <p>Crie sua conta para começar a resolver.</p>
         </header>
 
-        <form onSubmit={handleLogin} className="login-form">
+        <form onSubmit={handleRegister} className="login-form">
           {/* Mensagem de Erro */}
           {error && (
             <div style={{ color: "var(--color-danger)", fontSize: "0.875rem", textAlign: "center", backgroundColor: "var(--color-warning-soft)", padding: "0.5rem", borderRadius: "8px" }}>
               {error}
             </div>
           )}
+
+          <div className="input-group">
+            <label htmlFor="name">Nome completo</label>
+            <div className="input-wrapper">
+              <Icon name="user" size={18} className="input-icon" />
+              <input 
+                type="text" 
+                id="name" 
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Seu nome" 
+                required 
+              />
+            </div>
+          </div>
 
           <div className="input-group">
             <label htmlFor="email">E-mail</label>
@@ -81,32 +108,42 @@ export function Login() {
                 id="password" 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••" 
+                placeholder="Crie uma senha forte" 
                 required 
+                minLength={6}
               />
             </div>
           </div>
 
-          <div className="form-actions">
-            <a href="/esqueci-a-senha" className="forgot-password">
-              Esqueceu a senha?
-            </a>
+          <div className="input-group">
+            <label htmlFor="confirmPassword">Confirmar senha</label>
+            <div className="input-wrapper">
+              <Icon name="shield" size={18} className="input-icon" />
+              <input 
+                type="password" 
+                id="confirmPassword" 
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Repita a senha" 
+                required 
+                minLength={6}
+              />
+            </div>
           </div>
 
           <button type="submit" className="btn-primary" disabled={loading}>
-            {loading ? "A entrar..." : "Entrar"}
+            {loading ? "A criar conta..." : "Criar conta"}
           </button>
         </form>
 
         <div className="form-actions" style={{ justifyContent: "center", marginTop: "1.5rem" }}>
           <span style={{ fontSize: "0.875rem", color: "var(--color-muted)" }}>
-            Ainda não tem conta?{" "}
-            <Link to="/cadastro" className="forgot-password">
-              Crie uma agora
+            Já tem uma conta?{" "}
+            <Link to="/login" className="forgot-password">
+              Faça login
             </Link>
           </span>
         </div>
-        
       </div>
     </main>
   );
