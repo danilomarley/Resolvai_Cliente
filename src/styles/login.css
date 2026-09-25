@@ -1,0 +1,167 @@
+/* Container que ocupa toda a tela com o fundo azul escuro da lateral */
+.login-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  width: 100vw;
+  background-color: var(--color-text); /* #0f1c2e - a cor mais escura da paleta, ideal para o fundo da sidebar */
+  padding: var(--spacing-md);
+}
+
+/* Card centralizado com bordas arredondadas e sombra suave */
+.login-card {
+  background-color: var(--color-surface);
+  width: 100%;
+  max-width: 420px;
+  padding: 2.5rem var(--spacing-lg);
+  border-radius: var(--radius-md); 
+  box-shadow: var(--shadow-card);
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: var(--spacing-lg);
+}
+
+/* Replicando visualmente a logo da imagem */
+.logo-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+.logo-icon {
+  background-color: var(--color-secondary);
+  color: var(--color-surface);
+  font-weight: 700;
+  font-size: var(--font-size-lg);
+  height: 32px;
+  width: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+}
+
+.logo-text {
+  font-family: var(--font-main);
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.login-header p {
+  color: var(--color-muted);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-secondary);
+  margin: 0;
+}
+
+/* Estilos do formulário */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem; /* Mantido em rem pois é um valor intermediário entre o md e lg */
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.input-group label {
+  font-family: var(--font-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.input-group input {
+  padding: 0.75rem var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-md);
+  font-family: var(--font-secondary);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.input-group input:focus {
+  border-color: var(--color-primary);
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.forgot-password {
+  font-family: var(--font-secondary);
+  font-size: var(--font-size-sm);
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.forgot-password:hover {
+  text-decoration: underline;
+}
+
+/* Botão de envio usando o estilo do botão "+ Criar pedido" */
+.btn-primary {
+  background-color: var(--color-primary);
+  color: var(--color-surface);
+  border: none;
+  padding: var(--spacing-md);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-main);
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-top: var(--spacing-sm);
+}
+
+.btn-primary:hover {
+  background-color: var(--color-primary-hover);
+}
+
+/* Posicionamento do ícone dentro do input */
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.input-icon {
+  position: absolute;
+  left: 1rem;
+  color: var(--color-muted);
+}
+
+.input-group input {
+  width: 100%;
+  /* Aumentamos o padding da esquerda para o texto não ficar em cima do ícone */
+  padding: 0.75rem var(--spacing-md) 0.75rem 2.75rem; 
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-md);
+  font-family: var(--font-secondary);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.input-group input:focus {
+  border-color: var(--color-primary);
+}
+
+/* Opcional: faz o ícone mudar de cor quando o input está focado */
+.input-wrapper:focus-within .input-icon {
+  color: var(--color-primary);
+}
