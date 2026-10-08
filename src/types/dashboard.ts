@@ -14,4 +14,6 @@ export type Dialog =
 export type Tab = 'all' | 'waiting' | 'progress'
 
 
-export type Profile = { name: string; location: string }
+export type Profile = {
+  rating: any; name: string; location: string 
+}

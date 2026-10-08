@@ -1,7 +1,8 @@
 import { Icon, type IconName } from '../Icon'
 import { HouseIllustration } from '../HouseIllustration'
 import { OrdersPanel } from './OrdersPanel'
-import { completed, currency, initialOrders, type Order } from '../../data/dashboard'
+// REMOVIDO: import { completed, currency, initialOrders, type Order } from '../../data/dashboard'
+import type { Order } from './OrdersPanel'
 import type { Dialog, Profile, Tab } from '../../types/dashboard'
 
 type DashboardOverviewProps = {
@@ -17,6 +18,14 @@ type DashboardOverviewProps = {
   openOrder: (order: Order, target?: Dialog) => void
 }
 
+// 1. Recriando a função de formatar moeda (você pode mover isso para um utils depois)
+const formatCurrency = (value: number) => {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(value)
+}
+
 export function DashboardOverview({
   orders,
   profile,
@@ -29,10 +38,18 @@ export function DashboardOverview({
   openDialog,
   openOrder,
 }: DashboardOverviewProps) {
-  const proposalCount = orders.reduce(
-    (total, order) => total + order.proposals,
+  
+  // 2. Garante que orders existe antes de fazer o reduce (prevenção de erros)
+  const proposalCount = (orders || []).reduce(
+    (total, order) => total + (order.proposals || 0),
     0,
   )
+
+  // 3. Array temporário de serviços concluídos (substitua isso futuramente por dados da API)
+  const completed: any[] = [] 
+
+  // 4. Fallback seguro para o primeiro nome do usuário
+  const firstName = profile?.name ? profile.name.split(' ')[0] : 'Usuário'
 
   return (
     <>
@@ -40,8 +57,7 @@ export function DashboardOverview({
         <div>
           <p className="eyebrow">TUDO SOB CONTROLE</p>
           <h1>
-            Olá, {profile.name.split(' ')[0]}{' '}
-            <span className="wave">✳</span>
+            Olá, {firstName} <span className="wave">✳</span>
           </h1>
           <p>Um lar bem cuidado começa por aqui. Vamos resolver?</p>
         </div>
@@ -88,10 +104,10 @@ export function DashboardOverview({
           [
             {
               label: 'Pedidos ativos',
-              value: String(orders.length).padStart(2, '0'),
+              value: String((orders || []).length).padStart(2, '0'),
               icon: 'bag',
               color: 'blue',
-              detail: `+${orders.length - 1} ${orders.length === 2 ? 'novo nesta semana' : 'novos nesta semana'}`,
+              detail: orders?.length > 0 ? `+${orders.length - 1} novos nesta semana` : 'Nenhum pedido ativo',
               detailIcon: 'trend',
               action: () => navigate('Meus pedidos'),
             },
@@ -101,28 +117,35 @@ export function DashboardOverview({
               icon: 'file',
               color: 'purple',
               detail: unread
-                ? '3 propostas para conferir'
+                ? 'Propostas para conferir'
                 : 'Suas propostas estão em dia',
               detailIcon: 'clock',
               action: () => {
-                openOrder(initialOrders[0], 'proposals')
+                // Abre o primeiro pedido APENAS se existir algum pedido
+                if (orders && orders.length > 0) {
+                    openOrder(orders[0], 'proposals')
+                } else {
+                    // Opcional: mostrar um alerta ou direcionar para criar pedido
+                    openDialog('create')
+                }
               },
             },
             {
               label: 'Serviços concluídos',
-              value: '03',
+              value: String(completed.length).padStart(2, '0'), // Agora dinâmico
               icon: 'circleCheck',
               color: 'green',
-              detail: 'Tudo certo por aqui',
+              detail: completed.length > 0 ? 'Tudo certo por aqui' : 'Nenhum serviço ainda',
               detailIcon: 'check',
               action: () => openDialog('history'),
             },
             {
               label: 'Sua avaliação',
-              value: '4,8',
+              // Mostra a nota real se existir no perfil, senão mostra traços
+              value: profile?.rating ? String(profile.rating).replace('.', ',') : '-,-', 
               icon: 'star',
               color: 'amber',
-              detail: 'Com base em 3 serviços',
+              detail: 'Aguardando avaliações', // Antes estava fixo em "Com base em 3 serviços"
               detailIcon: 'star',
               action: () => openDialog('reviews'),
             },
@@ -184,41 +207,45 @@ export function DashboardOverview({
               </h2>
               <p>Serviços finalizados, valores e avaliações.</p>
             </div>
-            <span className="resolved-count">3</span>
+            <span className="resolved-count">{completed.length}</span>
           </div>
           <div className="completed-list">
-            {completed.map((service) => (
-              <button
-                className="completed-item"
-                key={service.id}
-                onClick={() => openDialog('history')}
-              >
-                <span className="completed-icon">
-                  <Icon name={service.icon} size={21} />
-                  <i>
-                    <Icon name="check" size={9} />
-                  </i>
-                </span>
-                <span className="completed-info">
-                  <strong>{service.title}</strong>
-                  <span>{service.provider}</span>
-                  <span className="completed-price">
-                    {currency(service.price)}
-                    <span className="rating">
-                      <Icon name="star" size={12} />
-                      {service.rating}
+            {completed.length === 0 ? (
+              <p style={{ textAlign: 'center', padding: '1rem', color: 'var(--color-muted)' }}>
+                Nenhum serviço concluído ainda.
+              </p>
+            ) : (
+              completed.map((service) => (
+                <button
+                  className="completed-item"
+                  key={service.id}
+                  onClick={() => openDialog('history')}
+                >
+                  <span className="completed-icon">
+                    <Icon name={service.icon} size={21} />
+                    <i>
+                      <Icon name="check" size={9} />
+                    </i>
+                  </span>
+                  <span className="completed-info">
+                    <strong>{service.title}</strong>
+                    <span>{service.provider}</span>
+                    <span className="completed-price">
+                      {formatCurrency(service.price)}
+                      <span className="rating">
+                        <Icon name="star" size={12} />
+                        {service.rating}
+                      </span>
                     </span>
                   </span>
-                </span>
-                <Icon name="chevron" size={15} />
-              </button>
-            ))}
+                  <Icon name="chevron" size={15} />
+                </button>
+              ))
+            )}
           </div>
           <div className="completed-bottom">
             <span className="mini-avatars">
-              <i>SP</i>
-              <i>CI</i>
-              <i>FC</i>
+              {/* Você pode querer deixar esses ícones vazios ou escondidos quando não há serviços */}
             </span>
             <p>
               Bons profissionais.

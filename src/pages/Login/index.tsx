@@ -29,7 +29,7 @@ export function Login() {
       if (signInError) throw signInError;
 
       // Login efetuado com sucesso! Redireciona para o Dashboard (rota principal "/")
-      navigate("/");
+      navigate("/dashboard");
 
     } catch (err: any) {
       setError("E-mail ou senha incorretos.");

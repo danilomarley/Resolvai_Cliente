@@ -4,34 +4,56 @@ import { OrderAssistant, type NewOrder } from '../../components/OrderAssistant'
 import { Sidebar } from '../../components/dashboard/Sidebar'
 import { DashboardOverview } from '../../components/dashboard/DashboardOverview'
 import { DashboardDialogs } from '../../components/dashboard/DashboardDialogs'
-import { initialOrders, type Order } from '../../data/dashboard'
-import type { Dialog, Tab } from '../../types/dashboard'
+// O import do 'initialOrders' foi removido
+import type { Dialog, Tab, Profile } from '../../types/dashboard'
+import type { Order } from '../../components/dashboard/OrdersPanel'
 
 export function Dashboard() {
-  const [orders, setOrders] = useState(initialOrders)
+  // 1. Iniciando os pedidos vazios para buscar da API depois
+  const [orders, setOrders] = useState<Order[]>([])
   const [tab, setTab] = useState<Tab>('all')
   const [search, setSearch] = useState('')
   const [dialog, setDialog] = useState<Dialog>(null)
-  const [selectedOrder, setSelectedOrder] = useState<Order>(initialOrders[0])
+  
+  // 2. Pedido selecionado começa nulo (ou você pode tipar como Order | null)
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [notice, setNotice] = useState('')
-  const [unread, setUnread] = useState(true)
+  const [unread, setUnread] = useState(false) // Começa falso por padrão
   const [activeNav, setActiveNav] = useState('Visão geral')
-  const [profile, setProfile] = useState({
-    name: 'Ygor Chagas',
-    location: 'Aldeota, Fortaleza',
+  
+  // 3. Perfil começa limpo. A API deve fornecer isso depois do Login.
+  const [profile, setProfile] = useState<Profile>({
+    name: '',
+    location: '',
+    rating: 0,
   })
+
+  // Exemplo de onde a chamada da API vai entrar:
+  // useEffect(() => {
+  //   async function loadData() {
+  //      const userProfile = await fetchProfileFromSupabase();
+  //      setProfile(userProfile);
+  //      
+  //      const userOrders = await fetchOrdersFromSupabase();
+  //      setOrders(userOrders);
+  //   }
+  //   loadData();
+  // }, [])
 
   function openDialog(value: Dialog) {
     setDialog(value)
     if (value === 'create') setActiveNav('Criar pedido')
     setMobileOpen(false)
   }
+
   function navigate(label: string, target?: Dialog) {
     setActiveNav(label)
     setMobileOpen(false)
     if (target) {
-      if (target === 'proposals') setSelectedOrder(initialOrders[0])
+      if (target === 'proposals' && orders.length > 0) {
+          setSelectedOrder(orders[0]) // Só seleciona se tiver pedidos carregados
+      }
       openDialog(target)
     } else {
       setDialog(null)
@@ -47,6 +69,7 @@ export function Dashboard() {
         })
     }
   }
+
   function createOrder(order: NewOrder) {
     setOrders((current) => [
       {
@@ -63,10 +86,9 @@ export function Dashboard() {
     setSearch('')
     setDialog(null)
     setActiveNav('Visão geral')
-    setNotice(
-      'Pedido com escopo criado nesta demonstração. Ele já aparece em seus pedidos ativos.',
-    )
+    setNotice('Pedido criado. Ele já aparece em seus pedidos ativos.')
   }
+
   function openOrder(order: Order, target: Dialog = 'order') {
     setSelectedOrder(order)
     openDialog(target)
@@ -118,7 +140,7 @@ export function Dashboard() {
             <span className="header-divider" />
             <button
               className="icon-button notification-button"
-              aria-label={unread ? 'Notificações, 3 não lidas' : 'Notificações'}
+              aria-label={unread ? 'Notificações, não lidas' : 'Notificações'}
               onClick={() => {
                 openDialog('notifications')
                 setUnread(false)
@@ -132,7 +154,8 @@ export function Dashboard() {
               aria-label="Abrir meu perfil"
               onClick={() => openDialog('profile')}
             >
-              {profile.name.charAt(0)}
+              {/* Fallback de letra caso o nome não tenha carregado da API ainda */}
+              {profile.name ? profile.name.charAt(0).toUpperCase() : '?'}
             </button>
           </div>
         </header>
@@ -177,9 +200,11 @@ export function Dashboard() {
           </button>
         </div>
       )}
+      
+      {/* O Dialog agora precisa lidar com o fato de selectedOrder poder ser null */}
       <DashboardDialogs
         dialog={dialog}
-        selectedOrder={selectedOrder}
+        selectedOrder={selectedOrder as Order} // Asserção de tipo temporária até o DashboardDialogs lidar com null
         profile={profile}
         onClose={() => {
           setDialog(null)
@@ -192,4 +217,3 @@ export function Dashboard() {
     </div>
   )
 }
-

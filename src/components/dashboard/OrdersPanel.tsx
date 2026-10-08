@@ -1,6 +1,21 @@
-import { Icon } from '../Icon'
-import type { Order } from '../../data/dashboard'
+import { Icon, type IconName } from '../Icon'
+// REMOVIDO: import type { Order } from '../../data/dashboard'
 import type { Dialog, Tab } from '../../types/dashboard'
+
+// É recomendado mover esta tipagem para o seu arquivo types/dashboard.ts depois
+export type Order = {
+  id: number
+  title: string
+  description?: string
+  location: string
+  category: string
+  // Alteração aqui: remover o | 'completed'
+  status: 'waiting' | 'progress' 
+  icon: IconName
+  deadline?: string
+  proposals: number
+  scope?: any 
+}
 
 type OrdersPanelProps = {
   orders: Order[]
@@ -13,7 +28,7 @@ type OrdersPanelProps = {
 }
 
 export function OrdersPanel({
-  orders,
+  orders = [], // Garante que comece como array vazio caso venha undefined
   tab,
   setTab,
   search,
@@ -21,12 +36,14 @@ export function OrdersPanel({
   openDialog,
   openOrder,
 }: OrdersPanelProps) {
+  
+  // Filtra os pedidos com base na aba (tab) selecionada e na busca por texto
   const visibleOrders = orders.filter(
     (order) =>
       (tab === 'all' || order.status === tab) &&
       `${order.title} ${order.category}`
         .toLocaleLowerCase('pt-BR')
-        .includes(search.toLocaleLowerCase('pt-BR')),
+        .includes((search || '').toLocaleLowerCase('pt-BR')),
   )
 
   return (
@@ -50,6 +67,7 @@ export function OrdersPanel({
           <Icon name="plus" size={16} /> Novo pedido
         </button>
       </div>
+      
       <div
         className="tabs"
         role="tablist"
@@ -99,6 +117,7 @@ export function OrdersPanel({
           </button>
         ))}
       </div>
+      
       <div
         id="order-list"
         role="tabpanel"
@@ -106,7 +125,7 @@ export function OrdersPanel({
         tabIndex={0}
         className="order-list"
       >
-        {visibleOrders.length ? (
+        {visibleOrders.length > 0 ? (
           visibleOrders.map((order) => (
             <article className="order-card" key={order.id}>
               <div className="order-main">
@@ -145,27 +164,27 @@ export function OrdersPanel({
                   />
                   {order.status === 'waiting' ? (
                     <>
-                      <strong>{order.proposals} propostas</strong>{' '}
+                      <strong>{order.proposals || 0} propostas</strong>{' '}
                       recebidas
                     </>
                   ) : (
                     <>
-                      Previsão: <strong>{order.deadline}</strong>
+                      Previsão: <strong>{order.deadline || 'A definir'}</strong>
                     </>
                   )}
                 </span>
                 <button
-                  className={`button ${order.status === 'waiting' && order.proposals ? 'button-primary' : 'button-secondary'} button-sm`}
+                  className={`button ${order.status === 'waiting' && (order.proposals && order.proposals > 0) ? 'button-primary' : 'button-secondary'} button-sm`}
                   onClick={() =>
                     openOrder(
                       order,
-                      order.status === 'waiting' && order.proposals
+                      order.status === 'waiting' && (order.proposals && order.proposals > 0)
                         ? 'proposals'
                         : 'order',
                     )
                   }
                 >
-                  {order.status === 'waiting' && order.proposals
+                  {order.status === 'waiting' && (order.proposals && order.proposals > 0)
                     ? 'Ver propostas'
                     : 'Acompanhar'}
                   <Icon name="arrow" size={15} />
