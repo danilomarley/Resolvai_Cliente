@@ -6,7 +6,7 @@ Dashboard responsivo em React, TypeScript e Vite, baseado no protótipo do contr
 
 ### Abrir com dois cliques no Windows
 
-Na pasta do projeto, abra **`iniciar-prototipo.cmd`**. Ele inicia o servidor e abre o navegador automaticamente, sem precisar copiar um link. Mantenha a janela do terminal aberta enquanto usa o protótipo; feche-a ou pressione `Ctrl+C` para encerrar.
+Na pasta do projeto, abra **`iniciar-prototipo.cmd`**. Ele inicia o servidor e abre a tela de login no navegador automaticamente, sem precisar copiar um link. Para abrir o cadastro, clique em **“Crie uma agora”**. Também é possível acessar `/login` ou `/cadastro` no endereço local exibido pelo Vite. Mantenha a janela do terminal aberta enquanto usa o protótipo; feche-a ou pressione `Ctrl+C` para encerrar.
 
 O arquivo usa o Node.js instalado no computador ou, neste workspace, a versão portátil em `../.tools/node.exe`. Em uma nova instalação, prepare as dependências com `npm ci` antes de executá-lo. O inicializador tenta a porta `5173`, com cores de terminal desativadas para evitar caracteres estranhos. Se ela estiver ocupada, o Vite escolhe outra porta livre e abre o endereço correto automaticamente. Use o endereço exibido na janela do inicializador.
 
