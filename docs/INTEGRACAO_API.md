@@ -86,7 +86,7 @@ não são usadas para dados da conta do cliente.
 
 ## Validação executada
 
-- `npm test`: 11 testes aprovados (Node 24.21.0), cobrindo DTOs, quatro status,
+- `npm test`: 12 testes aprovados (Node 24.21.0), cobrindo DTOs, quatro status,
   contadores independentes da lista, rotas e corpos exatos, UUIDs, Bearer,
   transporte HTTP local, 401/403/404/409/500, JSON inválido, falha de rede,
   cancelamento e os testes existentes de pedidos.

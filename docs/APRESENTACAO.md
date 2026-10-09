@@ -3,7 +3,10 @@
 ## Entrega
 
 `npm run build:presentation` gera um HTML independente em `apresentacao/`.
-Abra `iniciar-prototipo.cmd` com dois cliques para acessar a demonstração pronta.
+Abra `iniciar-prototipo.cmd --demo` para acessar a demonstração pronta.
+Sem argumentos, o CMD abre a integração real e consulta o perfil e pedidos da API.
+O nome ilustrativo Ygor e os pedidos de exemplo pertencem somente ao modo
+demonstrativo. A integração não usa esses dados como fallback.
 O HTML abre diretamente pelo navegador em Windows, macOS ou Linux, sem servidor.
 Não contém credenciais do banco, chaves administrativas ou configurações privadas
 do backend. O build substitui a configuração pública do Supabase por placeholders.
@@ -30,6 +33,12 @@ repositório oficial. Uma cópia do diff está em `patches/backend-jwks.patch` p
 revisão pelo responsável. Nenhum segredo de configuração está incluído nesse diff.
 
 ## Limites de validação
+
+`npm run test:integration` verifica, em Chrome e Edge, o login normal via API,
+o nome do perfil autenticado, cabeçalho Bearer, pedidos e detalhes por UUID,
+conta sem pedidos e erro 401 sem dados demonstrativos. Essa suíte usa respostas
+HTTP interceptadas, sem credenciais reais. A instância real também foi consultada
+com token diagnóstico temporário para confirmar o perfil e o resumo da conta.
 
 O HTML portátil foi validado em Chrome e Edge com a internet desativada, incluindo
 navegação, propostas, mensagens, contratos, pagamentos, avaliações, edição de

@@ -6,10 +6,13 @@ Dashboard responsivo em React, TypeScript e Vite, baseado no protótipo do contr
 
 ### Acesso rápido
 
-Abra **`iniciar-prototipo.cmd`** com dois cliques. Ele abre diretamente a
-demonstração pronta na **tela de login**. Clique em **Crie uma agora** para
-mostrar o cadastro. Entre com dados fictícios para abrir todos os menus da Home.
-Também pode abrir `apresentacao/ResolvAI.html`.
+Abra **`iniciar-prototipo.cmd`** com dois cliques. Ele inicia a API e o frontend
+e abre o **login real**. Use sua conta: nome, resumo e pedidos vêm da API e
+pertencem ao usuário autenticado. Uma conta sem pedidos mostra a lista vazia.
+
+Para abrir os fluxos fictícios, execute explicitamente
+`iniciar-prototipo.cmd --demo` ou abra `apresentacao/ResolvAI.html`.
+Nesse modo, use dados fictícios e os menus da demonstração.
 A apresentação funciona sem internet, Node, .NET,
 backend ou credenciais. Fontes, logo, estilos e scripts estão embutidos no HTML.
 
@@ -20,8 +23,7 @@ de demonstração permanece visível: os dados são fictícios e as alterações
 enquanto a página estiver aberta. Não efetua contratação ou pagamento real.
 
 Para gerar novamente: `npm ci` e `npm run build:presentation`.
-O resultado fica em `apresentacao/ResolvAI.html`. Se esse arquivo existir,
-`iniciar-prototipo.cmd` abre a apresentação diretamente.
+O resultado fica em `apresentacao/ResolvAI.html`. A opção `--demo` abre esse arquivo.
 
 O aviso da demonstração inclui links de **Login** e **Criar conta**. Essas telas usam
 dados fictícios nesse modo e não dependem da API. Alternar entre elas e a Home
