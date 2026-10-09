@@ -9,10 +9,14 @@ export type OrderScope = {
 
 export type Order = {
   id: number
+  customerId: string
+  createdAt?: string
+  total?: number
+  items?: { id: string; name: string; quantity: number; unitPrice: number }[]
   title: string
   category: string
   location: string
-  status: 'waiting' | 'progress'
+  status: 'waiting' | 'progress' | 'completed'
   proposals: number
   deadline: string
   icon: IconName
@@ -22,6 +26,7 @@ export type Order = {
 export const initialOrders: Order[] = [
   {
     id: 1042,
+    customerId: 'demo-customer',
     title: 'Infiltração na laje do quarto',
     category: 'Impermeabilização',
     location: 'Aldeota, Fortaleza',
@@ -34,6 +39,7 @@ export const initialOrders: Order[] = [
   },
   {
     id: 1038,
+    customerId: 'demo-customer',
     title: 'Reparo hidráulico no banheiro',
     category: 'Hidráulica',
     location: 'Aldeota, Fortaleza',
@@ -74,6 +80,22 @@ export const completed = [
     date: '12 ago. 2026',
   },
 ]
+// Historical services belong to the same illustrative account. Their dates are
+// completion dates, so they must not be used as order creation dates.
+export const completedOrders: Order[] = completed.map((service) => ({
+  id: service.id,
+  customerId: 'demo-customer',
+  title: service.title,
+  category: 'Serviço concluído',
+  location: 'Localização não informada',
+  status: 'completed',
+  total: service.price,
+  proposals: 0,
+  deadline: service.date,
+  icon: service.icon,
+  description: 'Serviço concluído nesta demonstração. Escopo não informado.',
+}))
+
 export const proposals = [
   {
     name: 'Carlos Impermeabilizações',

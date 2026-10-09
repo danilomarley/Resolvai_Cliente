@@ -31,7 +31,7 @@ echo Para encerrar, pressione Ctrl+C ou feche esta janela.
 echo O navegador abrira no endereco exibido abaixo.
 echo Se a porta 5173 estiver ocupada, outra porta livre sera usada automaticamente.
 echo.
-"%RESOLVAI_NODE%" "node_modules\vite\bin\vite.js" --host 127.0.0.1 --port 5173 --clearScreen false --open
+"%RESOLVAI_NODE%" "node_modules\vite\bin\vite.js" --host 127.0.0.1 --port 5173 --clearScreen false --open /login
 if errorlevel 1 (
   echo.
   echo Nao foi possivel iniciar o prototipo. Veja o motivo acima.

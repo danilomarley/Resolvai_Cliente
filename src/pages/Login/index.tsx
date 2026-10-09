@@ -1,11 +1,12 @@
 import { FormEvent, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import "../../styles/login.css"; 
 import { Icon } from "../../components/Icon"; 
 import { supabase } from "../../services/supabase";
 
 export function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -28,10 +29,11 @@ export function Login() {
 
       if (signInError) throw signInError;
 
-      // Login efetuado com sucesso! Redireciona para o Dashboard (rota principal "/")
-      navigate("/");
+      // Retorna ao pedido solicitado, aceitando apenas destinos internos conhecidos.
+      const destination: unknown = location.state?.from;
+      navigate(typeof destination === 'string' && /^\/pedidos(?:\/\d+)?$/.test(destination) ? destination : '/', { replace: true });
 
-    } catch (err: any) {
+    } catch {
       setError("E-mail ou senha incorretos.");
     } finally {
       setLoading(false);
