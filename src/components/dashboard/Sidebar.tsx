@@ -1,5 +1,6 @@
 import { useEffect, useRef, type Dispatch, type SetStateAction } from 'react'
 import { Icon, type IconName } from '../Icon'
+import brand from '../../assets/resolvai-original.svg'
 import type { Dialog, Profile } from '../../types/dashboard'
 
 type SidebarProps = {
@@ -92,7 +93,7 @@ export function Sidebar({
               navigate('Visão geral')
             }}
           >
-           <img src="/brand/resolvai-original.svg" alt="ResolvAI" />
+           <img src={brand} alt="ResolvAI" />
           </a>
           <nav>
             <p className="nav-label">PRINCIPAL</p>

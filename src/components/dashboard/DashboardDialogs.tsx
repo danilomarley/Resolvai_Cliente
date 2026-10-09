@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Icon } from '../Icon'
 import { Modal } from '../Modal'
 import { PhotoPreview } from '../OrderAssistant'
+import { useDemoState } from '../../services/demoState'
 import {
   completed,
   currency,
@@ -44,8 +45,7 @@ export function DashboardDialogs({
   onSaveProfile,
   onNotice,
 }: DashboardDialogsProps) {
-  const [interestedProvider, setInterestedProvider] = useState<string | null>(null)
-  const [messages, setMessages] = useState<string[]>([])
+  const { interestedProvider, setInterestedProvider, messages, setMessages } = useDemoState()
   const [draft, setDraft] = useState('')
   if (!dialog || dialog === 'create') return null
   return (

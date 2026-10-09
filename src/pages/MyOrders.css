@@ -1,0 +1,19 @@
+.my-orders { display: grid; gap: var(--spacing-md); }
+.my-orders > .button { justify-self: start; }
+.my-orders-list { display: grid; gap: var(--spacing-md); grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
+.order-summary { padding: var(--spacing-lg); display: grid; gap: var(--spacing-md); min-width: 0; overflow-wrap: anywhere; }
+.order-summary h2 { font-size: 22px; }
+.order-summary .status-badge, .order-summary .button { justify-self: start; }
+.order-summary dl { display: flex; flex-wrap: wrap; gap: var(--spacing-lg); }
+.order-summary dt { color: var(--color-muted); }
+.order-summary dd { margin: 0; font-weight: 600; }
+.status-badge.cancelled { color: var(--color-danger); background: var(--color-background); }
+.status-badge.completed { color: var(--color-success); background: var(--color-success-soft); }
+.order-category { flex-wrap: wrap; }
+.order-category span { overflow-wrap: anywhere; white-space: normal; }
+.api-summary-note { margin: var(--spacing-md) 0; color: var(--color-muted); }
+.order-table { overflow-x: auto; }
+.order-table table { width: 100%; border-collapse: collapse; text-align: left; }
+.order-table th, .order-table td { padding: 12px; border-bottom: 1px solid var(--color-border); }
+.order-table caption { text-align: left; padding-bottom: 8px; }
+@media (max-width: 560px) { .order-summary { padding: var(--spacing-md); } }
