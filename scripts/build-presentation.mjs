@@ -29,6 +29,5 @@ html = html.replace(/<link\b[^>]*rel="icon"[^>]*>/g,
 const destination = resolve(root, 'apresentacao')
 await mkdir(destination, { recursive: true })
 await writeFile(resolve(destination, 'ResolvAI.html'), html)
-await writeFile(resolve(destination, 'abrir-apresentacao.cmd'), '@echo off\r\nstart "" "%~dp0ResolvAI.html"\r\n')
-await writeFile(resolve(destination, 'LEIA-ME.txt'), 'ResolvAI - demonstracao offline\n\nAbra ResolvAI.html em um navegador atualizado (Chrome, Edge, Firefox ou Safari).\nNo Windows, tambem pode abrir abrir-apresentacao.cmd com dois cliques.\nNao precisa instalar Node, .NET ou configurar contas. Funciona sem internet.\nOs dados sao ficticios. Alteracoes duram enquanto a pagina estiver aberta.\nEsta demonstracao nao envia pedidos para a API real.\n')
+await writeFile(resolve(destination, 'LEIA-ME.txt'), 'ResolvAI - demonstracao offline\n\nAbra iniciar-prototipo.cmd na pasta Resolvai_Cliente, ou ResolvAI.html diretamente.\nA primeira tela e o login. Clique em Crie uma agora para mostrar o cadastro.\nUse dados ficticios para entrar e visualizar todos os menus do dashboard.\nNao precisa instalar Node, .NET ou configurar contas. Funciona sem internet.\nOs dados sao ficticios. Alteracoes duram enquanto a pagina estiver aberta.\nEsta demonstracao nao envia pedidos para a API real.\n')
 console.log('Apresentacao pronta: apresentacao/ResolvAI.html')

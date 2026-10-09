@@ -140,7 +140,7 @@ export function DemoDashboard() {
         </header>
 
         <main id="main" tabIndex={-1}><p className="demo-banner" role="status">Demonstração offline · Dados fictícios · Alterações mantidas somente enquanto esta página estiver aberta.{' '}
-          <Link to="/login">Mostrar login e cadastro</Link></p>
+          <Link to="/login">Login</Link>{' · '}<Link to="/cadastro">Criar conta</Link></p>
           {dialog === 'create' && !viewingOrders ? (
             <OrderAssistant
               location={profile.location}
