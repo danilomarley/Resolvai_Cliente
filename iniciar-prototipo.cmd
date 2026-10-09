@@ -25,16 +25,7 @@ if not exist "node_modules\vite\bin\vite.js" (
   exit /b 1
 )
 
-echo Iniciando o prototipo e abrindo o navegador...
-echo Mantenha esta janela aberta enquanto usa o prototipo.
-echo O login precisa do backend em execucao. Este arquivo inicia apenas o frontend.
-echo Em outro terminal, na pasta ResolvAI, execute:
-echo dotnet run --project Resolvai_Backend\src\Resolvai.Api --launch-profile http
-echo Para encerrar, pressione Ctrl+C ou feche esta janela.
-echo O navegador abrira no endereco exibido abaixo.
-echo Se a porta 5173 estiver ocupada, outra porta livre sera usada automaticamente.
-echo.
-"%RESOLVAI_NODE%" "node_modules\vite\bin\vite.js" --host 127.0.0.1 --port 5173 --clearScreen false --open /login
+"%RESOLVAI_NODE%" "%~dp0scripts\start-prototype.mjs"
 if errorlevel 1 (
   echo.
   echo Nao foi possivel iniciar o prototipo. Veja o motivo acima.

@@ -6,7 +6,13 @@ Dashboard responsivo em React, TypeScript e Vite, baseado no protótipo do contr
 
 ### Abrir com dois cliques no Windows
 
-Na pasta do projeto, abra **`iniciar-prototipo.cmd`**. Ele inicia o servidor e abre a tela de login no navegador automaticamente, sem precisar copiar um link. Para abrir o cadastro, clique em **“Crie uma agora”**. Também é possível acessar `/login` ou `/cadastro` no endereço local exibido pelo Vite. Mantenha a janela do terminal aberta enquanto usa o protótipo; feche-a ou pressione `Ctrl+C` para encerrar.
+Na pasta do projeto, abra **`iniciar-prototipo.cmd`**. Ele inicia o backend, aguarda a API ficar pronta, inicia o frontend e abre a tela de login no navegador. Se a API já estiver rodando, ela será reutilizada. Para abrir o cadastro, clique em **“Crie uma agora”**. Mantenha essa única janela aberta enquanto usa o protótipo e pressione `Ctrl+C` para encerrar os serviços iniciados por ela.
+
+É necessário ter o **SDK .NET 10**, Node.js e a pasta `Resolvai_Backend` ao lado
+de `Resolvai_Cliente`. O backend precisa ter sua configuração de banco e Supabase
+preparada. Se algum requisito faltar, o CMD informa o problema e mantém a janela
+aberta. Os arquivos gerados pela compilação do backend ficam na pasta temporária
+do Windows, sem alterar o repositório backend.
 
 O arquivo usa o Node.js instalado no computador ou, neste workspace, a versão portátil em `../.tools/node.exe`. Em uma nova instalação, prepare as dependências com `npm ci` antes de executá-lo. O inicializador tenta a porta `5173`, com cores de terminal desativadas para evitar caracteres estranhos. Se ela estiver ocupada, o Vite escolhe outra porta livre e abre o endereço correto automaticamente. Use o endereço exibido na janela do inicializador.
 
@@ -29,16 +35,16 @@ separadamente. O Vite encaminha `/api` ao backend, sem exigir CORS no desenvolvi
 Consulte [docs/INTEGRACAO_API.md](docs/INTEGRACAO_API.md) e `.env.example` para a
 configuração de produção e os endpoints usados. Reinicie o Vite após alterar variáveis.
 
-O inicializador abre somente o frontend. Para usar login e pedidos, abra outro
-terminal na pasta `ResolvAI` e execute:
+Se preferir iniciar os serviços manualmente, abra outro terminal na pasta
+`ResolvAI` e execute:
 
 ```powershell
 dotnet run --project Resolvai_Backend/src/Resolvai.Api --launch-profile http
 ```
 
-Mantenha os dois terminais abertos. A API deve indicar que está ouvindo em
+Nesse modo manual, mantenha os dois terminais abertos. A API deve indicar que está ouvindo em
 `http://localhost:5172`. Se ela não iniciar, confira sua configuração conforme o
-guia do backend. Reiniciar apenas o frontend não inicia a API.
+guia do backend. O CMD faz essa inicialização automaticamente para a API HTTP local.
 
 Para abrir o navegador automaticamente pelo terminal, use `npm run dev -- --open`.
 

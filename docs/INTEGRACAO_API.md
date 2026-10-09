@@ -58,6 +58,12 @@ O cadastro respeita os limites de 200 caracteres para nome, 320 para e-mail e
 O `.env.example` contém apenas placeholders públicos. Não copie segredos do
 backend para o frontend.
 
+Para abrir a aplicação localmente, use `iniciar-prototipo.cmd`. O inicializador
+verifica o SDK .NET 10, inicia a API HTTP local se necessário, aguarda seu documento
+OpenAPI e abre o frontend em `/login`. Reutiliza uma API existente. Ctrl+C encerra
+apenas os processos criados pelo inicializador. Artefatos de compilação ficam no
+diretório temporário do sistema, fora do backend; nenhum arquivo-fonte é alterado.
+
 Desenvolvimento: configure `API_PROXY_TARGET` no `.env.local` ou no ambiente.
 O padrão `http://localhost:5172` vem do guia do backend. O backend deve estar em
 execução separadamente. O proxy do Vite encaminha `/api` sem alterar os caminhos.
