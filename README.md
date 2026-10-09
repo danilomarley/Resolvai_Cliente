@@ -21,6 +21,11 @@ Para gerar novamente: `npm ci` e `npm run build:presentation`.
 O resultado fica em `apresentacao/ResolvAI.html`. Se esse arquivo existir,
 `iniciar-prototipo.cmd` abre a apresentação diretamente.
 
+Para apresentar todas as telas, siga [o roteiro](docs/ROTEIRO_APRESENTACAO.md).
+O aviso da demonstração inclui **Mostrar login e cadastro**. Essas telas usam
+dados fictícios nesse modo e não dependem da API. Alternar entre elas e a Home
+mantém os pedidos criados, perfil, mensagens e notificações da sessão.
+
 Na versão web integrada, clique em **Demonstração interativa** ou use `/?demo=1#/`
 para apresentar os mesmos fluxos sem depender da API. Esse modo é explícito e
 não substitui as respostas da API por mocks quando ela falha.

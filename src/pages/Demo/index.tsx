@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { MyOrders } from '../MyOrders'
 
 import { Icon } from '../../components/Icon'
@@ -9,6 +9,7 @@ import { DemoOverview } from '../../components/dashboard/DemoOverview'
 import { DashboardDialogs } from '../../components/dashboard/DashboardDialogs'
 import { completedOrders, initialOrders, type Order } from '../../data/dashboard'
 import type { Dialog, Tab } from '../../types/dashboard'
+import { useDemoState } from '../../services/demoState'
 
 export function DemoDashboard() {
   const routerNavigate = useNavigate()
@@ -16,19 +17,14 @@ export function DemoDashboard() {
   const { orderId } = useParams()
   const viewingOrders = location.pathname.startsWith('/pedidos')
   const session = { customerId: 'demo-customer', loading: false, error: '', retry: () => {} }
-  const [orders, setOrders] = useState(initialOrders)
+  const { orders, setOrders, profile, setProfile, unread, setUnread } = useDemoState()
   const [tab, setTab] = useState<Tab>('all')
   const [search, setSearch] = useState('')
   const [dialog, setDialog] = useState<Dialog>(null)
   const [selectedOrder, setSelectedOrder] = useState<Order>(initialOrders[0])
   const [mobileOpen, setMobileOpen] = useState(false)
   const [notice, setNotice] = useState('')
-  const [unread, setUnread] = useState(true)
   const [activeNav, setActiveNav] = useState('Visão geral')
-  const [profile, setProfile] = useState({
-    name: 'Ygor Chagas',
-    location: 'Aldeota, Fortaleza',
-  })
 
   function openDialog(value: Dialog) {
     setDialog(value)
@@ -143,7 +139,8 @@ export function DemoDashboard() {
           </div>
         </header>
 
-        <main id="main" tabIndex={-1}><p className="demo-banner" role="status">Demonstração offline · Dados fictícios · Alterações mantidas somente enquanto esta página estiver aberta.</p>
+        <main id="main" tabIndex={-1}><p className="demo-banner" role="status">Demonstração offline · Dados fictícios · Alterações mantidas somente enquanto esta página estiver aberta.{' '}
+          <Link to="/login">Mostrar login e cadastro</Link></p>
           {dialog === 'create' && !viewingOrders ? (
             <OrderAssistant
               location={profile.location}

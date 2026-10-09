@@ -37,6 +37,11 @@ perfil, criação de pedido, detalhes, recarregamento e larguras de 320 a 1440 p
 Nenhuma requisição HTTP ou exceção JavaScript foi registrada. Os 12 testes do
 frontend, lint, build integrado e compilação da API passaram.
 
+A regressão ampliada também valida login e cadastro demonstrativos, confirmação
+de senha, filtros e teclado, interesse, notificações, histórico, ajuda, fotos,
+edição e retenção do escopo e manutenção dos dados ao alternar para autenticação.
+O roteiro de apresentação registra a correspondência com as telas do quadro.
+
 A API foi compilada e as consultas de perfil e resumo foram exercitadas com um
 token diagnóstico HS256 temporário, usando o perfil regularizado e o banco real.
 Assinatura inválida, emissor errado, audiência errada, token expirado e perfil

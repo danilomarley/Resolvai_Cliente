@@ -1,6 +1,7 @@
-import { BrowserRouter, HashRouter, Navigate, Routes, Route } from "react-router-dom";
+import { BrowserRouter, HashRouter, Routes, Route } from "react-router-dom";
 import { DemoDashboard } from '../pages/Demo';
 import { demoMode } from '../services/appMode';
+import { DemoStateProvider } from '../components/DemoStateProvider';
 import { Login } from "../pages/Login";
 import { Dashboard } from "../pages/Dashboard";
 import { Cadastro } from "../pages/Cadastro"; 
@@ -8,11 +9,11 @@ import { Cadastro } from "../pages/Cadastro";
 export function AppRoutes() {
   const demo = demoMode;
   const Router = demo ? HashRouter : BrowserRouter;
-  return (
+  const content = (
     <Router>
       <Routes>
-        <Route path="/login" element={demo ? <Navigate to="/" replace /> : <Login />} />
-        <Route path="/cadastro" element={demo ? <Navigate to="/" replace /> : <Cadastro />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/cadastro" element={<Cadastro />} />
         <Route path="/" element={demo ? <DemoDashboard /> : <Dashboard />}>
           <Route path="pedidos" element={null} />
           <Route path="pedidos/:orderId" element={null} />
@@ -20,4 +21,5 @@ export function AppRoutes() {
       </Routes>
     </Router>
   );
+  return demo ? <DemoStateProvider>{content}</DemoStateProvider> : content;
 }

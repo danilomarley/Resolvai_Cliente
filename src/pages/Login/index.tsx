@@ -4,6 +4,7 @@ import "../../styles/login.css";
 import { Icon } from "../../components/Icon"; 
 import { supabase } from "../../services/supabase";
 import { login } from '../../services/dashboardApi';
+import { demoMode } from '../../services/appMode';
 
 export function Login() {
   const navigate = useNavigate();
@@ -21,6 +22,10 @@ export function Login() {
 
     try {
       setLoading(true);
+      if (demoMode) {
+        navigate('/', { replace: true });
+        return;
+      }
       
       // A API valida a conta; o cliente Supabase mantém a sessão retornada.
       const result = await login(email, password);
@@ -52,6 +57,7 @@ export function Login() {
           </div>
           <p>Bem-vindo de volta! Faça login na sua conta.</p>
         </header>
+        {demoMode && <p className="demo-banner">Login demonstrativo. Use dados fictícios; nenhuma autenticação será enviada à API.</p>}
 
         <form onSubmit={handleLogin} className="login-form">
           {/* Mensagem de Erro */}
@@ -94,7 +100,12 @@ export function Login() {
           </div>
 
           <div className="form-actions">
-            <a href="/esqueci-a-senha" className="forgot-password">
+            <a href="/esqueci-a-senha" className="forgot-password" onClick={(event) => {
+              if (demoMode) {
+                event.preventDefault();
+                setError('A recuperação de senha não está conectada nesta demonstração. Use dados fictícios para apresentar o login.');
+              }
+            }}>
               Esqueceu a senha?
             </a>
           </div>
@@ -103,7 +114,8 @@ export function Login() {
             {loading ? "A entrar..." : "Entrar"}
           </button>
         </form>
-        <p style={{ textAlign: 'center' }}><a href="/?demo=1#/">Abrir demonstração interativa sem login</a></p>
+        <p style={{ textAlign: 'center' }}>{demoMode ? <Link to="/">Abrir demonstração sem login</Link>
+          : <a href="/?demo=1#/">Abrir demonstração interativa sem login</a>}</p>
 
         <div className="form-actions" style={{ justifyContent: "center", marginTop: "1.5rem" }}>
           <span style={{ fontSize: "0.875rem", color: "var(--color-muted)" }}>
