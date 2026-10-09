@@ -15,5 +15,7 @@ export type Tab = 'all' | 'waiting' | 'progress'
 
 
 export type Profile = {
-  rating: any; name: string; location: string 
+  name: string
+  location: string
+  rating?: number
 }

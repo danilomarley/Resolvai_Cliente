@@ -6,7 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:presentation": "tsc -b && node scripts/build-presentation.mjs",
+    "test:presentation": "node tests/presentation.browser.cjs",
+    "test:integration": "node tests/integration.browser.cjs",
     "lint": "eslint .",
+    "test": "node --test tests/orders.test.mjs tests/api.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

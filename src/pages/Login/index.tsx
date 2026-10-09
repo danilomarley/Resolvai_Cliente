@@ -1,11 +1,14 @@
 import { FormEvent, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import "../../styles/login.css"; 
 import { Icon } from "../../components/Icon"; 
 import { supabase } from "../../services/supabase";
+import { login } from '../../services/dashboardApi';
+import { demoMode } from '../../services/appMode';
 
 export function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,20 +22,26 @@ export function Login() {
 
     try {
       setLoading(true);
+      if (demoMode) {
+        navigate('/', { replace: true });
+        return;
+      }
       
-      // Valida o login no Supabase
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      // A API valida a conta; o cliente Supabase mantém a sessão retornada.
+      const result = await login(email, password);
+      if (!result.refreshToken) throw new Error('A API não retornou o token de renovação necessário para manter sua sessão. Tente entrar novamente.');
+      const { error: signInError } = await supabase.auth.setSession({
+        access_token: result.accessToken, refresh_token: result.refreshToken,
       });
 
       if (signInError) throw signInError;
 
-      // Login efetuado com sucesso! Redireciona para o Dashboard (rota principal "/")
-      navigate("/dashboard");
+      // Retorna ao pedido solicitado, aceitando apenas destinos internos conhecidos.
+      const destination: unknown = location.state?.from;
+      navigate(typeof destination === 'string' && /^\/pedidos(?:\/[0-9a-f-]+)?$/i.test(destination) ? destination : '/', { replace: true });
 
-    } catch (err: any) {
-      setError("E-mail ou senha incorretos.");
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : 'Não foi possível entrar. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -48,6 +57,7 @@ export function Login() {
           </div>
           <p>Bem-vindo de volta! Faça login na sua conta.</p>
         </header>
+        {demoMode && <p className="demo-banner">Login demonstrativo. Use dados fictícios; nenhuma autenticação será enviada à API.</p>}
 
         <form onSubmit={handleLogin} className="login-form">
           {/* Mensagem de Erro */}
@@ -64,6 +74,7 @@ export function Login() {
               <input 
                 type="email" 
                 id="email" 
+                maxLength={320}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="seu@email.com" 
@@ -79,6 +90,7 @@ export function Login() {
               <input 
                 type="password" 
                 id="password" 
+                maxLength={128}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••" 
@@ -88,7 +100,12 @@ export function Login() {
           </div>
 
           <div className="form-actions">
-            <a href="/esqueci-a-senha" className="forgot-password">
+            <a href="/esqueci-a-senha" className="forgot-password" onClick={(event) => {
+              if (demoMode) {
+                event.preventDefault();
+                setError('A recuperação de senha não está conectada nesta demonstração. Use dados fictícios para apresentar o login.');
+              }
+            }}>
               Esqueceu a senha?
             </a>
           </div>
@@ -97,6 +114,8 @@ export function Login() {
             {loading ? "A entrar..." : "Entrar"}
           </button>
         </form>
+        <p style={{ textAlign: 'center' }}>{demoMode ? <Link to="/">Abrir demonstração sem login</Link>
+          : <a href="/?demo=1#/">Abrir demonstração interativa sem login</a>}</p>
 
         <div className="form-actions" style={{ justifyContent: "center", marginTop: "1.5rem" }}>
           <span style={{ fontSize: "0.875rem", color: "var(--color-muted)" }}>

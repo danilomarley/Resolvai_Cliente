@@ -15,6 +15,9 @@ import './styles/dashboard-cards.css'
 import './styles/orders.css'
 import './styles/dialogs.css'
 import App from './App.tsx'
+import { demoMode } from './services/appMode'
+
+if (demoMode && !window.location.hash) window.location.hash = '/login'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

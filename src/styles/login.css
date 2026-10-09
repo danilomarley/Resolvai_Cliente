@@ -4,7 +4,10 @@
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  width: 100vw;
+  min-height: 100dvh;
+  width: 100%;
+  max-width: none;
+  margin: 0;
   background-color: var(--color-text); /* #0f1c2e - a cor mais escura da paleta, ideal para o fundo da sidebar */
   padding: var(--spacing-md);
 }

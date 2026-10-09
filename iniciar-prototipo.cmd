@@ -2,6 +2,15 @@
 setlocal
 cd /d "%~dp0"
 title ResolvAI - Prototipo local
+if /I "%~1"=="--demo" (
+  if exist "%~dp0apresentacao\ResolvAI.html" (
+    start "" "%~dp0apresentacao\ResolvAI.html"
+    exit /b 0
+  )
+  echo Demonstracao nao gerada. Execute: npm run build:presentation
+  pause
+  exit /b 1
+)
 set "NO_COLOR=1"
 set "FORCE_COLOR="
 
@@ -25,13 +34,7 @@ if not exist "node_modules\vite\bin\vite.js" (
   exit /b 1
 )
 
-echo Iniciando o prototipo e abrindo o navegador...
-echo Mantenha esta janela aberta enquanto usa o prototipo.
-echo Para encerrar, pressione Ctrl+C ou feche esta janela.
-echo O navegador abrira no endereco exibido abaixo.
-echo Se a porta 5173 estiver ocupada, outra porta livre sera usada automaticamente.
-echo.
-"%RESOLVAI_NODE%" "node_modules\vite\bin\vite.js" --host 127.0.0.1 --port 5173 --clearScreen false --open
+"%RESOLVAI_NODE%" "%~dp0scripts\start-prototype.mjs"
 if errorlevel 1 (
   echo.
   echo Nao foi possivel iniciar o prototipo. Veja o motivo acima.
