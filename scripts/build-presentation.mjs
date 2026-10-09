@@ -14,7 +14,7 @@ await build({ root, mode: 'demo', base: './',
   build: { outDir: output, assetsInlineLimit: Number.MAX_SAFE_INTEGER },
 })
 let html = await readFile(resolve(output, 'index.html'), 'utf8')
-for (const match of [...html.matchAll(/<script\b[^>]*src="([^"]+)"[^>]*><\/script>/g)]) {
+for (const match of [...html.matchAll(/<script\b[^>]*src="([^"]+)"[^>]*>\s*<\/script\s*>/g)]) {
   const js = await readFile(resolve(output, match[1]), 'utf8')
   html = html.replace(match[0], () => `<script type="module">${js.replace(/<\/script/gi, '<\\/script')}</script>`)
 }
