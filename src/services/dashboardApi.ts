@@ -7,7 +7,7 @@ export type HomeSummary = {
   orders: { total: number; pending: number; inProgress: number; completed: number; cancelled: number }
   recentOrders: OrderDto[]
 }
-export type UserDto = { id: string; name: string; email: string; role: string; isActive: boolean; createdAt: string }
+export type UserDto = { id: string; name: string; email: string; role: string; isActive: boolean; createdAt: string; cpf?: string | null }
 export type LoginDto = { accessToken: string; refreshToken?: string | null; tokenType: string; expiresAtUtc: string; user: UserDto }
 
 const invalid = () => new ApiError(502, 'A API retornou dados incompatíveis com o contrato esperado.')
@@ -30,7 +30,8 @@ export function parseSummary(value: unknown): HomeSummary {
 export function parseUser(value: unknown): UserDto {
   if (!object(value) || typeof value.id !== 'string' || !isUuid(value.id)
     || typeof value.name !== 'string' || typeof value.email !== 'string' || typeof value.role !== 'string'
-    || typeof value.isActive !== 'boolean' || !date(value.createdAt)) throw invalid()
+    || typeof value.isActive !== 'boolean' || !date(value.createdAt)
+    || value.cpf !== undefined && value.cpf !== null && typeof value.cpf !== 'string') throw invalid()
   return value as UserDto
 }
 export function parseDetail(value: unknown): OrderDto & { description: string } {
@@ -54,6 +55,15 @@ export async function getOrder(id: string, token: string, signal?: AbortSignal) 
 }
 export const login = async (email: string, password: string) => parseLogin(await apiRequest('/api/v1/auth/login', { method: 'POST', body: { email, password } }))
 export const register = async (name: string, email: string, password: string) => parseUser(await apiRequest('/api/v1/auth/register', { method: 'POST', body: { name, email, password } }))
+export type ContactType = 'telefone' | 'whatsapp' | 'email_alt'
+export type CompleteRegistrationPayload = {
+  name: string
+  cpf: string
+  endereco: { logradouro: string; numero: string; complemento?: string; bairro: string; cidade: string; estado: string; cep: string }
+  contato: { tipo: ContactType; valor: string }
+}
+export const completeRegistration = async (token: string, payload: CompleteRegistrationPayload, signal?: AbortSignal) =>
+  parseUser(await apiRequest('/api/v1/users/me/complete-registration', { method: 'POST', token, body: payload, signal }))
 
 export function toOrder(dto: OrderDto, customerId: string): Order {
   const statuses = { Pending: 'waiting', InProgress: 'progress', Completed: 'completed', Cancelled: 'cancelled' } as const
