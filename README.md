@@ -4,9 +4,30 @@ Dashboard responsivo em React, TypeScript e Vite, baseado no protótipo do contr
 
 ## Executar
 
+### Apresentar em outro computador, sem instalação
+
+Use o pacote `ResolvAI-Apresentacao.zip` gerado no workspace. Extraia e abra
+`ResolvAI.html` em um navegador atualizado; no Windows, também pode abrir
+`abrir-apresentacao.cmd`. A apresentação funciona sem internet, Node, .NET,
+backend ou credenciais. Fontes, logo, estilos e scripts estão embutidos no HTML.
+
+O modo de demonstração permite criar pedidos com conversa guiada, consultar
+pedidos e detalhes, comparar propostas, registrar interesse, enviar mensagens
+locais, consultar contratos, pagamentos e avaliações e editar o perfil. O aviso
+de demonstração permanece visível: os dados são fictícios e as alterações duram
+enquanto a página estiver aberta. Não efetua contratação ou pagamento real.
+
+Para gerar novamente: `npm ci` e `npm run build:presentation`.
+O resultado fica em `apresentacao/ResolvAI.html`. Se esse arquivo existir,
+`iniciar-prototipo.cmd` abre a apresentação diretamente.
+
+Na versão web integrada, clique em **Demonstração interativa** ou use `/?demo=1#/`
+para apresentar os mesmos fluxos sem depender da API. Esse modo é explícito e
+não substitui as respostas da API por mocks quando ela falha.
+
 ### Abrir com dois cliques no Windows
 
-Na pasta do projeto, abra **`iniciar-prototipo.cmd`**. Ele inicia o backend, aguarda a API ficar pronta, inicia o frontend e abre a tela de login no navegador. Se a API já estiver rodando, ela será reutilizada. Para abrir o cadastro, clique em **“Crie uma agora”**. Mantenha essa única janela aberta enquanto usa o protótipo e pressione `Ctrl+C` para encerrar os serviços iniciados por ela.
+Para usar a API real, execute **`iniciar-prototipo.cmd --api`** pelo terminal. Ele inicia o backend, aguarda a API ficar pronta, inicia o frontend e abre a tela de login no navegador. Se a API já estiver rodando, ela será reutilizada. Para abrir o cadastro, clique em **“Crie uma agora”**. Mantenha essa única janela aberta enquanto usa a integração e pressione `Ctrl+C` para encerrar os serviços iniciados por ela.
 
 É necessário ter o **SDK .NET 10**, Node.js e a pasta `Resolvai_Backend` ao lado
 de `Resolvai_Cliente`. O backend precisa ter sua configuração de banco e Supabase

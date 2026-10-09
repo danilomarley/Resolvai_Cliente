@@ -103,6 +103,7 @@ export function Login() {
             {loading ? "A entrar..." : "Entrar"}
           </button>
         </form>
+        <p style={{ textAlign: 'center' }}><a href="/?demo=1#/">Abrir demonstração interativa sem login</a></p>
 
         <div className="form-actions" style={{ justifyContent: "center", marginTop: "1.5rem" }}>
           <span style={{ fontSize: "0.875rem", color: "var(--color-muted)" }}>

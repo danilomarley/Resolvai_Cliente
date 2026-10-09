@@ -64,6 +64,7 @@ export function Dashboard() {
             <strong>{viewingOrders ? 'Meus pedidos' : 'Visão geral'}</strong>
           </div>
           <div className="topbar-actions">
+            <a className="button button-secondary" href="/?demo=1#/">Demonstração interativa</a>
             <label className="search-box">
               <Icon name="search" size={18} />
               <input type="search" placeholder="Buscar pedido..." aria-label="Buscar pedido"

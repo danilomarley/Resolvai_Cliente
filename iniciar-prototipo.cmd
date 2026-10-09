@@ -2,6 +2,12 @@
 setlocal
 cd /d "%~dp0"
 title ResolvAI - Prototipo local
+if /I "%~1"=="--api" goto api
+if exist "%~dp0apresentacao\ResolvAI.html" (
+  start "" "%~dp0apresentacao\ResolvAI.html"
+  exit /b 0
+)
+:api
 set "NO_COLOR=1"
 set "FORCE_COLOR="
 
