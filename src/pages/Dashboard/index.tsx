@@ -1,13 +1,21 @@
 import { useState } from 'react'
+import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { MyOrders } from '../MyOrders'
+import { useCustomerSession } from '../../services/useCustomerSession'
 import { Icon } from '../../components/Icon'
 import { OrderAssistant, type NewOrder } from '../../components/OrderAssistant'
 import { Sidebar } from '../../components/dashboard/Sidebar'
 import { DashboardOverview } from '../../components/dashboard/DashboardOverview'
 import { DashboardDialogs } from '../../components/dashboard/DashboardDialogs'
-import { initialOrders, type Order } from '../../data/dashboard'
+import { completedOrders, initialOrders, type Order } from '../../data/dashboard'
 import type { Dialog, Tab } from '../../types/dashboard'
 
 export function Dashboard() {
+  const routerNavigate = useNavigate()
+  const location = useLocation()
+  const { orderId } = useParams()
+  const viewingOrders = location.pathname.startsWith('/pedidos')
+  const session = useCustomerSession()
   const [orders, setOrders] = useState(initialOrders)
   const [tab, setTab] = useState<Tab>('all')
   const [search, setSearch] = useState('')
@@ -28,6 +36,7 @@ export function Dashboard() {
     setMobileOpen(false)
   }
   function navigate(label: string, target?: Dialog) {
+    routerNavigate(label === 'Meus pedidos' ? '/pedidos' : '/')
     setActiveNav(label)
     setMobileOpen(false)
     if (target) {
@@ -37,14 +46,6 @@ export function Dashboard() {
       setDialog(null)
       setTab('all')
       setSearch('')
-      if (label === 'Meus pedidos')
-        document.getElementById('orders')?.scrollIntoView({
-          behavior: window.matchMedia('(prefers-reduced-motion: reduce)')
-            .matches
-            ? 'auto'
-            : 'smooth',
-          block: 'start',
-        })
     }
   }
   function createOrder(order: NewOrder) {
@@ -52,6 +53,8 @@ export function Dashboard() {
       {
         ...order,
         id: Date.now(),
+        customerId: session.customerId ?? 'demo-customer',
+        createdAt: new Date().toISOString(),
         status: 'waiting',
         proposals: 0,
         deadline: 'Em aberto',
@@ -80,7 +83,7 @@ export function Dashboard() {
       <Sidebar
         mobileOpen={mobileOpen}
         setMobileOpen={setMobileOpen}
-        activeNav={activeNav}
+        activeNav={viewingOrders ? 'Meus pedidos' : activeNav}
         navigate={navigate}
         openDialog={openDialog}
         profile={profile}
@@ -99,7 +102,7 @@ export function Dashboard() {
             </button>
             <span>Meu espaço</span>
             <Icon name="chevron" size={13} />
-            <strong>{activeNav}</strong>
+            <strong>{viewingOrders ? 'Meus pedidos' : activeNav}</strong>
           </div>
           <div className="topbar-actions">
             <label className="search-box">
@@ -138,7 +141,7 @@ export function Dashboard() {
         </header>
 
         <main id="main" tabIndex={-1}>
-          {dialog === 'create' ? (
+          {dialog === 'create' && !viewingOrders ? (
             <OrderAssistant
               location={profile.location}
               onCreate={createOrder}
@@ -147,6 +150,12 @@ export function Dashboard() {
                 setActiveNav('Visão geral')
               }}
             />
+          ) : viewingOrders ? (
+            !session.loading && !session.error && !session.customerId
+              ? <Navigate to="/login" replace state={{ from: location.pathname }} />
+              : <MyOrders orders={[...orders, ...completedOrders]} customerId={session.customerId} search={search}
+                  orderId={orderId === undefined ? undefined : /^\d+$/.test(orderId) ? Number(orderId) : NaN}
+                  loading={session.loading} error={session.error} onRetry={session.retry} />
           ) : (
             <DashboardOverview
               orders={orders}
