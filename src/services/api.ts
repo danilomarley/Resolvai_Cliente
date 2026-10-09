@@ -26,6 +26,7 @@ export function createApiClient(baseUrl: string, fetcher: typeof fetch = fetch) 
         403: 'Sua conta não tem permissão para esta consulta.',
         404: 'Pedido não encontrado ou indisponível para sua conta.',
         409: 'Já existe uma conta com os dados informados.',
+        503: 'A API está indisponível. Inicie o backend do ResolvAI e tente entrar novamente.',
       }
       throw new ApiError(response.status, messages[response.status] ?? 'Não foi possível carregar os dados. Tente novamente.')
     }

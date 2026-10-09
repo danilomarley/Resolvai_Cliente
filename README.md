@@ -29,6 +29,17 @@ separadamente. O Vite encaminha `/api` ao backend, sem exigir CORS no desenvolvi
 Consulte [docs/INTEGRACAO_API.md](docs/INTEGRACAO_API.md) e `.env.example` para a
 configuração de produção e os endpoints usados. Reinicie o Vite após alterar variáveis.
 
+O inicializador abre somente o frontend. Para usar login e pedidos, abra outro
+terminal na pasta `ResolvAI` e execute:
+
+```powershell
+dotnet run --project Resolvai_Backend/src/Resolvai.Api --launch-profile http
+```
+
+Mantenha os dois terminais abertos. A API deve indicar que está ouvindo em
+`http://localhost:5172`. Se ela não iniciar, confira sua configuração conforme o
+guia do backend. Reiniciar apenas o frontend não inicia a API.
+
 Para abrir o navegador automaticamente pelo terminal, use `npm run dev -- --open`.
 
 ## Verificar

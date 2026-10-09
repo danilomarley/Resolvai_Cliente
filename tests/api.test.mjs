@@ -99,7 +99,8 @@ test('HTTP transport sends Bearer and handles 401, 403, 404, 409, 500 and invali
   try {
     const client = createApiClient(`http://127.0.0.1:${server.address().port}/`, originalFetch)
     assert.deepEqual(await client('/ok', { token: 'test-only' }), { ok: true })
-    for (const status of [401,403,404,409,500]) await assert.rejects(client(`/${status}`), (error) => error.status === status && !error.message.includes('internal-secret'))
+    for (const status of [401,403,404,409,500,503]) await assert.rejects(client(`/${status}`), (error) => error.status === status && !error.message.includes('internal-secret'))
+    await assert.rejects(client('/503'), (error) => /Inicie o backend/.test(error.message))
     await assert.rejects(client('/invalid'), (error) => error.status === 502)
   } finally { await new Promise((resolve) => server.close(resolve)) }
 })
