@@ -4,11 +4,11 @@ Dashboard responsivo em React, TypeScript e Vite, baseado no protótipo do contr
 
 ## Executar
 
-### Apresentar em outro computador, sem instalação
+### Acesso rápido
 
-Use o pacote `ResolvAI-Apresentacao.zip` gerado no workspace. Extraia e abra
-`ResolvAI.html` em um navegador atualizado; no Windows, também pode abrir
-`abrir-apresentacao.cmd`. A apresentação funciona sem internet, Node, .NET,
+Abra **`iniciar-prototipo.cmd`** com dois cliques. Ele abre diretamente a
+demonstração pronta no navegador. Também pode abrir `apresentacao/ResolvAI.html`.
+A apresentação funciona sem internet, Node, .NET,
 backend ou credenciais. Fontes, logo, estilos e scripts estão embutidos no HTML.
 
 O modo de demonstração permite criar pedidos com conversa guiada, consultar
@@ -21,7 +21,6 @@ Para gerar novamente: `npm ci` e `npm run build:presentation`.
 O resultado fica em `apresentacao/ResolvAI.html`. Se esse arquivo existir,
 `iniciar-prototipo.cmd` abre a apresentação diretamente.
 
-Para apresentar todas as telas, siga [o roteiro](docs/ROTEIRO_APRESENTACAO.md).
 O aviso da demonstração inclui **Mostrar login e cadastro**. Essas telas usam
 dados fictícios nesse modo e não dependem da API. Alternar entre elas e a Home
 mantém os pedidos criados, perfil, mensagens e notificações da sessão.

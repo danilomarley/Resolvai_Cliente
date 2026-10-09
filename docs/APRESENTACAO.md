@@ -3,7 +3,7 @@
 ## Entrega
 
 `npm run build:presentation` gera um HTML independente em `apresentacao/`.
-Distribua os três arquivos dessa pasta ou o ZIP preparado no workspace.
+Abra `iniciar-prototipo.cmd` com dois cliques para acessar a demonstração pronta.
 O HTML abre diretamente pelo navegador em Windows, macOS ou Linux, sem servidor.
 Não contém credenciais do banco, chaves administrativas ou configurações privadas
 do backend. O build substitui a configuração pública do Supabase por placeholders.
@@ -40,7 +40,6 @@ frontend, lint, build integrado e compilação da API passaram.
 A regressão ampliada também valida login e cadastro demonstrativos, confirmação
 de senha, filtros e teclado, interesse, notificações, histórico, ajuda, fotos,
 edição e retenção do escopo e manutenção dos dados ao alternar para autenticação.
-O roteiro de apresentação registra a correspondência com as telas do quadro.
 
 A API foi compilada e as consultas de perfil e resumo foram exercitadas com um
 token diagnóstico HS256 temporário, usando o perfil regularizado e o banco real.
