@@ -110,3 +110,17 @@ test('network errors and caller cancellation are distinguished', async () => {
   const controller = new AbortController(); controller.abort()
   await assert.rejects(client('/api/v1/home/summary', { signal: controller.signal }), TypeError)
 })
+test('login distinguishes missing profile, inactive account and invalid credentials without exposing arbitrary details', async () => {
+  const cases = [
+    ['Usuário autenticado no Supabase sem perfil local.', /não possui um perfil no backend/],
+    ['Usuário inativo.', /conta está inativa/],
+    ['Credenciais inválidas.', /Confira o e-mail, a senha/],
+    ['internal-secret-do-not-display', /Confira o e-mail, a senha/],
+  ]
+  for (const [detail, message] of cases) {
+    const client = createApiClient('', async () => new Response(JSON.stringify({ detail }), { status: 401 }))
+    await assert.rejects(client('/api/v1/auth/login'), (error) => error.status === 401 && message.test(error.message) && !error.message.includes('internal-secret'))
+  }
+  const empty = createApiClient('', async () => new Response('', { status: 401 }))
+  await assert.rejects(empty('/api/v1/auth/login'), /Confira o e-mail, a senha/)
+})
