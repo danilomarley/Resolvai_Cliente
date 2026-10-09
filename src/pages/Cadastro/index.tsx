@@ -2,7 +2,7 @@ import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom"; 
 import "../../styles/login.css"; 
 import { Icon } from "../../components/Icon"; 
-import { supabase } from "../../services/supabase";
+import { register } from '../../services/dashboardApi';
 
 export function Cadastro() {
   const navigate = useNavigate();
@@ -27,24 +27,14 @@ export function Cadastro() {
     try {
       setLoading(true);
       
-      // Registo simples no Supabase (Autenticação)
-      const { error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: name,
-          }
-        }
-      });
-
-      if (authError) throw authError;
+      // A API cria a identidade Supabase e o perfil local exigido pela autorização.
+      await register(name, email, password);
 
       // Se o registo for um sucesso, redireciona o utilizador para fazer o login
       navigate("/login");
       
-    } catch (err: any) {
-      setError(err.message || "Ocorreu um erro ao criar a conta.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Ocorreu um erro ao criar a conta.');
     } finally {
       setLoading(false);
     }
@@ -76,6 +66,7 @@ export function Cadastro() {
               <input 
                 type="text" 
                 id="name" 
+                maxLength={200}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Seu nome" 
@@ -91,6 +82,7 @@ export function Cadastro() {
               <input 
                 type="email" 
                 id="email" 
+                maxLength={320}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="seu@email.com" 
@@ -110,7 +102,8 @@ export function Cadastro() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Crie uma senha forte" 
                 required 
-                minLength={6}
+                minLength={8}
+                maxLength={128}
               />
             </div>
           </div>
@@ -126,7 +119,8 @@ export function Cadastro() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Repita a senha" 
                 required 
-                minLength={6}
+                minLength={8}
+                maxLength={128}
               />
             </div>
           </div>

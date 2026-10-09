@@ -1,6 +1,7 @@
 import { Icon } from '../Icon'
 import type { Order } from '../../data/dashboard'
 import type { Dialog, Tab } from '../../types/dashboard'
+import { orderDate, orderStatusLabel } from '../../services/orders'
 
 type OrdersPanelProps = {
   orders: Order[]
@@ -58,7 +59,7 @@ export function OrdersPanel({
         {(
           [
             { id: 'all', label: 'Todos' },
-            { id: 'waiting', label: 'Aguardando propostas' },
+            { id: 'waiting', label: 'Pendentes' },
             { id: 'progress', label: 'Em andamento' },
           ] as { id: Tab; label: string }[]
         ).map((item, index, tabs) => (
@@ -118,7 +119,7 @@ export function OrdersPanel({
                 <div className="order-info">
                   <div className="order-category">
                     {order.category}
-                    <span>#{String(order.id).slice(-4)}</span>
+                    <span>#{order.id}</span>
                   </div>
                   <h3>{order.title}</h3>
                   <p>
@@ -128,9 +129,7 @@ export function OrdersPanel({
                 </div>
                 <span className={`status-badge ${order.status}`}>
                   <i />
-                  {order.status === 'waiting'
-                    ? 'Aguardando propostas'
-                    : 'Em andamento'}
+                  {orderStatusLabel(order)}
                 </span>
               </div>
               <div className="order-footer">
@@ -143,7 +142,7 @@ export function OrdersPanel({
                     }
                     size={15}
                   />
-                  {order.status === 'waiting' ? (
+                  {order.source === 'api' ? <span>Criado em {orderDate(order.createdAt)}</span> : order.status === 'waiting' ? (
                     <>
                       <strong>{order.proposals} propostas</strong>{' '}
                       recebidas
@@ -165,7 +164,7 @@ export function OrdersPanel({
                     )
                   }
                 >
-                  {order.status === 'waiting' && order.proposals
+                  {order.source === 'api' ? 'Ver detalhes' : order.status === 'waiting' && order.proposals
                     ? 'Ver propostas'
                     : 'Acompanhar'}
                   <Icon name="arrow" size={15} />

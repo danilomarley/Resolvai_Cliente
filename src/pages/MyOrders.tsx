@@ -6,14 +6,14 @@ import {
   customerOrders,
   orderDate,
   orderMoney,
-  orderStatus,
+  orderStatusLabel,
 } from '../services/orders'
 import './MyOrders.css'
 
 type Props = {
   orders: Order[]
   customerId: string | null
-  orderId?: number
+  orderId?: number | string
   search: string
   loading?: boolean
   error?: string
@@ -23,7 +23,7 @@ type Props = {
 function OrderStatus({ order }: { order: Order }) {
   return (
     <span className={`status-badge ${order.status === 'completed' ? 'progress' : order.status}`}>
-      <i />{orderStatus[order.status]}
+      <i />{orderStatusLabel(order)}
     </span>
   )
 }
@@ -143,7 +143,7 @@ export function MyOrders({ orders, customerId, orderId, search, loading, error, 
           <h1 ref={heading} tabIndex={-1}>
             {orderId === undefined ? 'Meus pedidos' : 'Detalhes do pedido'}
           </h1>
-          <p>Pedidos criados nesta sessão. A consulta ao histórico da conta ainda não está disponível.</p>
+          <p>Até cinco pedidos recentes. A listagem completa ainda não está disponível na API.</p>
         </div>
       </div>
       {orderId !== undefined && (

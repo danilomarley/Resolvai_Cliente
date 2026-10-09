@@ -8,7 +8,7 @@ export function customerOrders(orders: Order[], customerId: string | null) {
   return orders.filter((order) => order.customerId === customerId)
 }
 
-export function customerOrder(orders: Order[], customerId: string | null, id: number) {
+export function customerOrder(orders: Order[], customerId: string | null, id: number | string) {
   return customerOrders(orders, customerId).find((order) => order.id === id)
 }
 
@@ -16,7 +16,11 @@ export const orderStatus = {
   waiting: 'Aguardando propostas',
   progress: 'Em andamento',
   completed: 'Concluído',
+  cancelled: 'Cancelado',
 }
+
+export const orderStatusLabel = (order: Order) =>
+  order.source === 'api' && order.status === 'waiting' ? 'Pendente' : orderStatus[order.status]
 
 export const orderDate = (value?: string) => value
   ? new Date(value).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })

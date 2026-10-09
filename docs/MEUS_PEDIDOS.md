@@ -1,5 +1,9 @@
 # Meus pedidos
 
+> Este documento descreve a primeira entrega do protótipo. A integração atual
+> substitui os pedidos locais por consultas à API. Consulte
+> [INTEGRACAO_API.md](INTEGRACAO_API.md) para contratos, configuração e pendências.
+
 ## Implementação
 
 A branch `feat/meus-pedidos-detalhamento-dev` parte de `origin/dev`

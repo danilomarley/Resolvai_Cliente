@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import "../../styles/login.css"; 
 import { Icon } from "../../components/Icon"; 
 import { supabase } from "../../services/supabase";
+import { login } from '../../services/dashboardApi';
 
 export function Login() {
   const navigate = useNavigate();
@@ -21,20 +22,21 @@ export function Login() {
     try {
       setLoading(true);
       
-      // Valida o login no Supabase
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      // A API valida a conta; o cliente Supabase mantém a sessão retornada.
+      const result = await login(email, password);
+      if (!result.refreshToken) throw new Error('A API não retornou o token de renovação necessário para manter sua sessão. Tente entrar novamente.');
+      const { error: signInError } = await supabase.auth.setSession({
+        access_token: result.accessToken, refresh_token: result.refreshToken,
       });
 
       if (signInError) throw signInError;
 
       // Retorna ao pedido solicitado, aceitando apenas destinos internos conhecidos.
       const destination: unknown = location.state?.from;
-      navigate(typeof destination === 'string' && /^\/pedidos(?:\/\d+)?$/.test(destination) ? destination : '/', { replace: true });
+      navigate(typeof destination === 'string' && /^\/pedidos(?:\/[0-9a-f-]+)?$/i.test(destination) ? destination : '/', { replace: true });
 
-    } catch {
-      setError("E-mail ou senha incorretos.");
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : 'Não foi possível entrar. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -66,6 +68,7 @@ export function Login() {
               <input 
                 type="email" 
                 id="email" 
+                maxLength={320}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="seu@email.com" 
@@ -81,6 +84,7 @@ export function Login() {
               <input 
                 type="password" 
                 id="password" 
+                maxLength={128}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••" 
