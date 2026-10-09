@@ -1,0 +1,66 @@
+diff --git a/src/Resolvai.Api/Extensions/AuthenticationExtensions.cs b/src/Resolvai.Api/Extensions/AuthenticationExtensions.cs
+index a9e2b90..402ea69 100644
+--- a/src/Resolvai.Api/Extensions/AuthenticationExtensions.cs
++++ b/src/Resolvai.Api/Extensions/AuthenticationExtensions.cs
+@@ -3,6 +3,8 @@ using System.Text;
+ using Microsoft.AspNetCore.Authentication.JwtBearer;
+ using Microsoft.Extensions.Options;
+ using Microsoft.IdentityModel.Tokens;
++using Microsoft.IdentityModel.Protocols;
++using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+ using Resolvai.Application.Contracts.Security;
+ using Resolvai.Domain.Repositories;
+ using Resolvai.Infrastructure.Options;
+@@ -17,7 +19,11 @@ public static class AuthenticationExtensions
+             .Configure<IOptions<SupabaseOptions>>((bearer, supabase) =>
+             {
+                 var settings = supabase.Value;
+-                var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(settings.JwtSecret));
++                bearer.ConfigurationManager = new ConfigurationManager<OpenIdConnectConfiguration>(
++                    $"{settings.AuthIssuer}/.well-known/jwks.json",
++                    new SupabaseJwksRetriever(settings.AuthIssuer),
++                    new HttpDocumentRetriever { RequireHttps = true });
++                bearer.RefreshOnIssuerKeyNotFound = true;
+ 
+                 // Sem mapeamento legado: claims chegam com os nomes curtos do JWT do Supabase.
+                 bearer.MapInboundClaims = false;
+@@ -28,8 +34,10 @@ public static class AuthenticationExtensions
+                     ValidateAudience = true,
+                     ValidAudience = settings.Audience,
+                     ValidateIssuerSigningKey = true,
+-                    IssuerSigningKey = signingKey,
+-                    ValidAlgorithms = [SecurityAlgorithms.HmacSha256],
++                    // Compatibilidade com sessões antigas; chaves assimétricas vêm do JWKS.
++                    IssuerSigningKey = string.IsNullOrWhiteSpace(settings.JwtSecret) ? null
++                        : new SymmetricSecurityKey(Encoding.UTF8.GetBytes(settings.JwtSecret)),
++                    ValidAlgorithms = [SecurityAlgorithms.HmacSha256, SecurityAlgorithms.EcdsaSha256, SecurityAlgorithms.RsaSha256],
+                     ValidateLifetime = true,
+                     ClockSkew = TimeSpan.FromMinutes(1),
+                     NameClaimType = AppClaimTypes.Email,
+@@ -49,7 +57,7 @@ public static class AuthenticationExtensions
+     }
+ 
+     /// <summary>
+-    /// O JWT do Supabase traz role=authenticated. Substituímos pela role do perfil local (Viewer/Inspector/Admin).
++    /// O JWT do Supabase traz role=authenticated. Substituímos pela role do perfil local.
+     /// </summary>
+     private static async Task EnrichWithLocalProfileAsync(TokenValidatedContext context)
+     {
+@@ -98,4 +106,17 @@ public static class AuthenticationExtensions
+             identity.AddClaim(new Claim(AppClaimTypes.Email, user.Email.Value));
+         }
+     }
++
++    private sealed class SupabaseJwksRetriever(string issuer) : IConfigurationRetriever<OpenIdConnectConfiguration>
++    {
++        public async Task<OpenIdConnectConfiguration> GetConfigurationAsync(
++            string address, IDocumentRetriever retriever, CancellationToken cancel)
++        {
++            var document = await retriever.GetDocumentAsync(address, cancel);
++            var configuration = new OpenIdConnectConfiguration { Issuer = issuer };
++            foreach (var key in new JsonWebKeySet(document).GetSigningKeys())
++                configuration.SigningKeys.Add(key);
++            return configuration;
++        }
++    }
+ }

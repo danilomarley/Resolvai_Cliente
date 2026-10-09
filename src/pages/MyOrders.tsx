@@ -6,24 +6,25 @@ import {
   customerOrders,
   orderDate,
   orderMoney,
-  orderStatus,
+  orderStatusLabel,
 } from '../services/orders'
 import './MyOrders.css'
 
 type Props = {
   orders: Order[]
   customerId: string | null
-  orderId?: number
+  orderId?: number | string
   search: string
   loading?: boolean
   error?: string
   onRetry?: () => void
+  demonstration?: boolean
 }
 
 function OrderStatus({ order }: { order: Order }) {
   return (
     <span className={`status-badge ${order.status === 'completed' ? 'progress' : order.status}`}>
-      <i />{orderStatus[order.status]}
+      <i />{orderStatusLabel(order)}
     </span>
   )
 }
@@ -80,7 +81,7 @@ function OrderDetails({ order }: { order: Order }) {
   )
 }
 
-export function MyOrders({ orders, customerId, orderId, search, loading, error, onRetry }: Props) {
+export function MyOrders({ orders, customerId, orderId, search, loading, error, onRetry, demonstration }: Props) {
   const heading = useRef<HTMLHeadingElement>(null)
   useEffect(() => { heading.current?.focus() }, [orderId])
   const failure = error || (!customerId ? 'Entre na sua conta para consultar pedidos.' : '')
@@ -143,7 +144,8 @@ export function MyOrders({ orders, customerId, orderId, search, loading, error, 
           <h1 ref={heading} tabIndex={-1}>
             {orderId === undefined ? 'Meus pedidos' : 'Detalhes do pedido'}
           </h1>
-          <p>Pedidos criados nesta sessão. A consulta ao histórico da conta ainda não está disponível.</p>
+          <p>{demonstration ? 'Pedidos desta demonstração, incluindo os criados nesta sessão.'
+            : 'Até cinco pedidos recentes. A listagem completa ainda não está disponível na API.'}</p>
         </div>
       </div>
       {orderId !== undefined && (

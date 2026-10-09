@@ -8,7 +8,8 @@ export type OrderScope = {
 }
 
 export type Order = {
-  id: number
+  id: number | string
+  source?: 'api'
   customerId: string
   createdAt?: string
   total?: number
@@ -16,7 +17,7 @@ export type Order = {
   title: string
   category: string
   location: string
-  status: 'waiting' | 'progress' | 'completed'
+  status: 'waiting' | 'progress' | 'completed' | 'cancelled'
   proposals: number
   deadline: string
   icon: IconName
