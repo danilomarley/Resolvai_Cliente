@@ -17,3 +17,9 @@
 .order-table th, .order-table td { padding: 12px; border-bottom: 1px solid var(--color-border); }
 .order-table caption { text-align: left; padding-bottom: 8px; }
 @media (max-width: 560px) { .order-summary { padding: var(--spacing-md); } }
+.order-actions { display: flex; flex-wrap: wrap; gap: var(--spacing-sm); }
+.order-filters { display: flex; flex-wrap: wrap; gap: var(--spacing-sm); }
+.order-pager { display: flex; align-items: center; justify-content: center; gap: var(--spacing-md); }
+.proposal-list, .order-history { display: grid; gap: var(--spacing-md); margin: 0; padding-left: 0; list-style: none; }
+.proposal-item { display: grid; gap: var(--spacing-sm); padding-bottom: var(--spacing-md); border-bottom: 1px solid var(--color-border); }
+.order-history li::before { content: '• '; }
