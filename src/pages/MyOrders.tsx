@@ -32,6 +32,8 @@ const statusFilters: { value?: OrderStatusDto; label: string }[] = [
   { value: 'Completed', label: 'Concluídos' },
   { value: 'Cancelled', label: 'Cancelados' },
 ]
+const orderNumber = (order: Order) =>
+  typeof order.id === 'string' ? order.id.slice(0, 8).toUpperCase() : order.id
 const proposalLabels = { Sent: 'Enviada', Viewed: 'Visualizada', Chosen: 'Escolhida' }
 const trackingPath = (order: Order) =>
   `/pedidos/${order.id}/${order.status === 'waiting' ? 'propostas' : 'acompanhar'}`
@@ -48,7 +50,7 @@ function Proposals({ order }: { order: Order }) {
   const list = order.proposalList ?? []
   return (
     <article className="panel order-summary">
-      <h2>Propostas do pedido #{order.id}</h2>
+      <h2>Propostas do pedido #{orderNumber(order)}</h2>
       <OrderStatus order={order} />
       {list.length ? (
         <ul className="proposal-list">
@@ -82,7 +84,7 @@ function Tracking({ order }: { order: Order }) {
   ]
   return (
     <article className="panel order-summary">
-      <h2>{closed ? 'Informações gerais e histórico' : 'Andamento do pedido'} #{order.id}</h2>
+      <h2>{closed ? 'Informações gerais e histórico' : 'Andamento do pedido'} #{orderNumber(order)}</h2>
       <OrderStatus order={order} />
       <dl>
         <div><dt>Pedido</dt><dd>{order.title}</dd></div>
@@ -106,7 +108,7 @@ function Tracking({ order }: { order: Order }) {
 function OrderDetails({ order }: { order: Order }) {
   return (
     <article className="panel order-summary">
-      <h2>Pedido #{order.id} · {order.title}</h2>
+      <h2>Pedido #{orderNumber(order)} · {order.title}</h2>
       <OrderStatus order={order} />
       <dl>
         <div><dt>Data de realização</dt><dd>{orderDate(order.createdAt)}</dd></div>
@@ -129,8 +131,8 @@ function OrderDetails({ order }: { order: Order }) {
           {order.photoUrls.map((url) => <img key={url} src={url} alt={`Foto do pedido ${order.title}`} />)}
         </div>
       )}
-      <h3>Produtos solicitados</h3>
-      {order.items?.length ? (
+      {order.source !== 'api' && <h3>Produtos solicitados</h3>}
+      {order.source === 'api' ? null : order.items?.length ? (
         <div className="order-table">
           <table>
             <caption>Itens do pedido #{order.id}</caption>
@@ -155,7 +157,7 @@ function OrderDetails({ order }: { order: Order }) {
           </table>
         </div>
       ) : <p>Não há produtos informados para este pedido de serviço.</p>}
-      <p><strong>Valor total: {orderMoney(order.total)}</strong></p>
+      {order.source !== 'api' && <p><strong>Valor total: {orderMoney(order.total)}</strong></p>}
     </article>
   )
 }
@@ -219,10 +221,10 @@ export function MyOrders({ orders, customerId, orderId, search, loading, error, 
       <div className="my-orders-list">
         {visible.map((order) => (
           <article className="panel order-summary" key={order.id}>
-            <h2>Pedido #{order.id} · {order.title}</h2>
+            <h2>Pedido #{orderNumber(order)} · {order.title}</h2>
             <OrderStatus order={order} />
             <p>Data de realização: {orderDate(order.createdAt)}</p>
-            <p>Valor total: {orderMoney(order.total)}</p>
+            {(order.source !== 'api' || order.total !== undefined) && <p>Valor total: {orderMoney(order.total)}</p>}
             <Link className="button button-secondary" to={`/pedidos/${order.id}`}
               aria-label={`Ver detalhes do pedido ${order.id}`}>
               Ver detalhes
