@@ -32,7 +32,7 @@ globalThis.fetch = async (url, options) => {
   return new Response(JSON.stringify(responseBody), { status: responseStatus })
 }
 const { createApiClient, ApiError } = await import('../src/services/api.ts')
-const { parseSummary, parseDetail, parseUser, parseLogin, getSummary, getCurrentUser, getOrder, login, register, toOrder } = await import('../src/services/dashboardApi.ts')
+const { parseSummary, parseDetail, parseUser, parseLogin, getSummary, getCurrentUser, getOrder, login, register, completeRegistration, toOrder } = await import('../src/services/dashboardApi.ts')
 globalThis.fetch = originalFetch
 const id = '11111111-1111-4111-8111-111111111111'
 const otherId = '22222222-2222-4222-8222-222222222222'
@@ -123,4 +123,44 @@ test('login distinguishes missing profile, inactive account and invalid credenti
   }
   const empty = createApiClient('', async () => new Response('', { status: 401 }))
   await assert.rejects(empty('/api/v1/auth/login'), /Confira o e-mail, a senha/)
+})
+test('complete registration posts the identified contract with Bearer and keeps cpf optional on the user', async () => {
+  const payload = {
+    name: 'Cliente', cpf: '12345678901',
+    endereco: { logradouro: 'Rua A', numero: '10', bairro: 'Centro', cidade: 'Fortaleza', estado: 'CE', cep: '60000000' },
+    contato: { tipo: 'whatsapp', valor: '85999999999' },
+  }
+  requests.length = 0; responseBody = { ...user, cpf: '12345678901' }
+  const result = await completeRegistration('test-only', payload)
+  assert.equal(requests[0].url, '/api/v1/users/me/complete-registration')
+  assert.equal(requests[0].options.method, 'POST')
+  assert.equal(requests[0].options.headers.Authorization, 'Bearer test-only')
+  assert.deepEqual(JSON.parse(requests[0].options.body), payload)
+  assert.equal(result.cpf, '12345678901')
+  assert.equal(parseUser(user).cpf, undefined)
+  assert.equal(parseUser({ ...user, cpf: null }).cpf, null)
+  assert.throws(() => parseUser({ ...user, cpf: 123 }), ApiError)
+})
+test('complete registration maps 409 to fixed messages without exposing arbitrary details', async () => {
+  const cases = [
+    ['Cadastro já finalizado.', /cadastro já foi finalizado/],
+    ["Já existe um usuário com o CPF '123.456.789-01'.", /CPF já está em uso/],
+    ['internal-secret-do-not-display', /Não foi possível finalizar/],
+  ]
+  for (const [detail, message] of cases) {
+    const client = createApiClient('', async () => new Response(JSON.stringify({ detail }), { status: 409 }))
+    await assert.rejects(client('/api/v1/users/me/complete-registration', { method: 'POST', token: 'test-only', body: {} }),
+      (error) => error.status === 409 && message.test(error.message) && !error.message.includes('internal-secret'))
+  }
+})
+test('CEP lookup maps ViaCEP fields, treats unknown CEPs as null and rejects failures', async () => {
+  const { lookupCep } = await import('../src/services/cep.ts')
+  const ok = async (url) => {
+    assert.equal(url, 'https://viacep.com.br/ws/60000000/json/')
+    return new Response(JSON.stringify({ logradouro: 'Rua A', bairro: 'Centro', localidade: 'Fortaleza', uf: 'CE' }))
+  }
+  assert.deepEqual(await lookupCep('60000-000', undefined, ok), { logradouro: 'Rua A', bairro: 'Centro', cidade: 'Fortaleza', estado: 'CE' })
+  assert.equal(await lookupCep('60000000', undefined, async () => new Response(JSON.stringify({ erro: true }))), null)
+  assert.equal(await lookupCep('123', undefined, async () => { throw new Error('must not be called') }), null)
+  await assert.rejects(lookupCep('60000000', undefined, async () => new Response('', { status: 500 })))
 })

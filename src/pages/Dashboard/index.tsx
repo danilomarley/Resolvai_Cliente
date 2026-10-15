@@ -30,6 +30,8 @@ export function Dashboard() {
   function openDialog(value: Dialog) {
     setMobileOpen(false)
     if (value === 'profile' || value === 'help') setDialog(value)
+    else if (value === 'create' && dashboard.data && !dashboard.data.user.cpf)
+      routerNavigate('/complemento-cadastro', { state: { from: location.pathname } })
     else setNotice(value === 'create'
       ? 'A criação de pedidos ainda não está disponível na API.'
       : 'Esta funcionalidade ainda não está disponível na API.')
