@@ -32,7 +32,7 @@ globalThis.fetch = async (url, options) => {
   return new Response(JSON.stringify(responseBody), { status: responseStatus })
 }
 const { createApiClient, ApiError } = await import('../src/services/api.ts')
-const { parseSummary, parseDetail, parseUser, parseLogin, getSummary, getCurrentUser, getOrder, login, register, completeRegistration, toOrder } = await import('../src/services/dashboardApi.ts')
+const { parseSummary, parseDetail, parseUser, parseLogin, getSummary, getCurrentUser, getOrder, login, register, completeRegistration, createOrder, toOrder } = await import('../src/services/dashboardApi.ts')
 globalThis.fetch = originalFetch
 const id = '11111111-1111-4111-8111-111111111111'
 const otherId = '22222222-2222-4222-8222-222222222222'
@@ -152,6 +152,28 @@ test('complete registration maps 409 to fixed messages without exposing arbitrar
     await assert.rejects(client('/api/v1/users/me/complete-registration', { method: 'POST', token: 'test-only', body: {} }),
       (error) => error.status === 409 && message.test(error.message) && !error.message.includes('internal-secret'))
   }
+})
+test('create order posts the escopo keys and photo urls with Bearer and parses the detail', async () => {
+  const order = {
+    title: 'Tomada sem energia', category: 'Elétrica', description: 'Tomada da sala sem energia', location: 'Aldeota, Fortaleza',
+    scope: { details: 'Sala', urgency: 'Urgente', specifications: 'Revisão do circuito', photos: [] },
+  }
+  requests.length = 0; responseBody = { ...recent, description: 'Tomada da sala sem energia' }
+  const result = await createOrder('test-only', order, ['https://exemplo.com/a.jpg'])
+  assert.equal(requests[0].url, '/api/v1/orders')
+  assert.equal(requests[0].options.method, 'POST')
+  assert.equal(requests[0].options.headers.Authorization, 'Bearer test-only')
+  assert.deepEqual(JSON.parse(requests[0].options.body), {
+    titulo: 'Tomada sem energia', categoria: 'Elétrica', descricao: 'Tomada da sala sem energia', localizacao: 'Aldeota, Fortaleza',
+    detalhes: 'Sala', urgencia: 'Urgente', especificacoes: 'Revisão do circuito', fotos: [{ url: 'https://exemplo.com/a.jpg' }],
+  })
+  assert.equal(result.id, id)
+})
+test('create order shows the backend reason on 400 and a fixed message otherwise', async () => {
+  const withDetail = createApiClient('', async () => new Response(JSON.stringify({ detail: 'Finalize o cadastro antes de criar um pedido.' }), { status: 400 }))
+  await assert.rejects(withDetail('/api/v1/orders', { method: 'POST', token: 'test-only', body: {} }), /Finalize o cadastro/)
+  const withoutDetail = createApiClient('', async () => new Response(JSON.stringify({ errors: {} }), { status: 400 }))
+  await assert.rejects(withoutDetail('/api/v1/orders', { method: 'POST', token: 'test-only', body: {} }), /Confira os dados do pedido/)
 })
 test('CEP lookup maps ViaCEP fields, treats unknown CEPs as null and rejects failures', async () => {
   const { lookupCep } = await import('../src/services/cep.ts')

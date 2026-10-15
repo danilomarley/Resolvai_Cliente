@@ -3,9 +3,11 @@ import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-route
 import { MyOrders } from '../MyOrders'
 import { useCustomerSession } from '../../services/useCustomerSession'
 import { useDashboardData, useOrderDetail } from '../../services/useDashboardData'
-import { toOrder } from '../../services/dashboardApi'
+import { createOrder, toOrder } from '../../services/dashboardApi'
+import { uploadOrderPhotos } from '../../services/orderPhotos'
 import { Icon } from '../../components/Icon'
 import { Modal } from '../../components/Modal'
+import { OrderAssistant, type NewOrder } from '../../components/OrderAssistant'
 import { Sidebar } from '../../components/dashboard/Sidebar'
 import { DashboardOverview } from '../../components/dashboard/DashboardOverview'
 import type { Order } from '../../data/dashboard'
@@ -24,6 +26,8 @@ export function Dashboard() {
   const [dialog, setDialog] = useState<Dialog>(null)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [notice, setNotice] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
   const orders = dashboard.data?.summary.recentOrders.map((dto) => toOrder(dto, session.customerId!)) ?? []
   const profile = { name: dashboard.data?.user.name ?? 'Minha conta', location: 'Localização não informada' }
 
@@ -32,9 +36,24 @@ export function Dashboard() {
     if (value === 'profile' || value === 'help') setDialog(value)
     else if (value === 'create' && dashboard.data && !dashboard.data.user.cpf)
       routerNavigate('/complemento-cadastro', { state: { from: location.pathname } })
-    else setNotice(value === 'create'
-      ? 'A criação de pedidos ainda não está disponível na API.'
-      : 'Esta funcionalidade ainda não está disponível na API.')
+    else if (value === 'create') { setSubmitError(''); setDialog(value) }
+    else setNotice('Esta funcionalidade ainda não está disponível na API.')
+  }
+  async function publishOrder(order: NewOrder) {
+    if (!session.accessToken || !session.customerId) return
+    setSubmitting(true)
+    setSubmitError('')
+    try {
+      const photoUrls = await uploadOrderPhotos(order.scope.photos, session.customerId)
+      const created = await createOrder(session.accessToken, order, photoUrls)
+      setDialog(null)
+      dashboard.retry()
+      routerNavigate(`/pedidos/${created.id}`)
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Não foi possível publicar o pedido. Tente novamente.')
+    } finally {
+      setSubmitting(false)
+    }
   }
   function navigate(label: string, target?: Dialog) {
     setMobileOpen(false)
@@ -84,6 +103,8 @@ export function Dashboard() {
               <button className="button button-secondary" onClick={session.error ? session.retry : dashboard.retry}>Tentar novamente</button>
               {dashboard.error?.status === 401 && <Link to="/login" state={{ from: location.pathname }}>Entrar novamente</Link>}
             </section>
+            : dialog === 'create' ? <OrderAssistant location="" demo={false} submitting={submitting}
+              submitError={submitError} onCancel={() => setDialog(null)} onCreate={publishOrder} />
             : viewingOrders ? <MyOrders
               orders={orderId ? (detail.data ? [toOrder(detail.data, session.customerId!)] : []) : orders}
               customerId={session.customerId} search={search} orderId={orderId}
@@ -97,7 +118,7 @@ export function Dashboard() {
       {notice && <div className="toast" role="status"><span>{notice}</span>
         <button className="icon-button" onClick={() => setNotice('')} aria-label="Dispensar aviso"><Icon name="close" size={17} /></button>
       </div>}
-      {dialog && <Modal title={dialog === 'profile' ? 'Meu perfil' : 'Central de ajuda'} onClose={() => setDialog(null)}>
+      {dialog && dialog !== 'create' && <Modal title={dialog === 'profile' ? 'Meu perfil' : 'Central de ajuda'} onClose={() => setDialog(null)}>
         {dialog === 'profile' ? <div className="dialog-stack"><h3>{profile.name}</h3>
           <p>{dashboard.data?.user.email}</p><p>Perfil: {dashboard.data?.user.role}</p>
           <p>A edição do perfil ainda não está disponível na API.</p></div>

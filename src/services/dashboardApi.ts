@@ -1,5 +1,6 @@
 import { apiRequest, ApiError } from './api'
 import type { Order } from '../data/dashboard'
+import type { NewOrder } from '../components/OrderAssistant'
 
 export type OrderStatusDto = 'Pending' | 'InProgress' | 'Completed' | 'Cancelled'
 export type OrderDto = { id: string; title: string; status: OrderStatusDto; createdAt: string; updatedAt?: string; description?: string }
@@ -71,3 +72,13 @@ export function toOrder(dto: OrderDto, customerId: string): Order {
     description: dto.description ?? 'Abra os detalhes para consultar a descrição.',
     category: 'Pedido', location: 'Localização não informada', proposals: 0, deadline: 'Não informado', icon: 'bag', source: 'api' }
 }
+
+export const createOrder = async (token: string, order: NewOrder, photoUrls: string[], signal?: AbortSignal) =>
+  parseDetail(await apiRequest('/api/v1/orders', {
+    method: 'POST', token, signal,
+    body: {
+      titulo: order.title, categoria: order.category, descricao: order.description, localizacao: order.location,
+      detalhes: order.scope.details, urgencia: order.scope.urgency, especificacoes: order.scope.specifications,
+      fotos: photoUrls.map((url) => ({ url })),
+    },
+  }))
