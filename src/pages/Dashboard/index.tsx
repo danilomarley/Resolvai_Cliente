@@ -2,8 +2,8 @@
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { MyOrders } from '../MyOrders'
 import { useCustomerSession } from '../../services/useCustomerSession'
-import { useDashboardData, useOrderDetail } from '../../services/useDashboardData'
-import { createOrder, toOrder } from '../../services/dashboardApi'
+import { useDashboardData, useOrderDetail, useOrdersList } from '../../services/useDashboardData'
+import { createOrder, toOrder, type OrderStatusDto } from '../../services/dashboardApi'
 import { uploadOrderPhotos } from '../../services/orderPhotos'
 import { Icon } from '../../components/Icon'
 import { Modal } from '../../components/Modal'
@@ -21,6 +21,11 @@ export function Dashboard() {
   const session = useCustomerSession()
   const dashboard = useDashboardData(session.accessToken, session.customerId)
   const detail = useOrderDetail(orderId, session.accessToken)
+  const [statusFilter, setStatusFilter] = useState<OrderStatusDto>()
+  const [page, setPage] = useState(1)
+  const ordersList = useOrdersList(session.accessToken, viewingOrders && !orderId, statusFilter, page)
+  const orderView = location.pathname.endsWith('/propostas') ? 'propostas'
+    : location.pathname.endsWith('/acompanhar') ? 'acompanhar' : undefined
   const [tab, setTab] = useState<Tab>('all')
   const [search, setSearch] = useState('')
   const [dialog, setDialog] = useState<Dialog>(null)
@@ -106,10 +111,15 @@ export function Dashboard() {
             : dialog === 'create' ? <OrderAssistant location="" demo={false} submitting={submitting}
               submitError={submitError} onCancel={() => setDialog(null)} onCreate={publishOrder} />
             : viewingOrders ? <MyOrders
-              orders={orderId ? (detail.data ? [toOrder(detail.data, session.customerId!)] : []) : orders}
-              customerId={session.customerId} search={search} orderId={orderId}
-              loading={detail.loading} error={detail.error?.status === 404 ? undefined : detail.error?.message}
-              onRetry={detail.retry} />
+              orders={orderId
+                ? (detail.data ? [toOrder(detail.data, session.customerId!)] : [])
+                : ordersList.data?.items.map((dto) => toOrder(dto, session.customerId!)) ?? []}
+              customerId={session.customerId} search={search} orderId={orderId} view={orderView}
+              loading={orderId ? detail.loading : ordersList.loading}
+              error={orderId ? (detail.error?.status === 404 ? undefined : detail.error?.message) : ordersList.error?.message}
+              onRetry={orderId ? detail.retry : ordersList.retry}
+              filter={orderId ? undefined : { value: statusFilter, onChange: (value) => { setStatusFilter(value); setPage(1) } }}
+              pager={orderId || !ordersList.data ? undefined : { page, totalPages: ordersList.data.totalPages, onPage: setPage }} />
             : dashboard.data && <DashboardOverview orders={orders} summary={dashboard.data.summary}
               profile={profile} tab={tab} setTab={setTab} search={search} setSearch={setSearch}
               navigate={navigate} openDialog={openDialog} openOrder={openOrder} />}

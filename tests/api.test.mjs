@@ -32,7 +32,7 @@ globalThis.fetch = async (url, options) => {
   return new Response(JSON.stringify(responseBody), { status: responseStatus })
 }
 const { createApiClient, ApiError } = await import('../src/services/api.ts')
-const { parseSummary, parseDetail, parseUser, parseLogin, getSummary, getCurrentUser, getOrder, login, register, completeRegistration, createOrder, toOrder } = await import('../src/services/dashboardApi.ts')
+const { parseSummary, parseDetail, parseUser, parseLogin, getSummary, getCurrentUser, getOrder, getOrders, parsePage, login, register, completeRegistration, createOrder, toOrder } = await import('../src/services/dashboardApi.ts')
 globalThis.fetch = originalFetch
 const id = '11111111-1111-4111-8111-111111111111'
 const otherId = '22222222-2222-4222-8222-222222222222'
@@ -174,6 +174,32 @@ test('create order shows the backend reason on 400 and a fixed message otherwise
   await assert.rejects(withDetail('/api/v1/orders', { method: 'POST', token: 'test-only', body: {} }), /Finalize o cadastro/)
   const withoutDetail = createApiClient('', async () => new Response(JSON.stringify({ errors: {} }), { status: 400 }))
   await assert.rejects(withoutDetail('/api/v1/orders', { method: 'POST', token: 'test-only', body: {} }), /Confira os dados do pedido/)
+})
+test('orders page is requested with filter and paging and rejects broken pages', async () => {
+  const page = { items: [{ ...recent, category: 'Elétrica', proposalsCount: 2 }], page: 2, pageSize: 10, totalItems: 11, totalPages: 2 }
+  requests.length = 0; responseBody = page
+  const result = await getOrders('test-only', { status: 'InProgress', page: 2 })
+  assert.equal(requests[0].url, '/api/v1/orders?page=2&pageSize=10&status=InProgress')
+  assert.equal(requests[0].options.headers.Authorization, 'Bearer test-only')
+  assert.equal(result.totalPages, 2)
+  assert.throws(() => parsePage({ ...page, items: [{ ...recent, status: 'Unknown' }] }), ApiError)
+  assert.throws(() => parsePage({ ...page, totalPages: -1 }), ApiError)
+})
+test('order detail keeps category, location, scope, photos and proposals', () => {
+  const detail = parseDetail({
+    ...recent, description: 'Descrição', category: 'Elétrica', location: 'Aldeota', updatedAt: '2026-10-10T12:00:00Z',
+    scope: { detalhes: 'Sala', urgencia: 'Urgente', especificacoes: 'Revisão' },
+    photos: [{ id, url: 'https://exemplo.com/a.jpg' }],
+    proposals: [{ id: otherId, providerId: id, providerName: 'Silva', status: 'Chosen', value: 150, deadline: '3 dias' }],
+  })
+  const order = toOrder(detail, otherId)
+  assert.equal(order.category, 'Elétrica')
+  assert.equal(order.location, 'Aldeota')
+  assert.equal(order.proposals, 1)
+  assert.equal(order.scope.urgency, 'Urgente')
+  assert.deepEqual(order.photoUrls, ['https://exemplo.com/a.jpg'])
+  assert.equal(order.proposalList[0].providerName, 'Silva')
+  assert.throws(() => parseDetail({ ...recent, description: 'x', proposals: [{ id }] }), ApiError)
 })
 test('CEP lookup maps ViaCEP fields, treats unknown CEPs as null and rejects failures', async () => {
   const { lookupCep } = await import('../src/services/cep.ts')

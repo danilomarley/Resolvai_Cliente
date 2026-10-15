@@ -7,6 +7,16 @@ export type OrderScope = {
   photos: File[]
 }
 
+export type OrderProposal = {
+  id: string
+  providerName: string
+  status: 'Sent' | 'Viewed' | 'Chosen'
+  value: number
+  deadline?: string
+  description?: string
+  warranty?: string
+}
+
 export type Order = {
   id: number | string
   source?: 'api'
@@ -23,6 +33,10 @@ export type Order = {
   icon: IconName
   description: string
   scope?: OrderScope
+  updatedAt?: string
+  chosenProposalValue?: number
+  proposalList?: OrderProposal[]
+  photoUrls?: string[]
 }
 export const initialOrders: Order[] = [
   {

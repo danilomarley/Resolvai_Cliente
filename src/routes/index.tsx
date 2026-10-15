@@ -19,6 +19,8 @@ export function AppRoutes() {
         <Route path="/" element={demo ? <DemoDashboard /> : <Dashboard />}>
           <Route path="pedidos" element={null} />
           <Route path="pedidos/:orderId" element={null} />
+          <Route path="pedidos/:orderId/propostas" element={null} />
+          <Route path="pedidos/:orderId/acompanhar" element={null} />
         </Route>
       </Routes>
     </Router>

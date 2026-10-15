@@ -1,4 +1,4 @@
-# ResolvAI — Portal do contratante
+# ResolvAI: Portal do contratante
 
 Dashboard responsivo em React, TypeScript e Vite, baseado no protótipo do contratante. Usa Rajdhani e a paleta de azul, azul escuro, laranja e branco frio.
 
@@ -35,7 +35,7 @@ não substitui as respostas da API por mocks quando ela falha.
 
 ### Abrir com dois cliques no Windows
 
-Para usar a API real, execute **`iniciar-prototipo.cmd --api`** pelo terminal. Ele inicia o backend, aguarda a API ficar pronta, inicia o frontend e abre a tela de login no navegador. Se a API já estiver rodando, ela será reutilizada. Para abrir o cadastro, clique em **“Crie uma agora”**. Mantenha essa única janela aberta enquanto usa a integração e pressione `Ctrl+C` para encerrar os serviços iniciados por ela.
+Para usar a API real, execute **`iniciar-prototipo.cmd`** sem argumentos. Ele inicia o backend, aguarda a API ficar pronta, inicia o frontend e abre a tela de login no navegador. Se a API já estiver rodando, ela será reutilizada. Para abrir o cadastro, clique em **“Crie uma agora”**. Mantenha essa única janela aberta enquanto usa a integração e pressione `Ctrl+C` para encerrar os serviços iniciados por ela.
 
 É necessário ter o **SDK .NET 10**, Node.js e a pasta `Resolvai_Backend` ao lado
 de `Resolvai_Cliente`. O backend precisa ter sua configuração de banco e Supabase
@@ -105,8 +105,15 @@ Busca e filtros de pedidos, criação de pedido com assistente simulado, consult
 
 O fluxo “Criar pedido” segue o protótipo original: categoria, problema, detalhes do ambiente, localização, urgência e fotos opcionais. O escopo aparece durante a conversa e pode ser editado na revisão antes de publicar. As perguntas e sugestões são predefinidas, sem IA conectada. O pedido criado preserva as informações e as fotos na sessão.
 
-O dashboard, o perfil, os detalhes de pedidos, o login e o cadastro usam a API oficial.
-Os contadores abrangem toda a conta; a lista contém até cinco pedidos recentes.
-Criação, listagem completa, IA, propostas, avaliações, pagamentos e mensagens ainda
-não possuem endpoints identificados para esta integração. Os componentes antigos
-de demonstração permanecem no código, mas seus dados não aparecem na tela integrada.
+O dashboard, o perfil, o login, o cadastro, a finalização de cadastro, a criação de
+pedido e a tela Meus pedidos usam a API oficial. Os contadores da Home abrangem toda a
+conta e a lista de Meus pedidos é paginada, com filtro por status, propostas recebidas e
+acompanhamento. Avaliações, pagamentos, mensagens e IA ainda não possuem endpoints.
+Os componentes antigos de demonstração permanecem no código, mas seus dados não
+aparecem na tela integrada.
+
+### Fotos dos pedidos
+
+As fotos do pedido são enviadas pelo navegador ao bucket `pedidos` do Supabase Storage
+e a API recebe apenas as URLs. Para criar o bucket e as políticas de acesso, rode uma
+vez o script `docs/sql/bucket-fotos-pedidos.sql` no SQL Editor do projeto.

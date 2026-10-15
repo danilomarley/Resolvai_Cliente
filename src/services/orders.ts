@@ -20,7 +20,7 @@ export const orderStatus = {
 }
 
 export const orderStatusLabel = (order: Order) =>
-  order.source === 'api' && order.status === 'waiting' ? 'Pendente' : orderStatus[order.status]
+  order.source === 'api' && order.status === 'waiting' ? 'Recebendo propostas' : orderStatus[order.status]
 
 export const orderDate = (value?: string) => value
   ? new Date(value).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
