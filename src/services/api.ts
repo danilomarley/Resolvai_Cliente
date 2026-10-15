@@ -38,6 +38,11 @@ export function createApiClient(baseUrl: string, fetcher: typeof fetch = fetch) 
           : typeof detail === 'string' && detail.startsWith('Já existe um usuário com o CPF') ? 'Este CPF já está em uso por outra conta.'
           : 'Não foi possível finalizar o cadastro com os dados informados.')
       }
+      if (response.status === 400 && method === 'POST' && path === '/api/v1/orders') {
+        let detail: unknown
+        try { detail = (await response.json()).detail } catch { /* Validation errors may come without detail. */ }
+        throw new ApiError(400, typeof detail === 'string' && detail ? detail : 'Confira os dados do pedido e tente novamente.')
+      }
       const messages: Record<number, string> = {
         400: 'Confira os dados informados.',
         401: 'Sua sessão não foi aceita pela API. Entre novamente ou verifique se sua conta possui um perfil ativo.',
