@@ -34,6 +34,7 @@ globalThis.fetch = async (url, options) => {
 const { createApiClient, ApiError } = await import('../src/services/api.ts')
 const { parseSummary, parseDetail, parseUser, parseLogin, getSummary, getCurrentUser, getOrder, login, register, toOrder } = await import('../src/services/dashboardApi.ts')
 const { completeRegistration } = await import('../src/services/accountApi.ts')
+const { createSessionStore, sessionKey } = await import('../src/services/session.ts')
 globalThis.fetch = originalFetch
 const id = '11111111-1111-4111-8111-111111111111'
 const otherId = '22222222-2222-4222-8222-222222222222'
@@ -42,6 +43,58 @@ const counts = { total: 12, pending: 3, inProgress: 4, completed: 3, cancelled: 
 const summary = { orders: counts, recentOrders: [recent] }
 const user = { id, name: 'Cliente', email: 'test@example.invalid', role: 'Cliente', isActive: true, createdAt: recent.createdAt }
 const loginResponse = { accessToken: 'test-only', refreshToken: 'test-refresh', tokenType: 'bearer', expiresAtUtc: recent.createdAt, user }
+
+function sessionFixture() {
+  const values = new Map()
+  let clock = Date.parse('2026-10-16T12:00:00Z')
+  const storage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) }
+  const store = createSessionStore(() => storage, () => clock)
+  const response = { ...loginResponse, expiresAtUtc: new Date(clock + 3600000).toISOString() }
+  return { values, storage, store, response, advance: value => { clock += value } }
+}
+
+test('API session persists only the token, user ID and expiry, with no refresh token requirement', () => {
+  const { store, response, values, storage } = sessionFixture()
+  let notifications = 0
+  const unsubscribe = store.subscribe(() => { notifications++ })
+  store.save({ ...response, refreshToken: undefined })
+  assert.deepEqual(store.read(), { accessToken: response.accessToken, customerId: user.id, expiresAtUtc: response.expiresAtUtc })
+  assert.deepEqual(Object.keys(JSON.parse(values.get(sessionKey))).sort(), ['accessToken', 'customerId', 'expiresAtUtc'])
+  assert.deepEqual(createSessionStore(() => storage, () => Date.parse(response.expiresAtUtc) - 1).read(), store.read())
+  assert.equal(notifications, 1)
+  store.clear()
+  assert.equal(store.read(), null)
+  assert.equal(notifications, 2)
+  unsubscribe()
+  store.save(response)
+  assert.equal(notifications, 2)
+})
+
+test('expired, corrupted and invalid stored sessions are discarded', () => {
+  const { store, response, values, advance } = sessionFixture()
+  store.save(response)
+  advance(3600000)
+  assert.equal(store.read(), null)
+  assert.equal(values.has(sessionKey), false)
+  for (const raw of ['invalid-json', 'null', '{}', JSON.stringify({ customerId: user.id, accessToken: '', expiresAtUtc: response.expiresAtUtc })]) {
+    values.set(sessionKey, raw)
+    assert.equal(store.read(), null)
+    assert.equal(values.has(sessionKey), false)
+  }
+  assert.throws(() => store.save(response), /expirada/)
+})
+
+test('invalid API sessions and blocked browser storage cannot establish a session', () => {
+  const { store, response } = sessionFixture()
+  for (const invalid of [{ ...response, accessToken: '' }, { ...response, expiresAtUtc: 'invalid' },
+    { ...response, user: { ...user, id: 'invalid' } }, { ...response, user: { ...user, isActive: false } }]) {
+    assert.throws(() => store.save(invalid), /sessão inválida/)
+    assert.equal(store.read(), null)
+  }
+  const blocked = createSessionStore(() => { throw new Error('blocked') })
+  assert.throws(() => blocked.save({ ...response, expiresAtUtc: '2099-01-01T00:00:00Z' }), /armazenamento nesta aba/)
+  assert.throws(() => blocked.read(), /blocked/)
+})
 
 test('summary keeps full totals even when only recent orders are returned', () => {
   assert.equal(parseSummary(summary).orders.total, 12)

@@ -2,7 +2,7 @@ import { FormEvent, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import "../../styles/login.css"; 
 import { Icon } from "../../components/Icon"; 
-import { supabase } from "../../services/supabase";
+import { customerSession } from '../../services/session';
 import { login } from '../../services/dashboardApi';
 import { demoMode } from '../../services/appMode';
 
@@ -27,14 +27,9 @@ export function Login() {
         return;
       }
       
-      // A API valida a conta; o cliente Supabase mantém a sessão retornada.
+      // A API autentica a conta e fornece o token e a validade da sessão.
       const result = await login(email, password);
-      if (!result.refreshToken) throw new Error('A API não retornou o token de renovação necessário para manter sua sessão. Tente entrar novamente.');
-      const { error: signInError } = await supabase.auth.setSession({
-        access_token: result.accessToken, refresh_token: result.refreshToken,
-      });
-
-      if (signInError) throw signInError;
+      customerSession.save(result);
 
       // Retorna ao pedido solicitado, aceitando apenas destinos internos conhecidos.
       const destination: unknown = location.state?.from;

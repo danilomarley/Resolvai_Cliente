@@ -13,6 +13,7 @@ dist-ssr
 dist-demo
 apresentacao
 *.local
+.env
 
 # Editor directories and files
 .vscode/*

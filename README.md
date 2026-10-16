@@ -58,11 +58,17 @@ npm run dev
 
 Abra o endereço local exibido pelo Vite.
 
-Para integrar a API oficial, mantenha as variáveis públicas do Supabase e configure
+Para integrar a API oficial, configure apenas a URL da API usando
 `API_PROXY_TARGET` no `.env.local` (padrão: `http://localhost:5172`). Inicie o backend
 separadamente. O Vite encaminha `/api` ao backend, sem exigir CORS no desenvolvimento.
 Consulte [docs/INTEGRACAO_API.md](docs/INTEGRACAO_API.md) e `.env.example` para a
 configuração de produção e os endpoints usados. Reinicie o Vite após alterar variáveis.
+
+O frontend autentica exclusivamente por `POST /api/v1/auth/login` e cadastra por
+`POST /api/v1/auth/register`. A sessão usa o token e a validade retornados pela API,
+mantidos em `sessionStorage` durante a aba atual, inclusive ao recarregar a página.
+Ao expirar, é necessário entrar novamente; não há rota de renovação identificada.
+O frontend não usa SDK, URL ou chave pública de provedor de autenticação.
 
 Se preferir iniciar os serviços manualmente, abra outro terminal na pasta
 `ResolvAI` e execute:

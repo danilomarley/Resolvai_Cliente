@@ -16,27 +16,20 @@ const assert = require('node:assert/strict');
       const order = { id: 'abcdef12-2222-4222-8222-222222222222', title: 'Pedido retornado pela API de teste',
         status: 'Completed', createdAt: date, updatedAt: date, description: 'Descrição retornada pela API de teste.' };
       const olderOrder = { ...order, id: '33333333-3333-4333-8333-333333333333', title: 'Pedido fora dos recentes', description: 'Detalhe fora da lista recente.' };
-      const encode = value => Buffer.from(JSON.stringify(value)).toString('base64url');
-      const token = `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode({ sub: user.id, exp: Math.floor(Date.now()/1000)+3600, role: 'authenticated', aud: 'authenticated' })}.test-only-signature`;
+      const token = 'opaque-test-only-api-token';
+      const providerRequests = [];
+      page.on('request', request => {
+        if (/supabase|\/auth\/v1\//i.test(request.url())) providerRequests.push(request.url());
+      });
       let summaryStatus = 200, detailStatus = 200, profileStatus = 200, registrationStatus = 200, empty = false;
       const registrations = [];
-      await page.route('**/auth/v1/**', async route => {
-        const headers = { 'access-control-allow-origin': route.request().headers().origin || '*',
-          'access-control-allow-methods': 'GET,POST,OPTIONS',
-          'access-control-allow-headers': 'authorization,apikey,content-type,x-client-info,x-supabase-api-version' };
-        if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
-        assert.ok(new URL(route.request().url()).pathname.endsWith('/user'), 'unexpected Supabase operation');
-        return route.fulfill({ status: 200, headers, contentType: 'application/json', body: JSON.stringify({
-          id: user.id, email: user.email, aud: 'authenticated', role: 'authenticated',
-          created_at: date, app_metadata: {}, user_metadata: { name: user.name }, identities: [] }) });
-      });
       await page.route('**/api/v1/**', async route => {
         const request = route.request(), pathname = new URL(request.url()).pathname;
         calls.push(pathname);
         let body, status = 200;
         if (pathname === '/api/v1/auth/login') {
           assert.deepEqual(request.postDataJSON(), { email: user.email, password: 'TestOnly123' });
-          body = { accessToken: token, refreshToken: 'test-only-refresh', tokenType: 'bearer',
+          body = { accessToken: token, tokenType: 'bearer',
             expiresAtUtc: new Date(Date.now()+3600000).toISOString(), user };
         } else {
           assert.equal(request.headers().authorization, `Bearer ${token}`);
@@ -156,8 +149,27 @@ const assert = require('node:assert/strict');
       await page.getByRole('heading', { name: 'Não foi possível carregar sua conta', exact: true }).waitFor();
       assert.equal(await page.getByText(/Ygor Chagas|Infiltração na laje do quarto/).count(), 0);
       assert.equal(await page.locator('.my-orders-list article').count(), 0);
+      summaryStatus = 200;
+      await page.evaluate(() => {
+        const session = JSON.parse(sessionStorage.getItem('resolvai.api-session'));
+        session.expiresAtUtc = new Date(Date.now() + 2000).toISOString();
+        sessionStorage.setItem('resolvai.api-session', JSON.stringify(session));
+      });
+      await page.reload();
+      await page.getByRole('heading', { name: 'Você ainda não tem pedidos', exact: true }).waitFor();
+      await page.waitForURL('**/login');
+      assert.equal(await page.evaluate(() => sessionStorage.getItem('resolvai.api-session')), null);
+      await page.getByLabel('E-mail', { exact: true }).fill(user.email);
+      await page.getByLabel('Senha', { exact: true }).fill('TestOnly123');
+      await page.getByRole('button', { name: 'Entrar', exact: true }).click();
+      await page.getByRole('heading', { name: 'Você ainda não tem pedidos', exact: true }).waitFor();
+      await page.evaluate(() => sessionStorage.setItem('resolvai.api-session', 'invalid-json'));
+      await page.reload();
+      await page.waitForURL('**/login');
+      assert.equal(await page.evaluate(() => sessionStorage.getItem('resolvai.api-session')), null);
+      assert.deepEqual(providerRequests, [], 'frontend must communicate with the API, never the auth provider');
       assert.deepEqual(errors, []);
-      console.log('PASS integrated account: orders, errors, relogin, settings via avatar/name, profile retry, registration validation, 400/retry, exact payload, completed state and mobile layout — ' + executablePath);
+      console.log('PASS API-only session: login without refresh token, reload, expiry, corrupt storage, no provider calls; orders and account settings — ' + executablePath);
     } finally { await browser.close(); }
   }
 })().catch(e => { console.error(e); process.exit(1); });
