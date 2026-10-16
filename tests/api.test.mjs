@@ -65,6 +65,14 @@ test('all four statuses and UUIDs map without invented totals or proposals', () 
   assert.throws(() => parseUser({ ...user, id: 'invalid' }), ApiError)
   assert.equal(parseLogin({ ...loginResponse, refreshToken: null }).refreshToken, null)
 })
+
+test('order dates survive the API adapter and invalid update dates are rejected', () => {
+  const updatedAt = '2026-10-10T12:00:00Z'
+  const detail = parseDetail({ ...recent, description: 'Descrição real', updatedAt })
+  assert.equal(toOrder(detail, otherId).updatedAt, updatedAt)
+  assert.equal(toOrder(parseDetail({ ...recent, description: 'Sem atualização' }), otherId).updatedAt, undefined)
+  assert.throws(() => parseDetail({ ...detail, updatedAt: 'invalid' }), ApiError)
+})
 test('services use only identified routes and request contracts', async () => {
   requests.length = 0; responseBody = summary
   await getSummary('test-only')

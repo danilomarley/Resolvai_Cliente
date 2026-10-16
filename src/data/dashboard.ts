@@ -12,6 +12,7 @@ export type Order = {
   source?: 'api'
   customerId: string
   createdAt?: string
+  updatedAt?: string
   total?: number
   items?: { id: string; name: string; quantity: number; unitPrice: number }[]
   title: string

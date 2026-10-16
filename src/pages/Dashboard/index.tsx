@@ -86,6 +86,7 @@ export function Dashboard() {
               orders={orderId ? (detail.data ? [toOrder(detail.data, session.customerId!)] : []) : orders}
               customerId={session.customerId} search={search} orderId={orderId}
               loading={detail.loading} error={detail.error?.status === 404 ? undefined : detail.error?.message}
+              requiresLogin={detail.error?.status === 401}
               onRetry={detail.retry} />
             : dashboard.data && <DashboardOverview orders={orders} summary={dashboard.data.summary}
               profile={profile} tab={tab} setTab={setTab} search={search} setSearch={setSearch}

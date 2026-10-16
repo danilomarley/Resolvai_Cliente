@@ -57,7 +57,7 @@ export const register = async (name: string, email: string, password: string) =>
 
 export function toOrder(dto: OrderDto, customerId: string): Order {
   const statuses = { Pending: 'waiting', InProgress: 'progress', Completed: 'completed', Cancelled: 'cancelled' } as const
-  return { id: dto.id, customerId, title: dto.title, status: statuses[dto.status], createdAt: dto.createdAt,
+  return { id: dto.id, customerId, title: dto.title, status: statuses[dto.status], createdAt: dto.createdAt, updatedAt: dto.updatedAt,
     description: dto.description ?? 'Abra os detalhes para consultar a descrição.',
     category: 'Pedido', location: 'Localização não informada', proposals: 0, deadline: 'Não informado', icon: 'bag', source: 'api' }
 }

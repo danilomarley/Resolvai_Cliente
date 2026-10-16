@@ -4,6 +4,7 @@ import type { Order } from '../data/dashboard'
 import { PhotoPreview } from '../components/OrderAssistant'
 import {
   customerOrders,
+  customerOrder,
   orderDate,
   orderMoney,
   orderStatusLabel,
@@ -17,13 +18,14 @@ type Props = {
   search: string
   loading?: boolean
   error?: string
+  requiresLogin?: boolean
   onRetry?: () => void
   demonstration?: boolean
 }
 
 function OrderStatus({ order }: { order: Order }) {
   return (
-    <span className={`status-badge ${order.status === 'completed' ? 'progress' : order.status}`}>
+    <span className={`status-badge ${order.status}`}>
       <i />{orderStatusLabel(order)}
     </span>
   )
@@ -36,8 +38,11 @@ function OrderDetails({ order }: { order: Order }) {
       <OrderStatus order={order} />
       <dl>
         <div><dt>Data de realização</dt><dd>{orderDate(order.createdAt)}</dd></div>
-        <div><dt>Categoria</dt><dd>{order.category}</dd></div>
-        <div><dt>Localização</dt><dd>{order.location}</dd></div>
+        {order.updatedAt && <div><dt>Última atualização</dt><dd>{orderDate(order.updatedAt)}</dd></div>}
+        {order.source !== 'api' && <>
+          <div><dt>Categoria</dt><dd>{order.category}</dd></div>
+          <div><dt>Localização</dt><dd>{order.location}</dd></div>
+        </>}
       </dl>
       <h3>Descrição</h3>
       <p>{order.description}</p>
@@ -50,47 +55,50 @@ function OrderDetails({ order }: { order: Order }) {
           <PhotoPreview photos={order.scope.photos} />
         </>
       )}
-      <h3>Produtos solicitados</h3>
-      {order.items?.length ? (
-        <div className="order-table">
-          <table>
-            <caption>Itens do pedido #{order.id}</caption>
-            <thead>
-              <tr>
-                <th scope="col">Produto</th>
-                <th scope="col">Quantidade</th>
-                <th scope="col">Preço unitário</th>
-                <th scope="col">Subtotal</th>
-              </tr>
-            </thead>
-            <tbody>
-              {order.items.map((item) => (
-                <tr key={item.id}>
-                  <th scope="row">{item.name}</th>
-                  <td>{item.quantity}</td>
-                  <td>{orderMoney(item.unitPrice)}</td>
-                  <td>{orderMoney(item.quantity * item.unitPrice)}</td>
+      {order.source !== 'api' && <>
+        <h3>Produtos solicitados</h3>
+        {order.items?.length ? (
+          <div className="order-table">
+            <table>
+              <caption>Itens do pedido #{order.id}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Produto</th>
+                  <th scope="col">Quantidade</th>
+                  <th scope="col">Preço unitário</th>
+                  <th scope="col">Subtotal</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : <p>Não há produtos informados para este pedido de serviço.</p>}
-      <p><strong>Valor total: {orderMoney(order.total)}</strong></p>
+              </thead>
+              <tbody>
+                {order.items.map((item) => (
+                  <tr key={item.id}>
+                    <th scope="row">{item.name}</th>
+                    <td>{item.quantity}</td>
+                    <td>{orderMoney(item.unitPrice)}</td>
+                    <td>{orderMoney(item.quantity * item.unitPrice)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : <p>Não há produtos informados para este pedido de serviço.</p>}
+        <p><strong>Valor total: {orderMoney(order.total)}</strong></p>
+      </>}
     </article>
   )
 }
 
-export function MyOrders({ orders, customerId, orderId, search, loading, error, onRetry, demonstration }: Props) {
+export function MyOrders({ orders, customerId, orderId, search, loading, error, requiresLogin, onRetry, demonstration }: Props) {
   const heading = useRef<HTMLHeadingElement>(null)
   useEffect(() => { heading.current?.focus() }, [orderId])
   const failure = error || (!customerId ? 'Entre na sua conta para consultar pedidos.' : '')
   const ownOrders = customerId ? customerOrders(orders, customerId) : []
-  const selected = ownOrders.find((order) => order.id === orderId)
+  const selected = customerId && orderId !== undefined ? customerOrder(orders, customerId, orderId) : undefined
+  const query = search.trim().toLocaleLowerCase('pt-BR')
   const visible = ownOrders.filter((order) =>
-    `${order.id} ${order.title} ${order.category}`
+    `${order.id} ${order.title} ${order.source === 'api' ? '' : order.category}`
       .toLocaleLowerCase('pt-BR')
-      .includes(search.toLocaleLowerCase('pt-BR')),
+      .includes(query),
   )
 
   function renderContent() {
@@ -103,6 +111,7 @@ export function MyOrders({ orders, customerId, orderId, search, loading, error, 
             Tentar novamente
           </button>
         )}
+        {requiresLogin && <Link to="/login" state={{ from: orderId === undefined ? '/pedidos' : `/pedidos/${orderId}` }}>Entrar novamente</Link>}
       </div>
     )
     if (orderId !== undefined) return selected ? <OrderDetails order={selected} /> : (
@@ -115,8 +124,8 @@ export function MyOrders({ orders, customerId, orderId, search, loading, error, 
       <div className="empty-state" role="status">
         <h2>{ownOrders.length ? 'Nenhum pedido encontrado' : 'Você ainda não tem pedidos'}</h2>
         <p>{ownOrders.length
-          ? 'Tente buscar por outro identificador, título ou categoria.'
-          : 'Crie um pedido pelo menu para começar.'}</p>
+          ? demonstration ? 'Tente buscar por outro identificador, título ou categoria.' : 'Tente buscar por outro identificador ou título entre os pedidos recentes.'
+          : demonstration ? 'Crie um pedido pelo menu para começar.' : 'Seus pedidos aparecerão aqui quando estiverem disponíveis.'}</p>
       </div>
     )
     return (
@@ -126,7 +135,7 @@ export function MyOrders({ orders, customerId, orderId, search, loading, error, 
             <h2>Pedido #{order.id} · {order.title}</h2>
             <OrderStatus order={order} />
             <p>Data de realização: {orderDate(order.createdAt)}</p>
-            <p>Valor total: {orderMoney(order.total)}</p>
+            {order.source !== 'api' && <p>Valor total: {orderMoney(order.total)}</p>}
             <Link className="button button-secondary" to={`/pedidos/${order.id}`}
               aria-label={`Ver detalhes do pedido ${order.id}`}>
               Ver detalhes
@@ -145,7 +154,8 @@ export function MyOrders({ orders, customerId, orderId, search, loading, error, 
             {orderId === undefined ? 'Meus pedidos' : 'Detalhes do pedido'}
           </h1>
           <p>{demonstration ? 'Pedidos desta demonstração, incluindo os criados nesta sessão.'
-            : 'Até cinco pedidos recentes. A listagem completa ainda não está disponível na API.'}</p>
+            : orderId !== undefined ? 'Informações do pedido consultado.'
+              : 'Até cinco pedidos recentes. A busca considera apenas os pedidos exibidos.'}</p>
         </div>
       </div>
       {orderId !== undefined && (

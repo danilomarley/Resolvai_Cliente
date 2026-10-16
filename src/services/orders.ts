@@ -9,7 +9,9 @@ export function customerOrders(orders: Order[], customerId: string | null) {
 }
 
 export function customerOrder(orders: Order[], customerId: string | null, id: number | string) {
-  return customerOrders(orders, customerId).find((order) => order.id === id)
+  return customerOrders(orders, customerId).find((order) => order.source === 'api' && typeof id === 'string'
+    ? String(order.id).toLowerCase() === id.toLowerCase()
+    : order.id === id)
 }
 
 export const orderStatus = {
