@@ -66,6 +66,36 @@ test('details show items, subtotals, total, date and return link', () => {
   assert.match(render({ orderId: 1038 }), /Não há produtos informados/)
   assert.equal(orderMoney(0).replace(/\s/g, ''), 'R$0,00')
 })
+const apiOrder = {
+  ...initialOrders[0], id: 'a1', source: 'api', status: 'waiting', proposals: 2,
+  proposalList: [{ id: 'p1', providerName: 'Silva Reformas', status: 'Sent', value: 150, deadline: '3 dias' }],
+}
+test('api orders offer proposals and tracking links by status, demo orders do not', () => {
+  const html = render({ orders: [apiOrder, { ...apiOrder, id: 'a2', status: 'progress', proposals: 0 }] })
+  assert.match(html, /href="\/pedidos\/a1\/propostas"/)
+  assert.match(html, /Ver propostas \(2\)/)
+  assert.match(html, /href="\/pedidos\/a2\/acompanhar"/)
+  assert.doesNotMatch(html, /pedidos\/a2\/propostas/)
+  assert.doesNotMatch(render(), /Acompanhar pedido/)
+})
+test('proposals and tracking views show their content', () => {
+  assert.match(render({ orders: [apiOrder], orderId: 'a1', view: 'propostas' }), /Silva Reformas/)
+  assert.match(render({ orders: [{ ...apiOrder, proposalList: [] }], orderId: 'a1', view: 'propostas' }), /Nenhuma proposta recebida/)
+  const done = { ...apiOrder, status: 'completed', updatedAt: '2026-10-12T12:00:00Z',
+    proposalList: [{ ...apiOrder.proposalList[0], status: 'Chosen' }] }
+  const html = render({ orders: [done], orderId: 'a1', view: 'acompanhar' })
+  assert.match(html, /Informações gerais e histórico/)
+  assert.match(html, /Proposta de Silva Reformas escolhida/)
+  assert.match(html, /Pedido concluído em 12\/10\/2026/)
+  assert.match(render({ orders: [{ ...apiOrder, status: 'progress' }], orderId: 'a1', view: 'acompanhar' }), /Andamento do pedido/)
+})
+test('status filter and pager render only when requested', () => {
+  assert.doesNotMatch(render(), /Filtrar por status/)
+  const html = render({ filter: { value: 'Pending', onChange() {} }, pager: { page: 2, totalPages: 3, onPage() {} } })
+  assert.match(html, /Filtrar por status/)
+  assert.match(html, /Página 2 de 3/)
+  assert.match(render({ pager: { page: 1, totalPages: 1, onPage() {} } }), /^(?!.*Paginação)/s)
+})
 test('empty, search, loading and error states', () => {
   assert.match(render({ orders: [] }), /Você ainda não tem pedidos/)
   assert.match(render({ search: 'inexistente' }), /Nenhum pedido encontrado/)
@@ -101,6 +131,12 @@ test('API details show returned fields, including update date and uppercase UUID
   assert.match(html, /10\/10\/2026/)
   assert.doesNotMatch(html, /Categoria|Localização|Produtos solicitados|Valor total|cinco pedidos/)
   assert.doesNotMatch(render({ orders: [{ ...order, updatedAt: undefined }], orderId: id }), /Última atualização/)
+  const withDetails = toOrder({ ...order, category: 'Pintura', location: 'Fortaleza',
+    status: 'InProgress', photos: [{ id: 'photo', url: 'https://example.invalid/photo.png' }] }, 'demo-customer')
+  const details = render({ orders: [withDetails], orderId: id })
+  assert.match(details, /Pintura/)
+  assert.match(details, /Fortaleza/)
+  assert.match(details, /https:\/\/example.invalid\/photo.png/)
   const list = render({ orders: [order] })
   assert.match(list, new RegExp(`href="/pedidos/${id}"`))
   assert.doesNotMatch(list, /Valor total/)
@@ -109,7 +145,7 @@ test('API details show returned fields, including update date and uppercase UUID
   assert.equal(customerOrder([order], 'other', id.toUpperCase()), undefined)
   assert.match(render({ orders: [order], search: '  Pedido da API  ' }), /Ver detalhes/)
   assert.match(render({ search: '  ' }), /href="\/pedidos\/1042"/)
-  assert.match(render({ orders: [order], search: 'inexistente' }), /entre os pedidos recentes/)
+  assert.match(render({ orders: [order], search: 'inexistente' }), /entre os pedidos desta página/)
 })
 
 test('expired API session offers login and preserves the requested order route', () => {

@@ -23,6 +23,7 @@ const assert = require('node:assert/strict');
       });
       let summaryStatus = 200, detailStatus = 200, profileStatus = 200, registrationStatus = 200, empty = false;
       const registrations = [];
+      const submittedOrders = [];
       await page.route('**/api/v1/**', async route => {
         const request = route.request(), pathname = new URL(request.url()).pathname;
         calls.push(pathname);
@@ -46,6 +47,14 @@ const assert = require('node:assert/strict');
             status = summaryStatus;
             body = status === 200 ? { orders: { total: empty ? 0 : 2, pending: 0,
               inProgress: 0, completed: empty ? 0 : 2, cancelled: 0 }, recentOrders: empty ? [] : [order] } : {};
+          } else if (pathname === '/api/v1/orders' && request.method() === 'POST') {
+            submittedOrders.push(request.postDataJSON());
+            status = 201; body = olderOrder;
+          } else if (pathname === '/api/v1/orders') {
+            const query = new URL(request.url()).searchParams;
+            assert.equal(query.get('page'), '1');
+            assert.equal(query.get('pageSize'), '10');
+            body = { items: empty ? [] : [order, olderOrder], page: 1, pageSize: 10, totalItems: empty ? 0 : 2, totalPages: empty ? 0 : 1 };
           } else if (pathname.toLowerCase() === `/api/v1/orders/${order.id}`) { status = detailStatus; body = status === 200 ? order : {}; }
           else if (pathname === `/api/v1/orders/${olderOrder.id}`) body = olderOrder;
           else { status = 404; body = {}; }
@@ -65,11 +74,12 @@ const assert = require('node:assert/strict');
       await page.locator('.sidebar').getByRole('button', { name: 'Meus pedidos', exact: true }).click();
       await page.getByRole('heading', { name: 'Meus pedidos', exact: true }).waitFor();
       await page.getByRole('heading', { name: new RegExp(order.title) }).waitFor();
-      assert.equal(await page.locator('.my-orders-list article').count(), 1);
+      assert.equal(await page.locator('.my-orders-list article').count(), 2);
+      assert.ok(calls.includes('/api/v1/orders'));
       await page.getByRole('searchbox', { name: 'Buscar pedido' }).fill('  Pedido retornado  ');
       assert.equal(await page.locator('.my-orders-list article').count(), 1);
       await page.getByRole('searchbox', { name: 'Buscar pedido' }).fill('');
-      assert.equal(await page.locator('.status-badge.completed').count(), 1);
+      assert.equal(await page.locator('.status-badge.completed').count(), 2);
       await page.getByRole('link', { name: `Ver detalhes do pedido ${order.id}` }).click();
       await page.getByText(order.description, { exact: true }).waitFor();
       await page.getByText('Última atualização', { exact: true }).waitFor();
@@ -144,6 +154,24 @@ const assert = require('node:assert/strict');
       await settings.getByText('Finalizado', { exact: true }).waitFor();
       assert.equal(await settings.getByLabel('CPF', { exact: true }).count(), 0);
       await settings.getByRole('button', { name: 'Fechar janela', exact: true }).click();
+      await page.locator('.sidebar').getByRole('button', { name: 'Criar pedido', exact: true }).click();
+      await page.getByRole('button', { name: 'Pintura', exact: true }).click();
+      await page.getByLabel('Descreva seu problema').fill('Quero pintar as paredes da sala.');
+      await page.getByRole('button', { name: 'Enviar resposta' }).click();
+      await page.getByRole('button', { name: 'Não sei informar esses detalhes' }).click();
+      await page.getByPlaceholder('Bairro e cidade', { exact: true }).fill('Centro, Fortaleza');
+      await page.getByRole('button', { name: 'Enviar resposta' }).click();
+      await page.getByRole('button', { name: 'Pode esperar', exact: true }).click();
+      await page.getByRole('button', { name: 'Continuar sem fotos', exact: true }).waitFor();
+      assert.equal(await page.locator('input[type="file"]').count(), 0, 'integrated flow must not offer a provider upload');
+      await page.getByRole('button', { name: 'Continuar sem fotos', exact: true }).click();
+      await page.getByRole('button', { name: 'Revisar escopo', exact: true }).click();
+      await page.getByRole('button', { name: 'Publicar pedido', exact: true }).click();
+      await page.getByText(olderOrder.description, { exact: true }).waitFor();
+      assert.equal(submittedOrders.length, 1);
+      assert.deepEqual(submittedOrders[0].fotos, []);
+      assert.equal(submittedOrders[0].categoria, 'Pintura');
+      await page.getByRole('link', { name: 'Voltar para meus pedidos', exact: true }).click();
       summaryStatus = 401;
       await page.reload();
       await page.getByRole('heading', { name: 'Não foi possível carregar sua conta', exact: true }).waitFor();
@@ -169,7 +197,7 @@ const assert = require('node:assert/strict');
       assert.equal(await page.evaluate(() => sessionStorage.getItem('resolvai.api-session')), null);
       assert.deepEqual(providerRequests, [], 'frontend must communicate with the API, never the auth provider');
       assert.deepEqual(errors, []);
-      console.log('PASS API-only session: login without refresh token, reload, expiry, corrupt storage, no provider calls; orders and account settings — ' + executablePath);
+      console.log('PASS API-only session: login, reload, expiry, corrupt storage, no provider calls; paginated orders, creation without attachments and account settings — ' + executablePath);
     } finally { await browser.close(); }
   }
 })().catch(e => { console.error(e); process.exit(1); });
