@@ -34,11 +34,15 @@ O backend verifica o perfil local ativo e limita a consulta ao `sub` do token.
 Pedidos de terceiros e inexistentes retornam o mesmo 404. O frontend mantém
 estados associados ao token para não renderizar a resposta de uma sessão anterior.
 
-O login e cadastro passam pela API para respeitar o perfil local exigido pelo
-backend. Após o login, a sessão continua gerenciada pelo cliente Supabase existente,
-incluindo persistência, renovação e eventos de autenticação. Se a API não devolver
-`refreshToken`, o frontend exibe uma mensagem explícita: essa resposta é válida
-no DTO, mas não permite estabelecer a sessão persistente do cliente Supabase.
+O login e cadastro passam exclusivamente pela API para respeitar o perfil local
+exigido pelo backend. O frontend não possui SDK ou configuração do Supabase.
+Após o login, `sessionStorage` guarda somente `accessToken`, ID do usuário e
+`expiresAtUtc`, preservando a sessão ao recarregar a aba. O frontend não interpreta
+claims nem depende do formato JWT do token. A autorização continua no backend.
+`refreshToken` é opcional e não é utilizado nem persistido: não há endpoint de
+renovação identificado. Ao expirar, a sessão é removida e a aplicação retorna ao
+login, preservando o destino do pedido. Dados de sessão inválidos são descartados.
+Falhas de armazenamento são informadas sem manter uma sessão parcial.
 O cadastro respeita os limites de 200 caracteres para nome, 320 para e-mail e
 8 a 128 para senha. Não envia papel nem confirmação de senha ao backend.
 
@@ -57,8 +61,9 @@ O cadastro respeita os limites de 200 caracteres para nome, 320 para e-mail e
 
 ## Configuração
 
-O `.env.example` contém apenas placeholders públicos. Não copie segredos do
-backend para o frontend.
+O `.env.example` contém somente `API_PROXY_TARGET` e `VITE_API_BASE_URL`.
+Não copie configurações de provedor de autenticação ou segredos do backend para
+o frontend. Sessões antigas do SDK não são reutilizadas; faça login pela API.
 
 Para abrir a aplicação localmente, use `iniciar-prototipo.cmd`. O inicializador
 verifica o SDK .NET 10, inicia a API HTTP local se necessário, aguarda seu documento
@@ -80,9 +85,13 @@ sem acrescentar `/api/v1`, pois o serviço já fornece esse prefixo.
 
 ## Fotos do pedido
 
-O navegador envia as fotos ao bucket `pedidos` do Supabase Storage, dentro da pasta com
-o id do usuário, e a API recebe só as URLs. O bucket e as políticas são criados por
-`docs/sql/bucket-fotos-pedidos.sql`.
+A API de criação recebe `fotos[]` com URLs já hospedadas. Não foi encontrada rota
+para upload de arquivos nos controllers da `main` ou da branch `feat/criar-pedido`
+do backend. O upload direto ao provedor adicionado pela `dev` foi removido para
+manter o frontend independente do Supabase. O fluxo integrado não oferece seleção
+de arquivos e publica com `fotos: []`; fotos já cadastradas são exibidas normalmente.
+O modo demonstrativo mantém anexos em memória. O script SQL de bucket é referência
+de infraestrutura do backend e não é executado nem utilizado pelo frontend.
 
 ## Pendências do backend
 
@@ -129,7 +138,8 @@ usadas para dados da conta do cliente.
 
 ## Validação executada
 
-- `npm test`: aprovado, cobrindo DTOs, quatro status,
+- `npm test`: aprovado, cobrindo sessão da API, expiração,
+  armazenamento inválido ou indisponível, DTOs, quatro status,
   contadores independentes da lista, rotas e corpos exatos, UUIDs, Bearer,
   transporte HTTP local, 401/403/404/409/500, JSON inválido, falha de rede,
   cancelamento e os testes existentes de pedidos.
@@ -140,9 +150,10 @@ usadas para dados da conta do cliente.
   total 12, todos os status, detalhes por UUID fora da Home, retorno, ausência
   de mocks, ausência de consulta redundante ao resumo, 404, 500/retry, conta
   vazia, 401 e layout em 320/390/768/1440 px aprovados; sem exceções JavaScript.
-- Chrome com autenticação interceptada: erro 401, login via API, persistência
-  pelo Supabase, carregamento do perfil e cadastro pelo DTO da API aprovados.
-  O preflight CORS do Supabase também foi simulado. Nenhuma conta foi criada.
+- A validação atual usa somente respostas da API, inclusive login sem refresh
+  token, persistência ao recarregar, expiração, sessão corrompida, pedidos e
+  configurações da conta. Não há simulação de chamadas ao provedor de autenticação;
+  o teste verifica que nenhuma chamada ao provedor ocorre.
 
 Não havia API local na porta documentada nem URL de implantação fornecida.
 Assim, não foi validada a conexão com banco real, credenciais reais ou a migração

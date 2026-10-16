@@ -9,7 +9,7 @@ O nome ilustrativo Ygor e os pedidos de exemplo pertencem somente ao modo
 demonstrativo. A integração não usa esses dados como fallback.
 O HTML abre diretamente pelo navegador em Windows, macOS ou Linux, sem servidor.
 Não contém credenciais do banco, chaves administrativas ou configurações privadas
-do backend. O build substitui a configuração pública do Supabase por placeholders.
+do backend. O frontend não usa SDK ou configuração de provedor de autenticação.
 
 Os fluxos demonstrativos reutilizam os componentes já existentes. Não foram
 criados endpoints fictícios na API. O modo integrado continua separado e os

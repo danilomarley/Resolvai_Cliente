@@ -7,8 +7,6 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const output = resolve(root, 'dist-demo')
 await build({ root, mode: 'demo', base: './',
   define: {
-    'import.meta.env.VITE_SUPABASE_URL': JSON.stringify('https://demo.invalid'),
-    'import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY': JSON.stringify('demo-public-key'),
     'import.meta.env.VITE_API_BASE_URL': JSON.stringify(''),
   },
   build: { outDir: output, assetsInlineLimit: Number.MAX_SAFE_INTEGER },

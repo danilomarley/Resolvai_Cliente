@@ -174,7 +174,8 @@ export function OrderAssistant({
       detailPrompts[draft.category],
       'Em qual bairro e cidade o serviço será realizado? Você pode usar o local do seu perfil ou informar outro.',
       'Qual é o nível de urgência do serviço?',
-      'Quer incluir fotos do local? Elas ajudam o profissional a entender seu pedido. Você também pode continuar sem fotos.',
+      demo ? 'Quer incluir fotos do local? Elas ajudam o profissional a entender seu pedido. Você também pode continuar sem fotos.'
+        : 'O envio de fotos ainda não está disponível. Você pode continuar e publicar seu pedido sem fotos.',
     ][step]
     setMessages((current) => [
       ...current,
@@ -418,6 +419,7 @@ export function OrderAssistant({
               )}
               {step === 5 && (
                 <div className="assistant-upload">
+                  {demo ? <>
                   <label htmlFor="scope-photos">
                     Fotos do local{' '}
                     <span>
@@ -464,6 +466,7 @@ export function OrderAssistant({
                       }))
                     }
                   />
+                  </> : <p>O envio de fotos ainda não está disponível. Continue para revisar o pedido sem anexos.</p>}
                   <button
                     className="button button-secondary"
                     onClick={finishPhotos}

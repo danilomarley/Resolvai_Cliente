@@ -4,7 +4,6 @@ import { MyOrders } from '../MyOrders'
 import { useCustomerSession } from '../../services/useCustomerSession'
 import { useDashboardData, useOrderDetail, useOrdersList } from '../../services/useDashboardData'
 import { createOrder, toOrder, type OrderStatusDto } from '../../services/dashboardApi'
-import { uploadOrderPhotos } from '../../services/orderPhotos'
 import { Icon } from '../../components/Icon'
 import { Modal } from '../../components/Modal'
 import { AccountSettings } from '../../components/AccountSettings'
@@ -47,11 +46,14 @@ export function Dashboard() {
   }
   async function publishOrder(order: NewOrder) {
     if (!session.accessToken || !session.customerId) return
+    if (order.scope.photos.length) {
+      setSubmitError('O envio de fotos ainda não está disponível. Remova os anexos para publicar o pedido.')
+      return
+    }
     setSubmitting(true)
     setSubmitError('')
     try {
-      const photoUrls = await uploadOrderPhotos(order.scope.photos, session.customerId)
-      const created = await createOrder(session.accessToken, order, photoUrls)
+      const created = await createOrder(session.accessToken, order, [])
       setDialog(null)
       dashboard.retry()
       routerNavigate(`/pedidos/${created.id}`)

@@ -58,11 +58,17 @@ npm run dev
 
 Abra o endereço local exibido pelo Vite.
 
-Para integrar a API oficial, mantenha as variáveis públicas do Supabase e configure
+Para integrar a API oficial, configure apenas a URL da API usando
 `API_PROXY_TARGET` no `.env.local` (padrão: `http://localhost:5172`). Inicie o backend
 separadamente. O Vite encaminha `/api` ao backend, sem exigir CORS no desenvolvimento.
 Consulte [docs/INTEGRACAO_API.md](docs/INTEGRACAO_API.md) e `.env.example` para a
 configuração de produção e os endpoints usados. Reinicie o Vite após alterar variáveis.
+
+O frontend autentica exclusivamente por `POST /api/v1/auth/login` e cadastra por
+`POST /api/v1/auth/register`. A sessão usa o token e a validade retornados pela API,
+mantidos em `sessionStorage` durante a aba atual, inclusive ao recarregar a página.
+Ao expirar, é necessário entrar novamente; não há rota de renovação identificada.
+O frontend não usa SDK, URL ou chave pública de provedor de autenticação.
 
 Se preferir iniciar os serviços manualmente, abra outro terminal na pasta
 `ResolvAI` e execute:
@@ -118,6 +124,7 @@ Esse fluxo permite uma única finalização. Consulte o guia de integração par
 
 ### Fotos dos pedidos
 
-As fotos do pedido são enviadas pelo navegador ao bucket `pedidos` do Supabase Storage
-e a API recebe apenas as URLs. Para criar o bucket e as políticas de acesso, rode uma
-vez o script `docs/sql/bucket-fotos-pedidos.sql` no SQL Editor do projeto.
+A API aceita URLs de fotos já hospedadas, mas ainda não oferece upload de arquivos.
+Por isso, o envio de anexos fica indisponível no fluxo integrado; pedidos podem ser
+publicados sem fotos. Fotos retornadas pela API continuam visíveis nos detalhes.
+O frontend não acessa serviços de armazenamento diretamente.

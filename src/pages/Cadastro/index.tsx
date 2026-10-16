@@ -28,7 +28,7 @@ export function Cadastro() {
     try {
       setLoading(true);
       
-      // A API cria a identidade Supabase e o perfil local exigido pela autorização.
+      // A API é responsável pela criação e autenticação da conta.
       if (!demoMode) await register(name, email, password);
 
       // Se o registo for um sucesso, redireciona o utilizador para fazer o login
