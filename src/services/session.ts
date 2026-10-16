@@ -37,5 +37,5 @@ export function createSessionStore(storage: () => SessionStorage, now = Date.now
   }
 }
 
-// Access is deferred so importing the app in demo/SSR does not require browser storage.
+// Access is deferred until the browser session is used.
 export const customerSession = createSessionStore(() => window.sessionStorage)

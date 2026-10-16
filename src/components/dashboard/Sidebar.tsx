@@ -10,7 +10,6 @@ type SidebarProps = {
   navigate: (label: string, target?: Dialog) => void
   openDialog: (dialog: Dialog) => void
   profile: Profile
-  unread: boolean
 }
 
 export function Sidebar({
@@ -20,7 +19,6 @@ export function Sidebar({
   navigate,
   openDialog,
   profile,
-  unread,
 }: SidebarProps) {
   const sidebarRef = useRef<HTMLElement>(null)
   useEffect(() => {
@@ -54,7 +52,6 @@ export function Sidebar({
     label: string,
     icon: IconName,
     target?: Dialog,
-    badge?: string,
   ) {
     return (
       <button
@@ -64,7 +61,6 @@ export function Sidebar({
       >
         <Icon name={icon} />
         <span>{label}</span>
-        {badge && <span className="nav-badge">{badge}</span>}
       </button>
     )
   }
@@ -100,12 +96,7 @@ export function Sidebar({
             {navItem('Visão geral', 'grid')}
             {navItem('Criar pedido', 'plus', 'create')}
             {navItem('Meus pedidos', 'bag')}
-            {navItem(
-              'Propostas',
-              'file',
-              'proposals',
-              unread ? '3' : undefined,
-            )}
+            {navItem('Propostas', 'file', 'proposals')}
             {navItem('Mensagens', 'chat', 'messages')}
             <p className="nav-label management-label">GERENCIAMENTO</p>
             {navItem('Contratos', 'shield', 'contracts')}

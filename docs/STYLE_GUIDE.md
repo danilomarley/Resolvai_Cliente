@@ -77,25 +77,15 @@ Quatro cartões: pedidos ativos, propostas recebidas, serviços concluídos e av
 
 Substituir a tabela densa por cartões com categoria, título, localização, status textual e ação. Filtros: Todos, Aguardando propostas e Em andamento. Busca por título ou categoria, com estado vazio e opção de limpar filtros. As abas aceitam setas, Home e End.
 
-Serviços concluídos exibem profissional, valor e nota. O histórico permite consultar as três demonstrações completas.
+Serviços concluídos exibem somente as informações fornecidas pela API.
 
 ### Formulários e diálogos
 
 Usar `dialog` nativo, nome acessível, fechamento por Escape e retorno do foco ao controle de origem. Inputs com rótulos, campos obrigatórios e limite de caracteres. Formulários e mensagens apresentam retorno visual das ações.
 
-### Criação de pedido com IA simulada
+### Criação de pedido
 
-Seguir o fluxo de `cliente-web.html`: conversa guiada e painel “Escopo em construção”, seguidos de uma tela de revisão. Essa jornada usa uma página própria, e não o formulário simples em um modal.
-
-Chamar a ação de **“Criar pedido”** no menu, no botão principal e no cabeçalho. A assistência faz parte de toda criação; não apresentar um modo separado “com IA”. A indicação “IA simulada” fica dentro da jornada para explicar o funcionamento desta demonstração.
-
-1. Escolher categoria e descrever o problema.
-2. Informar detalhes do ambiente (ou indicar que não sabe), localização e urgência.
-3. Anexar até quatro fotos JPG, PNG ou WebP de até 5 MB cada, ou continuar sem fotos.
-4. Revisar título, descrição, categoria, localização, urgência e sugestão de escopo. Todos esses dados são editáveis; voltar à conversa não descarta as edições da revisão.
-5. Publicar o pedido apenas na sessão da demonstração. O acompanhamento preserva o escopo revisado e as fotos.
-
-Exibir “IA simulada” e explicar que as perguntas e sugestões são predefinidas. Não indicar que uma IA analisou fotos ou produziu um diagnóstico. Usar escopos ilustrativos por categoria, sujeitos à confirmação com o profissional. Conversa e resumo ficam lado a lado no desktop e empilhados em telas menores.
+Usar um formulário vazio com rótulos, campos obrigatórios e limites de caracteres. A publicação envia os dados à API. Durante o envio, impedir alterações e submissões repetidas. Em caso de falha, manter o preenchimento e exibir a mensagem.
 
 ## Responsividade
 
@@ -108,35 +98,8 @@ Exibir “IA simulada” e explicar que as perguntas e sugestões são predefini
 
 Validado sem rolagem horizontal em 320, 375, 390, 560, 760, 768, 1024, 1280, 1440 e 1920 px.
 
-## Escopo da demonstração
+## Organização e validação
 
-O projeto contém a interface do contratante, com dados ilustrativos em [`src/data/dashboard.ts`](../src/data/dashboard.ts). Criação de pedido, edição do perfil e mensagens modificam somente o estado da sessão e são descartadas ao recarregar a página.
+Os estilos globais ficam em `src/styles/`. O formulário usa `src/components/OrderForm.css`, e a lista de pedidos usa `src/pages/MyOrders.css`. Os componentes consultam os serviços em `src/services/`, e os tipos ficam em `src/types/`.
 
-IA, autenticação, envio a profissionais, contratação, assinatura de contratos e pagamentos reais dependem de integração futura. Os pontos em que isso afeta uma decisão do usuário apresentam uma explicação. Nenhum botão dispara cobranças ou mensagens externas.
-
-## Validação realizada
-
-- Build de produção com TypeScript e Vite; lint com ESLint.
-- Chrome automatizado: busca, filtros e teclado nas abas; criação de pedido e atualização do total; propostas, acompanhamento, notificações, perfil, mensagens e navegação.
-- Diálogos: fechamento por Escape e restauração do foco.
-- Verificação automática com axe-core para WCAG 2 A/AA e 2.1 AA, sem violações nas verificações do dashboard desktop, dashboard mobile e formulário de pedido. Essa verificação não substitui uma auditoria completa de acessibilidade.
-- Capturas desktop e mobile revisadas visualmente.
-- Conversa guiada, validação de respostas, detalhes e fotos opcionais, revisão editável, retorno à conversa e publicação com preservação de escopo e fotos verificados no Chrome. Verificação axe-core sem violações na conversa desktop/mobile e na revisão.
-
-## Organização dos estilos
-
-Os estilos estão separados por responsabilidade, com as regras responsivas junto de cada parte:
-
-- `src/styles/global.css`: reset, tipografia, controles, foco e redução de movimento.
-- `src/styles/layout.css`: estrutura da página, barra lateral e cabeçalho. A variável `--sidebar-width` mantém a largura do menu e o deslocamento do conteúdo sincronizados.
-- `src/styles/controls.css`: botões, painéis, ícones e estados compartilhados.
-- `src/styles/dashboard.css`: saudação, banner, grade principal e rodapé.
-- `src/styles/dashboard-cards.css`: indicadores e serviços concluídos.
-- `src/styles/orders.css`: filtros e cartões de pedidos.
-- `src/styles/dialogs.css`: diálogos, formulários, mensagens e avisos.
-- `src/components/OrderAssistant.css`: conversa e navegação da criação do pedido.
-- `src/components/OrderScope.css`: resumo, fotos e revisão do escopo; importado pelo CSS do assistente.
-
-A ordem de carregamento está definida em `src/main.tsx`.
-
-O `src/App.tsx` coordena os dados da sessão e a navegação. Os componentes em `src/components/dashboard/` organizam a barra lateral (`Sidebar`), a visão geral (`DashboardOverview`), os filtros e pedidos (`OrdersPanel`) e os diálogos (`DashboardDialogs`). Os tipos compartilhados ficam em `src/types/dashboard.ts`. Mensagens, rascunho e interesse em propostas permanecem no componente de diálogos, que continua montado mesmo quando nenhuma janela está aberta.
+Validar alterações com lint, testes e build. A verificação das jornadas de autenticação, cadastro e publicação depende de uma API real disponível.

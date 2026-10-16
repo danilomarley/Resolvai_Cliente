@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import "../../styles/login.css"; 
 import { Icon } from "../../components/Icon"; 
 import { register } from '../../services/dashboardApi';
-import { demoMode } from '../../services/appMode';
 
 export function Cadastro() {
   const navigate = useNavigate();
@@ -29,7 +28,7 @@ export function Cadastro() {
       setLoading(true);
       
       // A API é responsável pela criação e autenticação da conta.
-      if (!demoMode) await register(name, email, password);
+      await register(name, email, password);
 
       // Se o registo for um sucesso, redireciona o utilizador para fazer o login
       navigate("/login");
@@ -51,7 +50,6 @@ export function Cadastro() {
           </div>
           <p>Crie sua conta para começar a resolver.</p>
         </header>
-        {demoMode && <p className="demo-banner">Cadastro demonstrativo. Use dados fictícios; nenhuma conta será criada na API.</p>}
 
         <form onSubmit={handleRegister} className="login-form">
           {/* Mensagem de Erro */}
