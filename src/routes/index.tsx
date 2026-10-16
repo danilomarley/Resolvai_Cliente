@@ -1,29 +1,23 @@
-import { BrowserRouter, HashRouter, Routes, Route } from "react-router-dom";
-import { DemoDashboard } from '../pages/Demo';
-import { demoMode } from '../services/appMode';
-import { DemoStateProvider } from '../components/DemoStateProvider';
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Login } from "../pages/Login";
 import { Dashboard } from "../pages/Dashboard";
 import { Cadastro } from "../pages/Cadastro";
 import { CompleteRegistration } from "../pages/CompleteRegistration";
 
 export function AppRoutes() {
-  const demo = demoMode;
-  const Router = demo ? HashRouter : BrowserRouter;
-  const content = (
-    <Router>
+  return (
+    <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/cadastro" element={<Cadastro />} />
         <Route path="/complemento-cadastro" element={<CompleteRegistration />} />
-        <Route path="/" element={demo ? <DemoDashboard /> : <Dashboard />}>
+        <Route path="/" element={<Dashboard />}>
           <Route path="pedidos" element={null} />
           <Route path="pedidos/:orderId" element={null} />
           <Route path="pedidos/:orderId/propostas" element={null} />
           <Route path="pedidos/:orderId/acompanhar" element={null} />
         </Route>
       </Routes>
-    </Router>
+    </BrowserRouter>
   );
-  return demo ? <DemoStateProvider>{content}</DemoStateProvider> : content;
 }

@@ -1,5 +1,5 @@
 import { Icon } from '../Icon'
-import type { Order } from '../../data/dashboard'
+import type { Order } from '../../types/orders'
 import type { Dialog, Tab } from '../../types/dashboard'
 import { orderDate, orderStatusLabel } from '../../services/orders'
 
@@ -142,16 +142,7 @@ export function OrdersPanel({
                     }
                     size={15}
                   />
-                  {order.source === 'api' ? <span>Criado em {orderDate(order.createdAt)}</span> : order.status === 'waiting' ? (
-                    <>
-                      <strong>{order.proposals} propostas</strong>{' '}
-                      recebidas
-                    </>
-                  ) : (
-                    <>
-                      Previsão: <strong>{order.deadline}</strong>
-                    </>
-                  )}
+                  <span>Criado em {orderDate(order.createdAt)}</span>
                 </span>
                 <button
                   className={`button ${order.status === 'waiting' && order.proposals ? 'button-primary' : 'button-secondary'} button-sm`}
@@ -164,9 +155,7 @@ export function OrdersPanel({
                     )
                   }
                 >
-                  {order.source === 'api' ? 'Ver detalhes' : order.status === 'waiting' && order.proposals
-                    ? 'Ver propostas'
-                    : 'Acompanhar'}
+                  Ver detalhes
                   <Icon name="arrow" size={15} />
                 </button>
               </div>

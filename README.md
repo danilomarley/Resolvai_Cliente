@@ -1,89 +1,38 @@
-# ResolvAI: Portal do contratante
+# ResolvAI: portal do contratante
 
-Dashboard responsivo em React, TypeScript e Vite, baseado no protótipo do contratante. Usa Rajdhani e a paleta de azul, azul escuro, laranja e branco frio.
+Frontend em React, TypeScript e Vite. Login, cadastro, perfil, resumo, pedidos e propostas usam a API do ResolvAI. Quando a API falha, a interface exibe o erro. Uma conta sem pedidos apresenta uma lista vazia.
 
-## Executar
+## Executar neste PC sem .NET
 
-### Acesso rápido
+Configure uma API acessível em `Resolvai_Cliente/.env.local`:
 
-Abra **`iniciar-prototipo.cmd`** com dois cliques. Ele inicia a API e o frontend
-e abre o **login real**. Use sua conta: nome, resumo e pedidos vêm da API e
-pertencem ao usuário autenticado. Uma conta sem pedidos mostra a lista vazia.
-
-Para abrir os fluxos fictícios, execute explicitamente
-`iniciar-prototipo.cmd --demo` ou abra `apresentacao/ResolvAI.html`.
-Nesse modo, use dados fictícios e os menus da demonstração.
-A apresentação funciona sem internet, Node, .NET,
-backend ou credenciais. Fontes, logo, estilos e scripts estão embutidos no HTML.
-
-O modo de demonstração permite criar pedidos com conversa guiada, consultar
-pedidos e detalhes, comparar propostas, registrar interesse, enviar mensagens
-locais, consultar contratos, pagamentos e avaliações e editar o perfil. O aviso
-de demonstração permanece visível: os dados são fictícios e as alterações duram
-enquanto a página estiver aberta. Não efetua contratação ou pagamento real.
-
-Para gerar novamente: `npm ci` e `npm run build:presentation`.
-O resultado fica em `apresentacao/ResolvAI.html`. A opção `--demo` abre esse arquivo.
-
-O aviso da demonstração inclui links de **Login** e **Criar conta**. Essas telas usam
-dados fictícios nesse modo e não dependem da API. Alternar entre elas e a Home
-mantém os pedidos criados, perfil, mensagens e notificações da sessão.
-
-Na versão web integrada, clique em **Demonstração interativa** ou use `/?demo=1#/`
-para apresentar os mesmos fluxos sem depender da API. Esse modo é explícito e
-não substitui as respostas da API por mocks quando ela falha.
-
-### Abrir com dois cliques no Windows
-
-Para usar a API real, execute **`iniciar-prototipo.cmd`** sem argumentos. Ele inicia o backend, aguarda a API ficar pronta, inicia o frontend e abre a tela de login no navegador. Se a API já estiver rodando, ela será reutilizada. Para abrir o cadastro, clique em **“Crie uma agora”**. Mantenha essa única janela aberta enquanto usa a integração e pressione `Ctrl+C` para encerrar os serviços iniciados por ela.
-
-É necessário ter o **SDK .NET 10**, Node.js e a pasta `Resolvai_Backend` ao lado
-de `Resolvai_Cliente`. O backend precisa ter sua configuração de banco e Supabase
-preparada. Se algum requisito faltar, o CMD informa o problema e mantém a janela
-aberta. Os arquivos gerados pela compilação do backend ficam na pasta temporária
-do Windows, sem alterar o repositório backend.
-
-O arquivo usa o Node.js instalado no computador ou, neste workspace, a versão portátil em `../.tools/node.exe`. Em uma nova instalação, prepare as dependências com `npm ci` antes de executá-lo. O inicializador tenta a porta `5173`, com cores de terminal desativadas para evitar caracteres estranhos. Se ela estiver ocupada, o Vite escolhe outra porta livre e abre o endereço correto automaticamente. Use o endereço exibido na janela do inicializador.
-
-A mensagem `Re-optimizing dependencies because lockfile has changed` é normal após uma alteração no `package-lock.json`: o Vite está atualizando o cache das dependências.
-
-### Abrir pelo terminal
-
-Requer Node.js 20.19+ ou 22.12+ e npm.
-
-```sh
-npm ci
-npm run dev
+```env
+API_PROXY_TARGET=http://ENDERECO-DA-API:5172
 ```
 
-Abra o endereço local exibido pelo Vite.
-
-Para integrar a API oficial, configure apenas a URL da API usando
-`API_PROXY_TARGET` no `.env.local` (padrão: `http://localhost:5172`). Inicie o backend
-separadamente. O Vite encaminha `/api` ao backend, sem exigir CORS no desenvolvimento.
-Consulte [docs/INTEGRACAO_API.md](docs/INTEGRACAO_API.md) e `.env.example` para a
-configuração de produção e os endpoints usados. Reinicie o Vite após alterar variáveis.
-
-O frontend autentica exclusivamente por `POST /api/v1/auth/login` e cadastra por
-`POST /api/v1/auth/register`. A sessão usa o token e a validade retornados pela API,
-mantidos em `sessionStorage` durante a aba atual, inclusive ao recarregar a página.
-Ao expirar, é necessário entrar novamente; não há rota de renovação identificada.
-O frontend não usa SDK, URL ou chave pública de provedor de autenticação.
-
-Se preferir iniciar os serviços manualmente, abra outro terminal na pasta
-`ResolvAI` e execute:
+Abra o terminal na pasta `Resolvai_Cliente` e execute:
 
 ```powershell
-dotnet run --project Resolvai_Backend/src/Resolvai.Api --launch-profile http
+.\iniciar-prototipo.cmd --front
 ```
 
-Nesse modo manual, mantenha os dois terminais abertos. A API deve indicar que está ouvindo em
-`http://localhost:5172`. Se ela não iniciar, confira sua configuração conforme o
-guia do backend. O CMD faz essa inicialização automaticamente para a API HTTP local.
+Essa opção inicia somente o frontend e abre o login. Mantenha o terminal aberto. Use `Ctrl+C` para encerrar. Login, cadastro e consultas exigem que a API configurada esteja disponível na rede.
 
-Para abrir o navegador automaticamente pelo terminal, use `npm run dev -- --open`.
+Também é possível iniciar pelo terminal com `npm run dev` e abrir o endereço exibido pelo Vite. O `index.html` da raiz precisa ser servido pelo Vite.
 
-## Verificar
+## Executar com backend local
+
+Execute `iniciar-prototipo.cmd` sem argumentos. O inicializador reutiliza uma API local existente ou inicia o projeto `Resolvai_Backend` ao lado de `Resolvai_Cliente`. Para iniciar o backend, é necessário o SDK .NET 10 e a configuração descrita na documentação do backend.
+
+## Requisitos
+
+Node.js 20.19+ ou 22.12+ e npm para o frontend. Os testes requerem Node.js 22.15+ por utilizarem `registerHooks`. As dependências deste PC já foram instaladas. Em uma nova instalação, execute `npm ci`.
+
+## Configuração e produção
+
+O `.env.example` contém `API_PROXY_TARGET` e `VITE_API_BASE_URL`. Reinicie o Vite após alterar a configuração.
+
+No desenvolvimento, o Vite encaminha `/api` ao endereço de `API_PROXY_TARGET`. Em produção, `VITE_API_BASE_URL` vazio utiliza um proxy reverso na mesma origem. Uma API em outra origem exige configuração de CORS no backend. O proxy do Vite não faz parte do build de produção.
 
 ```sh
 npm run lint
@@ -92,39 +41,24 @@ npm run build
 npm run preview
 ```
 
-## Guia visual
+`npm run preview` serve o build; para usar a API nessa modalidade, configure `VITE_API_BASE_URL` antes de compilar ou use uma hospedagem com proxy reverso.
 
-Consulte [docs/STYLE_GUIDE.md](docs/STYLE_GUIDE.md) para cores, tipografia, botões, componentes, acessibilidade e regras responsivas da [issue #31](https://github.com/danilomarley/Resolvai_Cliente/issues/31).
+## Funcionalidades
 
-- `src/styles/variables.css`: tokens de identidade visual.
-- `src/styles/global.css`: estilos e adaptações responsivas.
-- `src/components/`: ícones, ilustração e diálogo acessível.
-- `src/components/OrderAssistant.tsx`: conversa demonstrativa para criação e revisão do escopo.
-- `src/data/dashboard.ts`: dados de demonstração.
-- `src/App.tsx`: rotas da aplicação.
-- `src/pages/Dashboard/`: dashboard integrado ao resumo e perfil da API.
-- `src/services/api.ts` e `dashboardApi.ts`: transporte HTTP, DTOs e adaptação dos dados.
+- Autenticação e cadastro pela API.
+- Consulta do perfil e finalização de cadastro com CPF, endereço e contato.
+- Resumo da conta, busca nos registros carregados e filtros de pedidos recentes.
+- Lista de pedidos paginada, detalhes, propostas e acompanhamento.
+- Formulário de criação de pedido com campos inicialmente vazios e publicação pela API.
 
-## Funcionalidades da demonstração
+O backend precisa disponibilizar os endpoints correspondentes. Recuperação de senha, pagamentos, mensagens, avaliações, contratos e IA ainda não possuem integração; a interface informa a indisponibilidade. O envio de arquivos depende de um endpoint de upload. Fotos já retornadas pela API continuam visíveis nos detalhes.
 
-Busca e filtros de pedidos, criação de pedido com assistente simulado, consulta de propostas, acompanhamento de serviço, histórico, notificações, edição de perfil, conversa local e central de ajuda.
+## Organização
 
-O fluxo “Criar pedido” segue o protótipo original: categoria, problema, detalhes do ambiente, localização, urgência e fotos opcionais. O escopo aparece durante a conversa e pode ser editado na revisão antes de publicar. As perguntas e sugestões são predefinidas, sem IA conectada. O pedido criado preserva as informações e as fotos na sessão.
+- `src/services/`: comunicação com a API e sessão.
+- `src/types/orders.ts`: tipos de pedidos e propostas.
+- `src/components/OrderForm.tsx`: formulário de criação de pedido.
+- `src/pages/Dashboard/`: tela integrada à conta autenticada.
+- `tests/frontend.test.mjs`: verificações sem contas ou respostas HTTP pré-fabricadas.
 
-O dashboard, o perfil, o login, o cadastro, a finalização de cadastro, a criação de
-pedido e a tela Meus pedidos usam a API oficial. Os contadores da Home abrangem toda a
-conta e a lista de Meus pedidos é paginada, com filtro por status, propostas recebidas e
-acompanhamento. Avaliações, pagamentos, mensagens e IA ainda não possuem endpoints.
-Os componentes antigos de demonstração permanecem no código, mas seus dados não
-aparecem na tela integrada.
-
-As configurações da conta permitem finalizar o cadastro com CPF, endereço e contato,
-usando a rota do card #26; o backend precisa incluir a branch `feature/complemento-cadastro`.
-Esse fluxo permite uma única finalização. Consulte o guia de integração para as limitações.
-
-### Fotos dos pedidos
-
-A API aceita URLs de fotos já hospedadas, mas ainda não oferece upload de arquivos.
-Por isso, o envio de anexos fica indisponível no fluxo integrado; pedidos podem ser
-publicados sem fotos. Fotos retornadas pela API continuam visíveis nos detalhes.
-O frontend não acessa serviços de armazenamento diretamente.
+Consulte [integração com a API](docs/INTEGRACAO_API.md), [Meus pedidos](docs/MEUS_PEDIDOS.md) e [guia visual](docs/STYLE_GUIDE.md).

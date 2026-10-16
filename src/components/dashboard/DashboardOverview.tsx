@@ -1,7 +1,7 @@
-﻿import { Icon, type IconName } from '../Icon'
+import { Icon, type IconName } from '../Icon'
 import { HouseIllustration } from '../HouseIllustration'
 import { OrdersPanel } from './OrdersPanel'
-import type { Order } from '../../data/dashboard'
+import type { Order } from '../../types/orders'
 import type { Dialog, Profile, Tab } from '../../types/dashboard'
 import type { HomeSummary } from '../../services/dashboardApi'
 
