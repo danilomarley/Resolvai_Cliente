@@ -112,6 +112,10 @@ acompanhamento. Avaliações, pagamentos, mensagens e IA ainda não possuem endp
 Os componentes antigos de demonstração permanecem no código, mas seus dados não
 aparecem na tela integrada.
 
+As configurações da conta permitem finalizar o cadastro com CPF, endereço e contato,
+usando a rota do card #26; o backend precisa incluir a branch `feature/complemento-cadastro`.
+Esse fluxo permite uma única finalização. Consulte o guia de integração para as limitações.
+
 ### Fotos dos pedidos
 
 As fotos do pedido são enviadas pelo navegador ao bucket `pedidos` do Supabase Storage

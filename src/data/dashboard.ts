@@ -22,6 +22,7 @@ export type Order = {
   source?: 'api'
   customerId: string
   createdAt?: string
+  updatedAt?: string
   total?: number
   items?: { id: string; name: string; quantity: number; unitPrice: number }[]
   title: string
@@ -33,7 +34,6 @@ export type Order = {
   icon: IconName
   description: string
   scope?: OrderScope
-  updatedAt?: string
   chosenProposalValue?: number
   proposalList?: OrderProposal[]
   photoUrls?: string[]

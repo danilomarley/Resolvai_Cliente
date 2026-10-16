@@ -7,6 +7,7 @@ import { createOrder, toOrder, type OrderStatusDto } from '../../services/dashbo
 import { uploadOrderPhotos } from '../../services/orderPhotos'
 import { Icon } from '../../components/Icon'
 import { Modal } from '../../components/Modal'
+import { AccountSettings } from '../../components/AccountSettings'
 import { OrderAssistant, type NewOrder } from '../../components/OrderAssistant'
 import { Sidebar } from '../../components/dashboard/Sidebar'
 import { DashboardOverview } from '../../components/dashboard/DashboardOverview'
@@ -117,6 +118,7 @@ export function Dashboard() {
               customerId={session.customerId} search={search} orderId={orderId} view={orderView}
               loading={orderId ? detail.loading : ordersList.loading}
               error={orderId ? (detail.error?.status === 404 ? undefined : detail.error?.message) : ordersList.error?.message}
+              requiresLogin={(orderId ? detail.error : ordersList.error)?.status === 401}
               onRetry={orderId ? detail.retry : ordersList.retry}
               filter={orderId ? undefined : { value: statusFilter, onChange: (value) => { setStatusFilter(value); setPage(1) } }}
               pager={orderId || !ordersList.data ? undefined : { page, totalPages: ordersList.data.totalPages, onPage: setPage }} />
@@ -128,11 +130,10 @@ export function Dashboard() {
       {notice && <div className="toast" role="status"><span>{notice}</span>
         <button className="icon-button" onClick={() => setNotice('')} aria-label="Dispensar aviso"><Icon name="close" size={17} /></button>
       </div>}
-      {dialog && dialog !== 'create' && <Modal title={dialog === 'profile' ? 'Meu perfil' : 'Central de ajuda'} onClose={() => setDialog(null)}>
-        {dialog === 'profile' ? <div className="dialog-stack"><h3>{profile.name}</h3>
-          <p>{dashboard.data?.user.email}</p><p>Perfil: {dashboard.data?.user.role}</p>
-          <p>A edição do perfil ainda não está disponível na API.</p></div>
-          : <p>Consulte o resumo da conta e abra um pedido para ver seus detalhes. A API retorna os cinco pedidos mais recentes. Criação e outras operações ainda não estão disponíveis.</p>}
+      {dialog && dialog !== 'create' && <Modal title={dialog === 'profile' ? 'Configurações da conta' : 'Central de ajuda'} onClose={() => setDialog(null)}>
+        {dialog === 'profile' ? <AccountSettings key={`${session.customerId}:${session.accessToken}`}
+          token={session.accessToken} customerId={session.customerId} onCompleted={dashboard.retry} />
+          : <p>Consulte o resumo da conta, finalize seu cadastro nas configurações e crie pedidos. Em Meus pedidos, filtre por status e consulte detalhes, propostas e acompanhamento.</p>}
       </Modal>}
     </div>
   )

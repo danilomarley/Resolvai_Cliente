@@ -45,7 +45,7 @@ export function parseUser(value: unknown): UserDto {
   if (!object(value) || typeof value.id !== 'string' || !isUuid(value.id)
     || typeof value.name !== 'string' || typeof value.email !== 'string' || typeof value.role !== 'string'
     || typeof value.isActive !== 'boolean' || !date(value.createdAt)
-    || value.cpf !== undefined && value.cpf !== null && typeof value.cpf !== 'string') throw invalid()
+    || value.cpf !== undefined && value.cpf !== null && (typeof value.cpf !== 'string' || !/^(\d{11}|\d{3}\.\d{3}\.\d{3}-\d{2})$/.test(value.cpf))) throw invalid()
   return value as UserDto
 }
 export function parseDetail(value: unknown): OrderDto & { description: string } {
