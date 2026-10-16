@@ -2,15 +2,6 @@
 setlocal
 cd /d "%~dp0"
 title ResolvAI - Prototipo local
-if /I "%~1"=="--demo" (
-  if exist "%~dp0apresentacao\ResolvAI.html" (
-    start "" "%~dp0apresentacao\ResolvAI.html"
-    exit /b 0
-  )
-  echo Demonstracao nao gerada. Execute: npm run build:presentation
-  pause
-  exit /b 1
-)
 set "NO_COLOR=1"
 set "FORCE_COLOR="
 
@@ -34,7 +25,7 @@ if not exist "node_modules\vite\bin\vite.js" (
   exit /b 1
 )
 
-"%RESOLVAI_NODE%" "%~dp0scripts\start-prototype.mjs"
+"%RESOLVAI_NODE%" "%~dp0scripts\start-prototype.mjs" %*
 if errorlevel 1 (
   echo.
   echo Nao foi possivel iniciar o prototipo. Veja o motivo acima.

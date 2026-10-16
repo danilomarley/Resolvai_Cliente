@@ -24,7 +24,6 @@ export function createApiClient(baseUrl: string, fetcher: typeof fetch = fetch) 
         let detail: unknown
         try { detail = (await response.json()).detail } catch { /* Some hosts return an empty 401. */ }
         const reasons: Record<string, string> = {
-          'Usuário autenticado no Supabase sem perfil local.': 'Sua conta foi autenticada, mas não possui um perfil no backend. Solicite a regularização do cadastro ao responsável pelo projeto.',
           'Usuário inativo.': 'Sua conta está inativa. Solicite a ativação ao responsável pelo projeto.',
         }
         throw new ApiError(401, typeof detail === 'string' && reasons[detail]
@@ -49,7 +48,7 @@ export function createApiClient(baseUrl: string, fetcher: typeof fetch = fetch) 
         403: 'Sua conta não tem permissão para esta consulta.',
         404: 'Pedido não encontrado ou indisponível para sua conta.',
         409: 'Já existe uma conta com os dados informados.',
-        503: 'A API está indisponível. Inicie o backend do ResolvAI e tente entrar novamente.',
+        503: 'A API está indisponível. Verifique o endereço configurado e se o servidor está em execução.',
       }
       throw new ApiError(response.status, messages[response.status] ?? 'Não foi possível carregar os dados. Tente novamente.')
     }

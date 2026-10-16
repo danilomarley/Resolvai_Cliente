@@ -1,0 +1,13 @@
+.order-form { padding: 24px; max-width: 800px; }
+.order-form form, .order-form fieldset, .order-form label { display: grid; gap: 12px; }
+.order-form form { margin-top: 20px; }
+.order-form fieldset { border: 0; padding: 0; min-width: 0; }
+.order-form legend { margin-bottom: 16px; font-weight: 600; }
+.order-form label { gap: 6px; }
+.order-form input, .order-form textarea, .order-form select {
+  width: 100%; min-width: 0; padding: 10px 12px; border: 1px solid #cbd5e1;
+  border-radius: 8px; background: white; color: inherit; font: inherit;
+}
+.order-form textarea { resize: vertical; }
+.order-form [role='alert'] { color: var(--color-danger); }
+.order-form-actions { display: flex; flex-wrap: wrap; gap: 12px; }

@@ -4,7 +4,6 @@ import "../../styles/login.css";
 import { Icon } from "../../components/Icon"; 
 import { customerSession } from '../../services/session';
 import { login } from '../../services/dashboardApi';
-import { demoMode } from '../../services/appMode';
 
 export function Login() {
   const navigate = useNavigate();
@@ -22,10 +21,6 @@ export function Login() {
 
     try {
       setLoading(true);
-      if (demoMode) {
-        navigate('/', { replace: true });
-        return;
-      }
       
       // A API autentica a conta e fornece o token e a validade da sessão.
       const result = await login(email, password);
@@ -52,7 +47,6 @@ export function Login() {
           </div>
           <p>Bem-vindo de volta! Faça login na sua conta.</p>
         </header>
-        {demoMode && <p className="demo-banner">Login demonstrativo. Use dados fictícios; nenhuma autenticação será enviada à API.</p>}
 
         <form onSubmit={handleLogin} className="login-form">
           {/* Mensagem de Erro */}
@@ -95,11 +89,9 @@ export function Login() {
           </div>
 
           <div className="form-actions">
-            <a href="/esqueci-a-senha" className="forgot-password" onClick={(event) => {
-              if (demoMode) {
-                event.preventDefault();
-                setError('A recuperação de senha não está conectada nesta demonstração. Use dados fictícios para apresentar o login.');
-              }
+            <a href="#recuperar-senha" className="forgot-password" onClick={(event) => {
+              event.preventDefault();
+              setError('A recuperação de senha ainda não está disponível. Entre em contato com o responsável pelo atendimento.');
             }}>
               Esqueceu a senha?
             </a>
