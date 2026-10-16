@@ -78,6 +78,42 @@ sem acrescentar `/api/v1`, pois o serviço já fornece esse prefixo.
 
 ## Pendências do backend
 
+### Finalização do cadastro (card #26)
+
+As configurações da conta, abertas pelo nome na barra lateral ou pelo avatar,
+consultam `GET /api/v1/users/me` e enviam `POST /api/v1/users/me/complete-registration`
+com Bearer. O contrato foi verificado na branch
+[`feature/complemento-cadastro`](https://github.com/danilomarley/Resolvai_Backend/tree/feature/complemento-cadastro).
+Essa rota não está no clone local `main` analisado anteriormente: o servidor precisa
+incluir essa implementação e as migrações correspondentes. Um servidor sem a rota
+recebe uma mensagem de indisponibilidade, sem simular o salvamento.
+
+O corpo contém `name`, `cpf`, `endereco` (`logradouro`, `numero`, `complemento`,
+`bairro`, `cidade`, `estado`, `cep`, `apelido`) e `contato` (`tipo`, `valor`).
+Os tipos de contato aceitos são `telefone`, `whatsapp` e `email_alt`. CPF e CEP
+são enviados apenas com dígitos; os campos opcionais vazios são omitidos.
+Latitude e longitude são opcionais no contrato e não são solicitadas no formulário.
+
+O `UserResponse` dessa branch acrescenta `cpf` opcional. A interface mantém
+compatibilidade com respostas sem esse campo, valida o usuário e o CPF retornados
+e só confirma o sucesso após a resposta da API. O formulário preserva os valores
+quando o envio falha e impede envios simultâneos. Reabrir a janela consulta a conta
+novamente; os dados de cadastro não são gravados no armazenamento do navegador.
+
+A finalização é permitida uma única vez: CPF preenchido indica cadastro finalizado
+e oculta o formulário. A rota não edita o nome de um usuário existente e não devolve
+endereço nem contato para consulta. Por isso, nome e e-mail são apresentados como
+dados de leitura, e a interface não oferece edição posterior de endereço/contato.
+Uma resposta 409 orienta atualizar os dados da conta para verificar sua situação.
+
+Validação desta integração: 17 testes de serviço/renderização, lint, build e teste
+no Chrome com HTTP interceptado. O teste de navegador cobre acesso pelo nome/avatar,
+erro ao consultar o perfil e nova tentativa, campos obrigatórios, falha 400 com
+preservação do formulário, corpo exato do POST, estado finalizado após reabrir e
+layout móvel. Não foi executada finalização em banco real.
+
+### Outras operações
+
 Não foram identificados endpoints de listagem completa/paginação, criação ou
 edição de pedidos, propostas, avaliação, histórico completo, pagamento, mensagens
 ou edição de perfil. A interface indica essas indisponibilidades; não publica

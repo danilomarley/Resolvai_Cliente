@@ -6,6 +6,7 @@ import { useDashboardData, useOrderDetail } from '../../services/useDashboardDat
 import { toOrder } from '../../services/dashboardApi'
 import { Icon } from '../../components/Icon'
 import { Modal } from '../../components/Modal'
+import { AccountSettings } from '../../components/AccountSettings'
 import { Sidebar } from '../../components/dashboard/Sidebar'
 import { DashboardOverview } from '../../components/dashboard/DashboardOverview'
 import type { Order } from '../../data/dashboard'
@@ -96,10 +97,9 @@ export function Dashboard() {
       {notice && <div className="toast" role="status"><span>{notice}</span>
         <button className="icon-button" onClick={() => setNotice('')} aria-label="Dispensar aviso"><Icon name="close" size={17} /></button>
       </div>}
-      {dialog && <Modal title={dialog === 'profile' ? 'Meu perfil' : 'Central de ajuda'} onClose={() => setDialog(null)}>
-        {dialog === 'profile' ? <div className="dialog-stack"><h3>{profile.name}</h3>
-          <p>{dashboard.data?.user.email}</p><p>Perfil: {dashboard.data?.user.role}</p>
-          <p>A edição do perfil ainda não está disponível na API.</p></div>
+      {dialog && <Modal title={dialog === 'profile' ? 'Configurações da conta' : 'Central de ajuda'} onClose={() => setDialog(null)}>
+        {dialog === 'profile' ? <AccountSettings key={`${session.customerId}:${session.accessToken}`}
+          token={session.accessToken} customerId={session.customerId} onCompleted={dashboard.retry} />
           : <p>Consulte o resumo da conta e abra um pedido para ver seus detalhes. A API retorna os cinco pedidos mais recentes. Criação e outras operações ainda não estão disponíveis.</p>}
       </Modal>}
     </div>

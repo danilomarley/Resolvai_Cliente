@@ -1,0 +1,10 @@
+.account-data { display: grid; gap: 12px; margin-top: 12px; }
+.account-data dt { color: var(--color-muted); font-size: 14px; }
+.account-data dd { margin: 0; overflow-wrap: anywhere; }
+.account-fields { border: 1px solid var(--color-border); border-radius: 10px; padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.account-fields legend { padding: 0 6px; font-weight: 600; }
+.account-fields label { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.account-field { display: grid; gap: 6px; min-width: 0; }
+.account-fields-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.account-success { color: var(--color-success); }
+@media (max-width: 480px) { .account-fields-row { grid-template-columns: 1fr; } }

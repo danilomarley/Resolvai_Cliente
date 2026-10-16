@@ -106,6 +106,9 @@ Busca e filtros de pedidos, criação de pedido com assistente simulado, consult
 O fluxo “Criar pedido” segue o protótipo original: categoria, problema, detalhes do ambiente, localização, urgência e fotos opcionais. O escopo aparece durante a conversa e pode ser editado na revisão antes de publicar. As perguntas e sugestões são predefinidas, sem IA conectada. O pedido criado preserva as informações e as fotos na sessão.
 
 O dashboard, o perfil, os detalhes de pedidos, o login e o cadastro usam a API oficial.
+As configurações da conta permitem finalizar o cadastro com CPF, endereço e contato,
+usando a rota do card #26; o backend precisa incluir a branch `feature/complemento-cadastro`.
+Esse fluxo permite uma única finalização. Consulte o guia de integração para as limitações.
 Os contadores abrangem toda a conta; a lista contém até cinco pedidos recentes.
 Criação, listagem completa, IA, propostas, avaliações, pagamentos e mensagens ainda
 não possuem endpoints identificados para esta integração. Os componentes antigos

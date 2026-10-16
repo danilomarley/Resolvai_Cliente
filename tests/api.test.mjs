@@ -33,6 +33,7 @@ globalThis.fetch = async (url, options) => {
 }
 const { createApiClient, ApiError } = await import('../src/services/api.ts')
 const { parseSummary, parseDetail, parseUser, parseLogin, getSummary, getCurrentUser, getOrder, login, register, toOrder } = await import('../src/services/dashboardApi.ts')
+const { completeRegistration } = await import('../src/services/accountApi.ts')
 globalThis.fetch = originalFetch
 const id = '11111111-1111-4111-8111-111111111111'
 const otherId = '22222222-2222-4222-8222-222222222222'
@@ -72,6 +73,36 @@ test('order dates survive the API adapter and invalid update dates are rejected'
   assert.equal(toOrder(detail, otherId).updatedAt, updatedAt)
   assert.equal(toOrder(parseDetail({ ...recent, description: 'Sem atualização' }), otherId).updatedAt, undefined)
   assert.throws(() => parseDetail({ ...detail, updatedAt: 'invalid' }), ApiError)
+})
+
+test('profile accepts CPF from the registration endpoint without breaking older responses', () => {
+  assert.equal(parseUser(user).cpf, undefined)
+  assert.equal(parseUser({ ...user, cpf: null }).cpf, null)
+  assert.equal(parseUser({ ...user, cpf: '12345678901' }).cpf, '12345678901')
+  assert.throws(() => parseUser({ ...user, cpf: 12345678901 }), ApiError)
+  assert.throws(() => parseUser({ ...user, cpf: 'invalid' }), ApiError)
+})
+
+test('registration posts the actual contract, confirms ownership and handles API failures', async () => {
+  const body = { name: user.name, cpf: '12345678901',
+    endereco: { logradouro: 'Rua de teste', numero: '10', bairro: 'Centro', cidade: 'Fortaleza', estado: 'CE', cep: '60000000' },
+    contato: { tipo: 'whatsapp', valor: '85999990000' } }
+  responseStatus = 200; responseBody = { ...user, cpf: body.cpf }
+  assert.equal((await completeRegistration(body, 'test-only', user.id)).cpf, body.cpf)
+  assert.equal(requests.at(-1).url, '/api/v1/users/me/complete-registration')
+  assert.equal(requests.at(-1).options.method, 'POST')
+  assert.equal(requests.at(-1).options.headers.Authorization, 'Bearer test-only')
+  assert.deepEqual(JSON.parse(requests.at(-1).options.body), body)
+  for (const invalid of [{ ...user, id: otherId, cpf: body.cpf }, user, { ...user, cpf: '98765432100' }]) {
+    responseBody = invalid
+    await assert.rejects(completeRegistration(body, 'test-only', user.id), (error) => error.status === 502)
+  }
+  try {
+    for (const [status, message] of [[400, /CPF, o endereço e o contato/], [404, /não está disponível neste servidor/], [409, /cadastro já foi finalizado/], [401, /sessão não foi aceita/], [500, /Não foi possível carregar/]]) {
+      responseStatus = status; responseBody = { detail: 'internal-secret' }
+      await assert.rejects(completeRegistration(body, 'test-only', user.id), (error) => error.status === status && message.test(error.message) && !error.message.includes('internal-secret'))
+    }
+  } finally { responseStatus = 200 }
 })
 test('services use only identified routes and request contracts', async () => {
   requests.length = 0; responseBody = summary
