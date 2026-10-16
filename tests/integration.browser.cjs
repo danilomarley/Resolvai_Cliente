@@ -53,6 +53,11 @@ const assert = require('node:assert/strict');
             status = summaryStatus;
             body = status === 200 ? { orders: { total: empty ? 0 : 2, pending: 0,
               inProgress: 0, completed: empty ? 0 : 2, cancelled: 0 }, recentOrders: empty ? [] : [order] } : {};
+          } else if (pathname === '/api/v1/orders') {
+            const query = new URL(request.url()).searchParams;
+            assert.equal(query.get('page'), '1');
+            assert.equal(query.get('pageSize'), '10');
+            body = { items: empty ? [] : [order, olderOrder], page: 1, pageSize: 10, totalItems: empty ? 0 : 2, totalPages: empty ? 0 : 1 };
           } else if (pathname.toLowerCase() === `/api/v1/orders/${order.id}`) { status = detailStatus; body = status === 200 ? order : {}; }
           else if (pathname === `/api/v1/orders/${olderOrder.id}`) body = olderOrder;
           else { status = 404; body = {}; }
@@ -72,11 +77,12 @@ const assert = require('node:assert/strict');
       await page.locator('.sidebar').getByRole('button', { name: 'Meus pedidos', exact: true }).click();
       await page.getByRole('heading', { name: 'Meus pedidos', exact: true }).waitFor();
       await page.getByRole('heading', { name: new RegExp(order.title) }).waitFor();
-      assert.equal(await page.locator('.my-orders-list article').count(), 1);
+      assert.equal(await page.locator('.my-orders-list article').count(), 2);
+      assert.ok(calls.includes('/api/v1/orders'));
       await page.getByRole('searchbox', { name: 'Buscar pedido' }).fill('  Pedido retornado  ');
       assert.equal(await page.locator('.my-orders-list article').count(), 1);
       await page.getByRole('searchbox', { name: 'Buscar pedido' }).fill('');
-      assert.equal(await page.locator('.status-badge.completed').count(), 1);
+      assert.equal(await page.locator('.status-badge.completed').count(), 2);
       await page.getByRole('link', { name: `Ver detalhes do pedido ${order.id}` }).click();
       await page.getByText(order.description, { exact: true }).waitFor();
       await page.getByText('Última atualização', { exact: true }).waitFor();

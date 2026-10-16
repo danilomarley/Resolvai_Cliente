@@ -103,10 +103,16 @@ export function OrderAssistant({
   location,
   onCancel,
   onCreate,
+  demo = true,
+  submitting = false,
+  submitError = '',
 }: {
   location: string
   onCancel: () => void
   onCreate: (order: NewOrder) => void
+  demo?: boolean
+  submitting?: boolean
+  submitError?: string
 }) {
   const [draft, setDraft] = useState<Draft>({
     category: '',
@@ -190,7 +196,7 @@ export function OrderAssistant({
       },
       {
         role: 'assistant',
-        text: 'Seu pedido está organizado! Confira a sugestão de escopo e edite o que precisar antes de publicar nesta demonstração.',
+        text: 'Seu pedido está organizado! Confira a sugestão de escopo e edite o que precisar antes de publicar.',
       },
     ])
     setStep(6)
@@ -241,6 +247,7 @@ export function OrderAssistant({
       )
       return
     }
+    if (submitting) return
     onCreate(clean)
   }
 
@@ -673,9 +680,9 @@ export function OrderAssistant({
                   </span>
                 </label>
               </div>
-              {error && (
+              {(error || submitError) && (
                 <p className="assistant-error" role="alert">
-                  {error}
+                  {error || submitError}
                 </p>
               )}
               <div className="scope-review-actions">
@@ -686,8 +693,8 @@ export function OrderAssistant({
                 >
                   Voltar à conversa
                 </button>
-                <button type="submit" className="button button-primary">
-                  Publicar pedido <Icon name="arrow" size={17} />
+                <button type="submit" className="button button-primary" disabled={submitting}>
+                  {submitting ? 'Publicando…' : 'Publicar pedido'} <Icon name="arrow" size={17} />
                 </button>
               </div>
             </section>
@@ -738,8 +745,9 @@ export function OrderAssistant({
               <div className="info-box">
                 <Icon name="sparkles" size={18} />
                 <p>
-                  Ao publicar, o pedido aparece no seu painel nesta sessão de
-                  demonstração. Ele não será enviado a profissionais.
+                  {demo
+                    ? 'Ao publicar, o pedido aparece no seu painel nesta sessão de demonstração. Ele não será enviado a profissionais.'
+                    : 'Ao publicar, o pedido fica salvo na sua conta e passa a receber propostas.'}
                 </p>
               </div>
             </aside>
