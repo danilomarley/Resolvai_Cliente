@@ -1,28 +1,22 @@
-import type { Order } from '../data/dashboard'
-
-// Local prototype adapter. A backend must enforce ownership using its session.
-export const demoCustomerId = 'demo-customer'
+import type { Order } from '../types/orders'
 
 export function customerOrders(orders: Order[], customerId: string | null) {
   if (!customerId) throw new Error('Entre na sua conta para consultar pedidos.')
   return orders.filter((order) => order.customerId === customerId)
 }
 
-export function customerOrder(orders: Order[], customerId: string | null, id: number | string) {
-  return customerOrders(orders, customerId).find((order) => order.source === 'api' && typeof id === 'string'
-    ? String(order.id).toLowerCase() === id.toLowerCase()
-    : order.id === id)
+export function customerOrder(orders: Order[], customerId: string | null, id: string) {
+  return customerOrders(orders, customerId).find((order) => order.id.toLowerCase() === id.toLowerCase())
 }
 
 export const orderStatus = {
-  waiting: 'Aguardando propostas',
+  waiting: 'Recebendo propostas',
   progress: 'Em andamento',
   completed: 'Concluído',
   cancelled: 'Cancelado',
 }
 
-export const orderStatusLabel = (order: Order) =>
-  order.source === 'api' && order.status === 'waiting' ? 'Recebendo propostas' : orderStatus[order.status]
+export const orderStatusLabel = (order: Order) => orderStatus[order.status]
 
 export const orderDate = (value?: string) => value
   ? new Date(value).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })

@@ -1,6 +1,6 @@
 import { apiRequest, ApiError } from './api'
-import type { Order, OrderProposal } from '../data/dashboard'
-import type { NewOrder } from '../components/OrderAssistant'
+import type { Order, OrderProposal } from '../types/orders'
+import type { NewOrder } from '../types/orders'
 
 export type OrderStatusDto = 'Pending' | 'InProgress' | 'Completed' | 'Cancelled'
 export type ProposalDto = Omit<OrderProposal, 'providerName'> & { providerId: string; providerName: string }
@@ -93,8 +93,8 @@ export function toOrder(dto: OrderDto, customerId: string): Order {
     category: dto.category ?? 'Pedido', location: dto.location ?? 'Localização não informada',
     proposals: dto.proposalsCount ?? dto.proposals?.length ?? 0, chosenProposalValue: dto.chosenProposalValue,
     proposalList: dto.proposals, photoUrls: dto.photos?.map((photo) => photo.url),
-    scope: dto.scope && { details: text('detalhes'), urgency: text('urgencia'), specifications: text('especificacoes'), photos: [] },
-    deadline: 'Não informado', icon: 'bag', source: 'api' }
+    scope: dto.scope && { details: text('detalhes'), urgency: text('urgencia'), specifications: text('especificacoes') },
+    icon: 'bag' }
 }
 
 export const createOrder = async (token: string, order: NewOrder, photoUrls: string[], signal?: AbortSignal) =>

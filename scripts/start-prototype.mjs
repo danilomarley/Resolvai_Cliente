@@ -7,7 +7,6 @@ import { loadEnv } from 'vite'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const env = { ...loadEnv('development', root, ''), ...process.env }
-const target = new URL(env.VITE_API_BASE_URL || env.API_PROXY_TARGET || 'http://localhost:5172')
 const children = new Set()
 let stopping = false
 
@@ -31,7 +30,7 @@ function start(command, args, options = {}) {
   child.on('exit', () => children.delete(child))
   return child
 }
-async function apiReady() {
+async function apiReady(target) {
   try {
     const response = await fetch(new URL('/openapi/v1.json', target), { signal: AbortSignal.timeout(2000) })
     if (!response.ok) return false
@@ -41,8 +40,18 @@ async function apiReady() {
 }
 
 async function main() {
+  const args = process.argv.slice(2)
+  if (args.some((arg) => arg !== '--front') || args.length > 1) {
+    throw new Error('Use sem argumentos ou --front (somente frontend).')
+  }
+  if (args.includes('--front')) {
+    console.log('ResolvAI - iniciando somente o frontend, sem exigir .NET. Para encerrar, pressione Ctrl+C.')
+    startFrontend('/login')
+    return
+  }
+  const target = new URL(env.VITE_API_BASE_URL || env.API_PROXY_TARGET || 'http://localhost:5172')
   console.log('ResolvAI - iniciando API e frontend. Para encerrar, pressione Ctrl+C.')
-  if (!await apiReady()) {
+  if (!await apiReady(target)) {
     const local = ['localhost', '127.0.0.1', '[::1]'].includes(target.hostname)
     if (!local || target.protocol !== 'http:') {
       throw new Error('A API configurada nao respondeu. Inicie essa API ou confira API_PROXY_TARGET/VITE_API_BASE_URL no .env.local.')
@@ -51,9 +60,9 @@ async function main() {
     if (!existsSync(project)) throw new Error('Backend nao encontrado. Coloque Resolvai_Backend ao lado de Resolvai_Cliente.')
     let sdks
     try { sdks = execFileSync('dotnet', ['--list-sdks'], { encoding: 'utf8', windowsHide: true }) }
-    catch { throw new Error('Instale o SDK .NET 10: winget install --id Microsoft.DotNet.SDK.10 --exact') }
+    catch { throw new Error('SDK .NET 10 indisponivel. Configure uma API existente e use iniciar-prototipo.cmd --front.') }
     if (!sdks.split(/\r?\n/).some((line) => /^10\./.test(line))) {
-      throw new Error('SDK .NET 10 nao encontrado. Execute: winget install --id Microsoft.DotNet.SDK.10 --exact')
+      throw new Error('SDK .NET 10 nao encontrado. Configure uma API existente e use iniciar-prototipo.cmd --front.')
     }
     console.log('Compilando e iniciando o backend. A primeira execucao pode levar alguns minutos...')
     // All generated build files stay outside the backend repository.
@@ -64,15 +73,18 @@ async function main() {
     let backendFailure
     backend.on('error', (error) => { backendFailure = error.message })
     for (let attempt = 0; attempt < 120; attempt++) {
-      if (backendFailure || backend.exitCode !== null) throw new Error('O backend nao iniciou. Confira a mensagem acima e sua configuracao de banco/Supabase.')
-      if (await apiReady()) break
+      if (backendFailure || backend.exitCode !== null) throw new Error('O backend nao iniciou. Confira a mensagem acima e a configuracao da API.')
+      if (await apiReady(target)) break
       if (attempt === 119) throw new Error('Tempo esgotado aguardando a API. Confira a compilacao e a configuracao do backend.')
       await new Promise((done) => setTimeout(done, 500))
     }
     backend.on('exit', (code) => { if (!stopping) { console.error('O backend foi encerrado.'); stop(code || 1) } })
   } else console.log('API ja esta em execucao; sera reutilizada.')
   console.log('API pronta. Abrindo a tela de login...')
-  const frontend = start(process.execPath, [resolve(root, 'node_modules/vite/bin/vite.js'), '--host', '127.0.0.1', '--port', '5173', '--clearScreen', 'false', '--open', '/login'])
+  startFrontend('/login')
+}
+function startFrontend(page) {
+  const frontend = start(process.execPath, [resolve(root, 'node_modules/vite/bin/vite.js'), '--host', '127.0.0.1', '--port', '5173', '--clearScreen', 'false', '--open', page])
   frontend.on('error', (error) => { console.error(error.message); stop(1) })
   frontend.on('exit', (code) => stop(code || 0))
 }

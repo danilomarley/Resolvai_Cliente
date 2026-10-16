@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { MyOrders } from '../MyOrders'
 import { useCustomerSession } from '../../services/useCustomerSession'
@@ -7,10 +7,11 @@ import { createOrder, toOrder, type OrderStatusDto } from '../../services/dashbo
 import { Icon } from '../../components/Icon'
 import { Modal } from '../../components/Modal'
 import { AccountSettings } from '../../components/AccountSettings'
-import { OrderAssistant, type NewOrder } from '../../components/OrderAssistant'
+import { OrderForm } from '../../components/OrderForm'
+import type { NewOrder } from '../../types/orders'
 import { Sidebar } from '../../components/dashboard/Sidebar'
 import { DashboardOverview } from '../../components/dashboard/DashboardOverview'
-import type { Order } from '../../data/dashboard'
+import type { Order } from '../../types/orders'
 import type { Dialog, Tab } from '../../types/dashboard'
 
 export function Dashboard() {
@@ -46,10 +47,6 @@ export function Dashboard() {
   }
   async function publishOrder(order: NewOrder) {
     if (!session.accessToken || !session.customerId) return
-    if (order.scope.photos.length) {
-      setSubmitError('O envio de fotos ainda não está disponível. Remova os anexos para publicar o pedido.')
-      return
-    }
     setSubmitting(true)
     setSubmitError('')
     try {
@@ -83,7 +80,7 @@ export function Dashboard() {
       <a className="skip-link" href="#main">Pular para o conteúdo</a>
       <Sidebar mobileOpen={mobileOpen} setMobileOpen={setMobileOpen}
         activeNav={viewingOrders ? 'Meus pedidos' : 'Visão geral'} navigate={navigate}
-        openDialog={openDialog} profile={profile} unread={false} />
+        openDialog={openDialog} profile={profile} />
       <div className="main-shell">
         <header className="topbar">
           <div className="breadcrumb">
@@ -93,7 +90,6 @@ export function Dashboard() {
             <strong>{viewingOrders ? 'Meus pedidos' : 'Visão geral'}</strong>
           </div>
           <div className="topbar-actions">
-            <a className="button button-secondary" href="/?demo=1#/">Demonstração interativa</a>
             <label className="search-box">
               <Icon name="search" size={18} />
               <input type="search" placeholder="Buscar pedido..." aria-label="Buscar pedido"
@@ -111,7 +107,7 @@ export function Dashboard() {
               <button className="button button-secondary" onClick={session.error ? session.retry : dashboard.retry}>Tentar novamente</button>
               {dashboard.error?.status === 401 && <Link to="/login" state={{ from: location.pathname }}>Entrar novamente</Link>}
             </section>
-            : dialog === 'create' ? <OrderAssistant location="" demo={false} submitting={submitting}
+            : dialog === 'create' ? <OrderForm submitting={submitting}
               submitError={submitError} onCancel={() => setDialog(null)} onCreate={publishOrder} />
             : viewingOrders ? <MyOrders
               orders={orderId

@@ -12,10 +12,6 @@
 .order-category { flex-wrap: wrap; }
 .order-category span { overflow-wrap: anywhere; white-space: normal; }
 .api-summary-note { margin: var(--spacing-md) 0; color: var(--color-muted); }
-.order-table { overflow-x: auto; }
-.order-table table { width: 100%; border-collapse: collapse; text-align: left; }
-.order-table th, .order-table td { padding: 12px; border-bottom: 1px solid var(--color-border); }
-.order-table caption { text-align: left; padding-bottom: 8px; }
 @media (max-width: 560px) { .order-summary { padding: var(--spacing-md); } }
 .order-actions { display: flex; flex-wrap: wrap; gap: var(--spacing-sm); }
 .order-filters { display: flex; flex-wrap: wrap; gap: var(--spacing-sm); }
@@ -23,3 +19,5 @@
 .proposal-list, .order-history { display: grid; gap: var(--spacing-md); margin: 0; padding-left: 0; list-style: none; }
 .proposal-item { display: grid; gap: var(--spacing-sm); padding-bottom: var(--spacing-md); border-bottom: 1px solid var(--color-border); }
 .order-history li::before { content: '• '; }
+.scope-photos { display: flex; flex-wrap: wrap; gap: var(--spacing-sm); }
+.scope-photos img { width: 160px; max-width: 100%; height: 120px; object-fit: cover; border-radius: 8px; }

@@ -1,162 +1,36 @@
-# Integração do dashboard com a API
+# Integração com a API
 
-## Referência e branch
+## Endpoints utilizados
 
-Backend analisado: [Resolvai_Backend](https://github.com/danilomarley/Resolvai_Backend),
-revisão `d799f813d69ea7a60c288cd0a00c06599bc129e8`.
-Foram lidos controllers, DTOs, serviços, consultas SQL, autenticação, tratamento de
-exceções e os documentos `ORDERS-AND-HOME.md` e `BUILD-AND-RUN.md`.
-
-Branch frontend: `feat/integracao-dashboard-api`, criada a partir de
-`feat/meus-pedidos-detalhamento-dev` em `a12e5a4`.
-
-## Contratos identificados e implementados
-
-| Método/rota | Contrato utilizado |
+| Método e rota | Uso |
 | --- | --- |
-| `POST /api/v1/auth/login` | `{ email, password }`, retorna `accessToken`, `tokenType`, `expiresAtUtc`, `refreshToken` opcional, `user` |
-| `POST /api/v1/auth/register` | `{ name, email, password }`, retorna `UserResponse` (201) |
-| `GET /api/v1/users/me` | `id`, `name`, `email`, `role`, `isActive`, `createdAt`, `cpf` opcional |
-| `POST /api/v1/users/me/complete-registration` | `{ name, cpf, endereco, contato }`, retorna `UserResponse`. 409 quando o cadastro já foi finalizado ou o CPF já está em uso |
-| `GET /api/v1/home/summary` | `orders: { total, pending, inProgress, completed, cancelled }`, `recentOrders` |
-| `GET /api/v1/orders?status=&page=&pageSize=` | `items`, `page`, `pageSize`, `totalItems`, `totalPages`. Cada item traz `category`, `proposalsCount` e `chosenProposalValue` |
-| `POST /api/v1/orders` | `{ titulo, categoria, descricao, localizacao, detalhes, urgencia, especificacoes, fotos[{ url }] }`, retorna o detalhe do pedido (201). 400 quando o cadastro não foi finalizado |
-| `GET /api/v1/orders/{uuid}` | detalhe com `category`, `location`, `scope`, `photos[]` e `proposals[]` |
+| `POST /api/v1/auth/login` | Envia e-mail e senha; recebe token, validade e perfil |
+| `POST /api/v1/auth/register` | Envia nome, e-mail e senha; recebe perfil |
+| `GET /api/v1/users/me` | Consulta o perfil da conta autenticada |
+| `POST /api/v1/users/me/complete-registration` | Envia nome, CPF, endereço e contato |
+| `GET /api/v1/home/summary` | Consulta contadores e até cinco pedidos recentes |
+| `GET /api/v1/orders?page=&pageSize=&status=` | Lista pedidos com paginação e filtro |
+| `GET /api/v1/orders/{uuid}` | Consulta detalhes, fotos e propostas |
+| `POST /api/v1/orders` | Publica o pedido preenchido pelo usuário |
 
-Cada pedido da lista possui os mesmos campos básicos do detalhe, exceto `description`.
-Status da API: `Pending`, `InProgress`, `Completed`, `Cancelled`.
-O adaptador preserva UUIDs e datas e mapeia os status para o modelo existente.
-Os dados são validados em tempo de execução antes de serem renderizados.
+A criação envia `titulo`, `categoria`, `descricao`, `localizacao`, `detalhes`, `urgencia`, `especificacoes` e `fotos: []`. O formulário começa vazio. Não há upload de arquivos; fotos já hospedadas e retornadas pela API são exibidas nos detalhes.
 
-As consultas enviam `Authorization: Bearer <accessToken>`, sem parâmetros de
-proprietário, e usam `cache: no-store`, cancelamento e timeout de 15 segundos.
-O backend verifica o perfil local ativo e limita a consulta ao `sub` do token.
-Pedidos de terceiros e inexistentes retornam o mesmo 404. O frontend mantém
-estados associados ao token para não renderizar a resposta de uma sessão anterior.
+## Sessão e autorização
 
-O login e cadastro passam exclusivamente pela API para respeitar o perfil local
-exigido pelo backend. O frontend não possui SDK ou configuração do Supabase.
-Após o login, `sessionStorage` guarda somente `accessToken`, ID do usuário e
-`expiresAtUtc`, preservando a sessão ao recarregar a aba. O frontend não interpreta
-claims nem depende do formato JWT do token. A autorização continua no backend.
-`refreshToken` é opcional e não é utilizado nem persistido: não há endpoint de
-renovação identificado. Ao expirar, a sessão é removida e a aplicação retorna ao
-login, preservando o destino do pedido. Dados de sessão inválidos são descartados.
-Falhas de armazenamento são informadas sem manter uma sessão parcial.
-O cadastro respeita os limites de 200 caracteres para nome, 320 para e-mail e
-8 a 128 para senha. Não envia papel nem confirmação de senha ao backend.
+O frontend autentica exclusivamente pela API e armazena em `sessionStorage` apenas o token de acesso, o identificador do usuário e a validade. Não interpreta o JWT nem persiste senha ou refresh token. Sessões inválidas ou expiradas são descartadas.
 
-## Comparação com os mocks
+As consultas autenticadas enviam `Authorization: Bearer <token>`. O backend deve validar a sessão, as permissões e a propriedade dos pedidos. O frontend valida os contratos recebidos e apresenta estados de carregamento, ausência de dados e falha. Uma API indisponível não fornece dados alternativos à interface.
 
-- Nome e e-mail: substituídos por `/users/me`; localização não existe no contrato.
-- Totais: vêm do resumo, sem inferir o total a partir dos cinco pedidos recentes.
-- Propostas vêm do detalhe do pedido e dos contadores da lista. Avaliações, produtos
-  e dados de fornecedores não existem nessas respostas e não são preenchidos com
-  dados ilustrativos.
-- Pedido: utiliza UUID, data e status reais; a descrição é consultada no detalhe.
-- O estado `Cancelled` é exibido apenas para leitura, sem ação de cancelamento.
-- O resumo e perfil são carregados uma vez por sessão/renovação ou nova tentativa;
-  navegar entre lista e detalhes não repete a consulta da Home. O detalhe tem sua
-  própria consulta, inclusive para um UUID que não esteja nos cinco recentes.
+Status aceitos: `Pending`, `InProgress`, `Completed` e `Cancelled`.
 
 ## Configuração
 
-O `.env.example` contém somente `API_PROXY_TARGET` e `VITE_API_BASE_URL`.
-Não copie configurações de provedor de autenticação ou segredos do backend para
-o frontend. Sessões antigas do SDK não são reutilizadas; faça login pela API.
+Configure `API_PROXY_TARGET` em `.env.local` para o proxy de desenvolvimento. Use `iniciar-prototipo.cmd --front` ou `npm run dev` para iniciar somente o front. O funcionamento dos dados reais depende da disponibilidade da API configurada.
 
-Para abrir a aplicação localmente, use `iniciar-prototipo.cmd`. O inicializador
-verifica o SDK .NET 10, inicia a API HTTP local se necessário, aguarda seu documento
-OpenAPI e abre o frontend em `/login`. Reutiliza uma API existente. Ctrl+C encerra
-apenas os processos criados pelo inicializador. Artefatos de compilação ficam no
-diretório temporário do sistema, fora do backend; nenhum arquivo-fonte é alterado.
+Em produção, `VITE_API_BASE_URL` recebe a origem da API, sem acrescentar `/api/v1`. Quando vazio, a hospedagem deve encaminhar `/api` ao backend. Se as origens forem diferentes, configure CORS no backend. Não inclua segredos do backend no frontend.
 
-Desenvolvimento: configure `API_PROXY_TARGET` no `.env.local` ou no ambiente.
-O padrão `http://localhost:5172` vem do guia do backend. O backend deve estar em
-execução separadamente. O proxy do Vite encaminha `/api` sem alterar os caminhos.
-Se o backend redirecionar HTTP para HTTPS, use a origem HTTPS configurada nele
-e um certificado de desenvolvimento confiável. Reinicie o Vite após mudar o alvo.
+## Limitações
 
-Produção: `VITE_API_BASE_URL` vazio usa `/api` na mesma origem; configure um proxy
-reverso na hospedagem. O proxy de desenvolvimento não está embutido no build.
-Uma origem separada em `VITE_API_BASE_URL` exige CORS no backend/hospedagem; não
-foi encontrada política CORS no `Program.cs` analisado. A variável recebe a origem,
-sem acrescentar `/api/v1`, pois o serviço já fornece esse prefixo.
+A finalização de cadastro depende do endpoint correspondente estar implantado e permite uma única finalização por conta. Não há endpoints integrados para upload, recuperação de senha, mensagens, pagamentos, contratação, avaliações ou IA.
 
-## Fotos do pedido
-
-A API de criação recebe `fotos[]` com URLs já hospedadas. Não foi encontrada rota
-para upload de arquivos nos controllers da `main` ou da branch `feat/criar-pedido`
-do backend. O upload direto ao provedor adicionado pela `dev` foi removido para
-manter o frontend independente do Supabase. O fluxo integrado não oferece seleção
-de arquivos e publica com `fotos: []`; fotos já cadastradas são exibidas normalmente.
-O modo demonstrativo mantém anexos em memória. O script SQL de bucket é referência
-de infraestrutura do backend e não é executado nem utilizado pelo frontend.
-
-## Pendências do backend
-
-### Finalização do cadastro (card #26)
-
-As configurações da conta, abertas pelo nome na barra lateral ou pelo avatar,
-consultam `GET /api/v1/users/me` e enviam `POST /api/v1/users/me/complete-registration`
-com Bearer. O contrato foi verificado na branch
-[`feature/complemento-cadastro`](https://github.com/danilomarley/Resolvai_Backend/tree/feature/complemento-cadastro).
-Essa rota não está no clone local `main` analisado anteriormente: o servidor precisa
-incluir essa implementação e as migrações correspondentes. Um servidor sem a rota
-recebe uma mensagem de indisponibilidade, sem simular o salvamento.
-
-O corpo contém `name`, `cpf`, `endereco` (`logradouro`, `numero`, `complemento`,
-`bairro`, `cidade`, `estado`, `cep`, `apelido`) e `contato` (`tipo`, `valor`).
-Os tipos de contato aceitos são `telefone`, `whatsapp` e `email_alt`. CPF e CEP
-são enviados apenas com dígitos; os campos opcionais vazios são omitidos.
-Latitude e longitude são opcionais no contrato e não são solicitadas no formulário.
-
-O `UserResponse` dessa branch acrescenta `cpf` opcional. A interface mantém
-compatibilidade com respostas sem esse campo, valida o usuário e o CPF retornados
-e só confirma o sucesso após a resposta da API. O formulário preserva os valores
-quando o envio falha e impede envios simultâneos. Reabrir a janela consulta a conta
-novamente; os dados de cadastro não são gravados no armazenamento do navegador.
-
-A finalização é permitida uma única vez: CPF preenchido indica cadastro finalizado
-e oculta o formulário. A rota não edita o nome de um usuário existente e não devolve
-endereço nem contato para consulta. Por isso, nome e e-mail são apresentados como
-dados de leitura, e a interface não oferece edição posterior de endereço/contato.
-Uma resposta 409 orienta atualizar os dados da conta para verificar sua situação.
-
-Validação desta integração: 17 testes de serviço/renderização, lint, build e teste
-no Chrome com HTTP interceptado. O teste de navegador cobre acesso pelo nome/avatar,
-erro ao consultar o perfil e nova tentativa, campos obrigatórios, falha 400 com
-preservação do formulário, corpo exato do POST, estado finalizado após reabrir e
-layout móvel. Não foi executada finalização em banco real.
-
-### Outras operações
-
-Ainda não existem endpoints para edição ou cancelamento de pedidos, criação e escolha de
-propostas, avaliação, histórico completo, pagamento, mensagens ou edição de perfil. A
-interface indica essas indisponibilidades. As rotas administrativas de usuários não são
-usadas para dados da conta do cliente.
-
-## Validação executada
-
-- `npm test`: aprovado, cobrindo sessão da API, expiração,
-  armazenamento inválido ou indisponível, DTOs, quatro status,
-  contadores independentes da lista, rotas e corpos exatos, UUIDs, Bearer,
-  transporte HTTP local, 401/403/404/409/500, JSON inválido, falha de rede,
-  cancelamento e os testes existentes de pedidos.
-- `npm run lint`: aprovado, inclusive o cadastro, cujo `any` foi removido ao
-  adaptar o tratamento de erros.
-- `npm run build`: TypeScript e Vite aprovados.
-- Chrome com respostas HTTP interceptadas: perfil e resumo, cinco pedidos e
-  total 12, todos os status, detalhes por UUID fora da Home, retorno, ausência
-  de mocks, ausência de consulta redundante ao resumo, 404, 500/retry, conta
-  vazia, 401 e layout em 320/390/768/1440 px aprovados; sem exceções JavaScript.
-- A validação atual usa somente respostas da API, inclusive login sem refresh
-  token, persistência ao recarregar, expiração, sessão corrompida, pedidos e
-  configurações da conta. Não há simulação de chamadas ao provedor de autenticação;
-  o teste verifica que nenhuma chamada ao provedor ocorre.
-
-Não havia API local na porta documentada nem URL de implantação fornecida.
-Assim, não foi validada a conexão com banco real, credenciais reais ou a migração
-SQL. Esses testes exigem uma instância configurada do backend. A validação HTTP
-local usa as respostas dos contratos lidos, não comprova disponibilidade de uma
-instância real. Nenhuma dependência nova foi instalada para esta tarefa.
+Os testes locais verificam contratos inválidos, ausência de dados, formatação, estados da interface e formulário vazio. A validação completa de login e publicação exige uma API real configurada e uma conta autorizada.
