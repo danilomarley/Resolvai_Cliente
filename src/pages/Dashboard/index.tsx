@@ -2,10 +2,12 @@
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { MyOrders } from '../MyOrders'
 import { useCustomerSession } from '../../services/useCustomerSession'
-import { useDashboardData, useOrderDetail } from '../../services/useDashboardData'
-import { toOrder } from '../../services/dashboardApi'
+import { useDashboardData, useOrderDetail, useOrdersList } from '../../services/useDashboardData'
+import { createOrder, toOrder, type OrderStatusDto } from '../../services/dashboardApi'
 import { Icon } from '../../components/Icon'
 import { Modal } from '../../components/Modal'
+import { AccountSettings } from '../../components/AccountSettings'
+import { OrderAssistant, type NewOrder } from '../../components/OrderAssistant'
 import { Sidebar } from '../../components/dashboard/Sidebar'
 import { DashboardOverview } from '../../components/dashboard/DashboardOverview'
 import type { Order } from '../../data/dashboard'
@@ -19,11 +21,18 @@ export function Dashboard() {
   const session = useCustomerSession()
   const dashboard = useDashboardData(session.accessToken, session.customerId)
   const detail = useOrderDetail(orderId, session.accessToken)
+  const [statusFilter, setStatusFilter] = useState<OrderStatusDto>()
+  const [page, setPage] = useState(1)
+  const ordersList = useOrdersList(session.accessToken, viewingOrders && !orderId, statusFilter, page)
+  const orderView = location.pathname.endsWith('/propostas') ? 'propostas'
+    : location.pathname.endsWith('/acompanhar') ? 'acompanhar' : undefined
   const [tab, setTab] = useState<Tab>('all')
   const [search, setSearch] = useState('')
   const [dialog, setDialog] = useState<Dialog>(null)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [notice, setNotice] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
   const orders = dashboard.data?.summary.recentOrders.map((dto) => toOrder(dto, session.customerId!)) ?? []
   const profile = { name: dashboard.data?.user.name ?? 'Minha conta', location: 'Localização não informada' }
 
@@ -32,9 +41,27 @@ export function Dashboard() {
     if (value === 'profile' || value === 'help') setDialog(value)
     else if (value === 'create' && dashboard.data && !dashboard.data.user.cpf)
       routerNavigate('/complemento-cadastro', { state: { from: location.pathname } })
-    else setNotice(value === 'create'
-      ? 'A criação de pedidos ainda não está disponível na API.'
-      : 'Esta funcionalidade ainda não está disponível na API.')
+    else if (value === 'create') { setSubmitError(''); setDialog(value) }
+    else setNotice('Esta funcionalidade ainda não está disponível na API.')
+  }
+  async function publishOrder(order: NewOrder) {
+    if (!session.accessToken || !session.customerId) return
+    if (order.scope.photos.length) {
+      setSubmitError('O envio de fotos ainda não está disponível. Remova os anexos para publicar o pedido.')
+      return
+    }
+    setSubmitting(true)
+    setSubmitError('')
+    try {
+      const created = await createOrder(session.accessToken, order, [])
+      setDialog(null)
+      dashboard.retry()
+      routerNavigate(`/pedidos/${created.id}`)
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Não foi possível publicar o pedido. Tente novamente.')
+    } finally {
+      setSubmitting(false)
+    }
   }
   function navigate(label: string, target?: Dialog) {
     setMobileOpen(false)
@@ -84,11 +111,19 @@ export function Dashboard() {
               <button className="button button-secondary" onClick={session.error ? session.retry : dashboard.retry}>Tentar novamente</button>
               {dashboard.error?.status === 401 && <Link to="/login" state={{ from: location.pathname }}>Entrar novamente</Link>}
             </section>
+            : dialog === 'create' ? <OrderAssistant location="" demo={false} submitting={submitting}
+              submitError={submitError} onCancel={() => setDialog(null)} onCreate={publishOrder} />
             : viewingOrders ? <MyOrders
-              orders={orderId ? (detail.data ? [toOrder(detail.data, session.customerId!)] : []) : orders}
-              customerId={session.customerId} search={search} orderId={orderId}
-              loading={detail.loading} error={detail.error?.status === 404 ? undefined : detail.error?.message}
-              onRetry={detail.retry} />
+              orders={orderId
+                ? (detail.data ? [toOrder(detail.data, session.customerId!)] : [])
+                : ordersList.data?.items.map((dto) => toOrder(dto, session.customerId!)) ?? []}
+              customerId={session.customerId} search={search} orderId={orderId} view={orderView}
+              loading={orderId ? detail.loading : ordersList.loading}
+              error={orderId ? (detail.error?.status === 404 ? undefined : detail.error?.message) : ordersList.error?.message}
+              requiresLogin={(orderId ? detail.error : ordersList.error)?.status === 401}
+              onRetry={orderId ? detail.retry : ordersList.retry}
+              filter={orderId ? undefined : { value: statusFilter, onChange: (value) => { setStatusFilter(value); setPage(1) } }}
+              pager={orderId || !ordersList.data ? undefined : { page, totalPages: ordersList.data.totalPages, onPage: setPage }} />
             : dashboard.data && <DashboardOverview orders={orders} summary={dashboard.data.summary}
               profile={profile} tab={tab} setTab={setTab} search={search} setSearch={setSearch}
               navigate={navigate} openDialog={openDialog} openOrder={openOrder} />}
@@ -97,11 +132,10 @@ export function Dashboard() {
       {notice && <div className="toast" role="status"><span>{notice}</span>
         <button className="icon-button" onClick={() => setNotice('')} aria-label="Dispensar aviso"><Icon name="close" size={17} /></button>
       </div>}
-      {dialog && <Modal title={dialog === 'profile' ? 'Meu perfil' : 'Central de ajuda'} onClose={() => setDialog(null)}>
-        {dialog === 'profile' ? <div className="dialog-stack"><h3>{profile.name}</h3>
-          <p>{dashboard.data?.user.email}</p><p>Perfil: {dashboard.data?.user.role}</p>
-          <p>A edição do perfil ainda não está disponível na API.</p></div>
-          : <p>Consulte o resumo da conta e abra um pedido para ver seus detalhes. A API retorna os cinco pedidos mais recentes. Criação e outras operações ainda não estão disponíveis.</p>}
+      {dialog && dialog !== 'create' && <Modal title={dialog === 'profile' ? 'Configurações da conta' : 'Central de ajuda'} onClose={() => setDialog(null)}>
+        {dialog === 'profile' ? <AccountSettings key={`${session.customerId}:${session.accessToken}`}
+          token={session.accessToken} customerId={session.customerId} onCompleted={dashboard.retry} />
+          : <p>Consulte o resumo da conta, finalize seu cadastro nas configurações e crie pedidos. Em Meus pedidos, filtre por status e consulte detalhes, propostas e acompanhamento.</p>}
       </Modal>}
     </div>
   )

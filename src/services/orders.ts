@@ -9,7 +9,9 @@ export function customerOrders(orders: Order[], customerId: string | null) {
 }
 
 export function customerOrder(orders: Order[], customerId: string | null, id: number | string) {
-  return customerOrders(orders, customerId).find((order) => order.id === id)
+  return customerOrders(orders, customerId).find((order) => order.source === 'api' && typeof id === 'string'
+    ? String(order.id).toLowerCase() === id.toLowerCase()
+    : order.id === id)
 }
 
 export const orderStatus = {
@@ -20,7 +22,7 @@ export const orderStatus = {
 }
 
 export const orderStatusLabel = (order: Order) =>
-  order.source === 'api' && order.status === 'waiting' ? 'Pendente' : orderStatus[order.status]
+  order.source === 'api' && order.status === 'waiting' ? 'Recebendo propostas' : orderStatus[order.status]
 
 export const orderDate = (value?: string) => value
   ? new Date(value).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })

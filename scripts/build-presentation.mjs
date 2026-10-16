@@ -7,14 +7,12 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const output = resolve(root, 'dist-demo')
 await build({ root, mode: 'demo', base: './',
   define: {
-    'import.meta.env.VITE_SUPABASE_URL': JSON.stringify('https://demo.invalid'),
-    'import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY': JSON.stringify('demo-public-key'),
     'import.meta.env.VITE_API_BASE_URL': JSON.stringify(''),
   },
   build: { outDir: output, assetsInlineLimit: Number.MAX_SAFE_INTEGER },
 })
 let html = await readFile(resolve(output, 'index.html'), 'utf8')
-for (const match of [...html.matchAll(/<script\b[^>]*src="([^"]+)"[^>]*><\/script>/g)]) {
+for (const match of [...html.matchAll(/<script\b[^>]*src="([^"]+)"[^>]*>\s*<\/script\s*>/g)]) {
   const js = await readFile(resolve(output, match[1]), 'utf8')
   html = html.replace(match[0], () => `<script type="module">${js.replace(/<\/script/gi, '<\\/script')}</script>`)
 }

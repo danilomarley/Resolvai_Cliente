@@ -21,14 +21,15 @@ preexistente do usuário.
 - Sem sessão, redirecionamento para `/login`; o login retorna ao pedido solicitado.
 
 O Dashboard permanece montado nas rotas filhas para preservar os pedidos criados
-na sessão. Reutilizamos React Router, Supabase Auth, Sidebar, OrderAssistant,
+na sessão. Reutilizamos React Router, Sidebar, OrderAssistant,
 PhotoPreview e os tokens e classes do guia visual existente. Nenhuma dependência
 nova foi adicionada.
 
-## Dados e integração pendente
+## Histórico do protótipo local
 
-O repositório tem autenticação Supabase, mas não possui contrato, tabela ou serviço
-de consulta de pedidos. Não foi criado um endpoint ou uma tabela presumida.
+Esta seção descreve o protótipo anterior à integração. A versão atual usa a API
+para autenticação e consulta de pedidos, conforme [INTEGRACAO_API.md](INTEGRACAO_API.md).
+No protótipo, não foi criado um endpoint ou uma tabela presumida.
 `services/orders.ts` consulta o conjunto local com filtro obrigatório por
 `customerId`. O Dashboard atribui aos novos pedidos o ID da sessão autenticada.
 Os mocks preexistentes pertencem exclusivamente a `demo-customer` e não são

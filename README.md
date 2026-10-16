@@ -1,4 +1,4 @@
-# ResolvAI — Portal do contratante
+# ResolvAI: Portal do contratante
 
 Dashboard responsivo em React, TypeScript e Vite, baseado no protótipo do contratante. Usa Rajdhani e a paleta de azul, azul escuro, laranja e branco frio.
 
@@ -35,7 +35,7 @@ não substitui as respostas da API por mocks quando ela falha.
 
 ### Abrir com dois cliques no Windows
 
-Para usar a API real, execute **`iniciar-prototipo.cmd --api`** pelo terminal. Ele inicia o backend, aguarda a API ficar pronta, inicia o frontend e abre a tela de login no navegador. Se a API já estiver rodando, ela será reutilizada. Para abrir o cadastro, clique em **“Crie uma agora”**. Mantenha essa única janela aberta enquanto usa a integração e pressione `Ctrl+C` para encerrar os serviços iniciados por ela.
+Para usar a API real, execute **`iniciar-prototipo.cmd`** sem argumentos. Ele inicia o backend, aguarda a API ficar pronta, inicia o frontend e abre a tela de login no navegador. Se a API já estiver rodando, ela será reutilizada. Para abrir o cadastro, clique em **“Crie uma agora”**. Mantenha essa única janela aberta enquanto usa a integração e pressione `Ctrl+C` para encerrar os serviços iniciados por ela.
 
 É necessário ter o **SDK .NET 10**, Node.js e a pasta `Resolvai_Backend` ao lado
 de `Resolvai_Cliente`. O backend precisa ter sua configuração de banco e Supabase
@@ -58,11 +58,17 @@ npm run dev
 
 Abra o endereço local exibido pelo Vite.
 
-Para integrar a API oficial, mantenha as variáveis públicas do Supabase e configure
+Para integrar a API oficial, configure apenas a URL da API usando
 `API_PROXY_TARGET` no `.env.local` (padrão: `http://localhost:5172`). Inicie o backend
 separadamente. O Vite encaminha `/api` ao backend, sem exigir CORS no desenvolvimento.
 Consulte [docs/INTEGRACAO_API.md](docs/INTEGRACAO_API.md) e `.env.example` para a
 configuração de produção e os endpoints usados. Reinicie o Vite após alterar variáveis.
+
+O frontend autentica exclusivamente por `POST /api/v1/auth/login` e cadastra por
+`POST /api/v1/auth/register`. A sessão usa o token e a validade retornados pela API,
+mantidos em `sessionStorage` durante a aba atual, inclusive ao recarregar a página.
+Ao expirar, é necessário entrar novamente; não há rota de renovação identificada.
+O frontend não usa SDK, URL ou chave pública de provedor de autenticação.
 
 Se preferir iniciar os serviços manualmente, abra outro terminal na pasta
 `ResolvAI` e execute:
@@ -105,8 +111,20 @@ Busca e filtros de pedidos, criação de pedido com assistente simulado, consult
 
 O fluxo “Criar pedido” segue o protótipo original: categoria, problema, detalhes do ambiente, localização, urgência e fotos opcionais. O escopo aparece durante a conversa e pode ser editado na revisão antes de publicar. As perguntas e sugestões são predefinidas, sem IA conectada. O pedido criado preserva as informações e as fotos na sessão.
 
-O dashboard, o perfil, os detalhes de pedidos, o login e o cadastro usam a API oficial.
-Os contadores abrangem toda a conta; a lista contém até cinco pedidos recentes.
-Criação, listagem completa, IA, propostas, avaliações, pagamentos e mensagens ainda
-não possuem endpoints identificados para esta integração. Os componentes antigos
-de demonstração permanecem no código, mas seus dados não aparecem na tela integrada.
+O dashboard, o perfil, o login, o cadastro, a finalização de cadastro, a criação de
+pedido e a tela Meus pedidos usam a API oficial. Os contadores da Home abrangem toda a
+conta e a lista de Meus pedidos é paginada, com filtro por status, propostas recebidas e
+acompanhamento. Avaliações, pagamentos, mensagens e IA ainda não possuem endpoints.
+Os componentes antigos de demonstração permanecem no código, mas seus dados não
+aparecem na tela integrada.
+
+As configurações da conta permitem finalizar o cadastro com CPF, endereço e contato,
+usando a rota do card #26; o backend precisa incluir a branch `feature/complemento-cadastro`.
+Esse fluxo permite uma única finalização. Consulte o guia de integração para as limitações.
+
+### Fotos dos pedidos
+
+A API aceita URLs de fotos já hospedadas, mas ainda não oferece upload de arquivos.
+Por isso, o envio de anexos fica indisponível no fluxo integrado; pedidos podem ser
+publicados sem fotos. Fotos retornadas pela API continuam visíveis nos detalhes.
+O frontend não acessa serviços de armazenamento diretamente.

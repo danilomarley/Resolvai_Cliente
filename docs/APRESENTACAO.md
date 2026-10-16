@@ -9,7 +9,7 @@ O nome ilustrativo Ygor e os pedidos de exemplo pertencem somente ao modo
 demonstrativo. A integração não usa esses dados como fallback.
 O HTML abre diretamente pelo navegador em Windows, macOS ou Linux, sem servidor.
 Não contém credenciais do banco, chaves administrativas ou configurações privadas
-do backend. O build substitui a configuração pública do Supabase por placeholders.
+do backend. O frontend não usa SDK ou configuração de provedor de autenticação.
 
 Os fluxos demonstrativos reutilizam os componentes já existentes. Não foram
 criados endpoints fictícios na API. O modo integrado continua separado e os
@@ -43,7 +43,7 @@ com token diagnóstico temporário para confirmar o perfil e o resumo da conta.
 O HTML portátil foi validado em Chrome e Edge com a internet desativada, incluindo
 navegação, propostas, mensagens, contratos, pagamentos, avaliações, edição de
 perfil, criação de pedido, detalhes, recarregamento e larguras de 320 a 1440 px.
-Nenhuma requisição HTTP ou exceção JavaScript foi registrada. Os 12 testes do
+Nenhuma requisição HTTP ou exceção JavaScript foi registrada. Os testes do
 frontend, lint, build integrado e compilação da API passaram.
 
 A regressão ampliada também valida login e cadastro demonstrativos, confirmação
