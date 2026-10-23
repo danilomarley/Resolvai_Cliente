@@ -55,7 +55,7 @@ export function Login() {
   async function handleResetPassword(event: FormEvent) {
     event.preventDefault();
     setError("");
-    if (newPassword.length < 6) return setError('A nova senha deve ter no mínimo 6 caracteres.');
+    if (newPassword.length < 8) return setError('A nova senha deve ter no mínimo 8 caracteres.');
     if (newPassword !== confirmPassword) return setError('As senhas não coincidem.');
 
     try {

@@ -3,11 +3,12 @@ import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-route
 import { MyOrders } from '../MyOrders'
 import { useCustomerSession } from '../../services/useCustomerSession'
 import { useDashboardData, useOrderDetail, useOrdersList } from '../../services/useDashboardData'
-import { createOrder, toOrder, type OrderStatusDto } from '../../services/dashboardApi'
+import { askAssistant, createOrder, toOrder, uploadOrderPhoto, type OrderStatusDto } from '../../services/dashboardApi'
 import { Icon } from '../../components/Icon'
 import { Modal } from '../../components/Modal'
 import { AccountSettings } from '../../components/AccountSettings'
 import { OrderForm } from '../../components/OrderForm'
+import { OrderAssistant } from '../../components/OrderAssistant'
 import type { NewOrder } from '../../types/orders'
 import { Sidebar } from '../../components/dashboard/Sidebar'
 import { DashboardOverview } from '../../components/dashboard/DashboardOverview'
@@ -34,6 +35,10 @@ export function Dashboard() {
   const [notice, setNotice] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
+  // Criação de pedido (#67/#69): começa pelo assistente; o formulário recebe o escopo sugerido para revisão.
+  const [createMode, setCreateMode] = useState<'assistant' | 'form'>('assistant')
+  const [draft, setDraft] = useState<NewOrder>()
+  const completedList = useOrdersList(session.accessToken, !viewingOrders && !!dashboard.data, 'Completed', 1, 3)
   const orders = dashboard.data?.summary.recentOrders.map((dto) => toOrder(dto, session.customerId!)) ?? []
   const profile = { name: dashboard.data?.user.name ?? 'Minha conta', location: 'Localização não informada' }
 
@@ -42,15 +47,18 @@ export function Dashboard() {
     if (value === 'profile' || value === 'help') setDialog(value)
     else if (value === 'create' && dashboard.data && !dashboard.data.user.cpf)
       routerNavigate('/complemento-cadastro', { state: { from: location.pathname } })
-    else if (value === 'create') { setSubmitError(''); setDialog(value) }
+    else if (value === 'create') { setSubmitError(''); setCreateMode('assistant'); setDraft(undefined); setDialog(value) }
     else setNotice('Esta funcionalidade ainda não está disponível na API.')
   }
-  async function publishOrder(order: NewOrder) {
+  async function publishOrder(order: NewOrder, photos: File[]) {
     if (!session.accessToken || !session.customerId) return
     setSubmitting(true)
     setSubmitError('')
     try {
-      const created = await createOrder(session.accessToken, order, [])
+      // As fotos vão primeiro para o Storage pela API; o pedido é criado com as URLs devolvidas.
+      const photoUrls: string[] = []
+      for (const photo of photos) photoUrls.push(await uploadOrderPhoto(session.accessToken, photo))
+      const created = await createOrder(session.accessToken, order, photoUrls)
       setDialog(null)
       dashboard.retry()
       routerNavigate(`/pedidos/${created.id}`)
@@ -69,6 +77,12 @@ export function Dashboard() {
     routerNavigate(label === 'Meus pedidos' ? '/pedidos' : '/')
   }
   function openOrder(order: Order) { routerNavigate(`/pedidos/${order.id}`) }
+  function viewCompleted() {
+    setDialog(null)
+    setStatusFilter('Completed')
+    setPage(1)
+    routerNavigate('/pedidos')
+  }
 
   const failure = session.error || dashboard.error?.message
   if (!session.loading && !session.error && !session.customerId) {
@@ -107,8 +121,13 @@ export function Dashboard() {
               <button className="button button-secondary" onClick={session.error ? session.retry : dashboard.retry}>Tentar novamente</button>
               {dashboard.error?.status === 401 && <Link to="/login" state={{ from: location.pathname }}>Entrar novamente</Link>}
             </section>
-            : dialog === 'create' ? <OrderForm submitting={submitting}
-              submitError={submitError} onCancel={() => setDialog(null)} onCreate={publishOrder} />
+            : dialog === 'create' ? (createMode === 'assistant'
+              ? <OrderAssistant onCancel={() => setDialog(null)} onManual={() => { setDraft(undefined); setCreateMode('form') }}
+                onAsk={(messages) => askAssistant(session.accessToken!, messages)}
+                onReview={(order) => { setDraft(order); setCreateMode('form') }} />
+              : <OrderForm key={draft ? 'revisao' : 'manual'} initial={draft} submitting={submitting} submitError={submitError}
+                onCancel={() => setDialog(null)} onCreate={publishOrder}
+                onBackToAssistant={draft ? () => setCreateMode('assistant') : undefined} />)
             : viewingOrders ? <MyOrders
               orders={orderId
                 ? (detail.data ? [toOrder(detail.data, session.customerId!)] : [])
@@ -121,6 +140,9 @@ export function Dashboard() {
               filter={orderId ? undefined : { value: statusFilter, onChange: (value) => { setStatusFilter(value); setPage(1) } }}
               pager={orderId || !ordersList.data ? undefined : { page, totalPages: ordersList.data.totalPages, onPage: setPage }} />
             : dashboard.data && <DashboardOverview orders={orders} summary={dashboard.data.summary}
+              completed={{ orders: completedList.data?.items.map((dto) => toOrder(dto, session.customerId!)) ?? [],
+                loading: completedList.loading, error: completedList.error?.message }}
+              onViewCompleted={viewCompleted}
               profile={profile} tab={tab} setTab={setTab} search={search} setSearch={setSearch}
               navigate={navigate} openDialog={openDialog} openOrder={openOrder} />}
         </main>
