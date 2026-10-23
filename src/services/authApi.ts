@@ -1,4 +1,5 @@
-import { apiRequest } from './api';
+// Descomente junto com o código de integração real abaixo.
+// import { apiRequest } from './api';
 
 export const authApi = {
   checkEmailExists: async (email: string) => {
@@ -51,6 +52,7 @@ export const authApi = {
     // ---------------------------------------------------------------------------
     // MOCK ATIVO (Simulação)
     // ---------------------------------------------------------------------------
+    void email; void newPassword; // usados apenas pela integração real
     return new Promise((resolve) => setTimeout(resolve, 1000));
   }
 };
