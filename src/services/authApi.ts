@@ -1,56 +1,23 @@
 import { apiRequest } from './api';
 
+// Recuperação de senha (#70), no fluxo definido na issue: confirma o e-mail e define a nova senha.
 export const authApi = {
+  // Responde 200 quando existe conta ativa para o e-mail; 404 vira ApiError.
   checkEmailExists: async (email: string) => {
-    // ---------------------------------------------------------------------------
-    // CÓDIGO DE INTEGRAÇÃO REAL (Descomente quando a API C# estiver pronta)
-    // ---------------------------------------------------------------------------
-    /*
     try {
-      // Faz um POST para a rota do backend verificando se o email existe
-      await apiRequest('/api/v1/auth/check-email', {
-        method: 'POST',
-        body: { email }
-      });
-      return true; // Se o backend retornar sucesso (200), o e-mail existe
-    } catch (error) {
-      // O apiRequest lança o ApiError automaticamente (ex: 404 Não encontrado)
-      throw error;
-    }
-    */
-
-    // ---------------------------------------------------------------------------
-    // MOCK ATIVO (Simulação)
-    // ---------------------------------------------------------------------------
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        if (email.includes('@')) resolve(true);
-        else reject(new Error('E-mail não encontrado no sistema.'));
-      }, 1000);
-    });
-  },
-
-  resetPassword: async (email: string, newPassword: string) => {
-    // ---------------------------------------------------------------------------
-    // CÓDIGO DE INTEGRAÇÃO REAL (Descomente quando a API C# estiver pronta)
-    // ---------------------------------------------------------------------------
-    /*
-    try {
-      // Faz um POST enviando o e-mail e a nova senha para serem atualizados
-      await apiRequest('/api/v1/auth/reset-password', {
-        method: 'POST',
-        body: { email, newPassword }
-      });
+      await apiRequest('/api/v1/auth/check-email', { method: 'POST', body: { email } });
       return true;
     } catch (error) {
-      // O apiRequest lança o ApiError (ex: 400 Regras de senha não atendidas)
+      if (error instanceof Error && 'status' in error && error.status === 404) {
+        throw new Error('E-mail não encontrado no sistema.');
+      }
       throw error;
     }
-    */
+  },
 
-    // ---------------------------------------------------------------------------
-    // MOCK ATIVO (Simulação)
-    // ---------------------------------------------------------------------------
-    return new Promise((resolve) => setTimeout(resolve, 1000));
+  // A API exige de 8 a 128 caracteres e limita tentativas por e-mail e por IP.
+  resetPassword: async (email: string, newPassword: string) => {
+    await apiRequest('/api/v1/auth/reset-password', { method: 'POST', body: { email, newPassword } });
+    return true;
   }
 };
