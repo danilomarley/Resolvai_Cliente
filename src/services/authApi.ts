@@ -1,5 +1,4 @@
-// Descomente junto com o código de integração real abaixo.
-// import { apiRequest } from './api';
+import { apiRequest } from './api';
 
 // Recuperação de senha (#70), no fluxo definido na issue: confirma o e-mail e define a nova senha.
 export const authApi = {
