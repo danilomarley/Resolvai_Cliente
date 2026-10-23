@@ -39,3 +39,30 @@ export async function completeRegistration(body: CompleteRegistration, token: st
   }
   return user
 }
+
+// Configurações da conta (#61): endereço e contato principais, editáveis depois da finalização do cadastro.
+export type ProfileAddress = Omit<CompleteRegistration['endereco'], 'complemento' | 'apelido'> & { complemento?: string; apelido?: string }
+export type ProfileContact = CompleteRegistration['contato']
+export type Profile = { user: ReturnType<typeof parseUser>; endereco?: ProfileAddress; contato?: ProfileContact }
+export type ProfileUpdate = { name?: string; endereco?: ProfileAddress; contato?: ProfileContact }
+
+const text = (value: unknown) => typeof value === 'string'
+export function parseProfile(value: unknown): Profile {
+  if (typeof value !== 'object' || value === null) throw new ApiError(502, 'A API retornou dados incompatíveis com o contrato esperado.')
+  const body = value as Record<string, unknown>
+  const user = parseUser(body.user)
+  const address = body.endereco as Record<string, unknown> | undefined
+  const contact = body.contato as Record<string, unknown> | undefined
+  if (address !== undefined && (typeof address !== 'object' || address === null
+    || !['logradouro', 'cidade', 'estado', 'cep'].every((key) => text(address[key]))))
+    throw new ApiError(502, 'A API retornou dados incompatíveis com o contrato esperado.')
+  if (contact !== undefined && (typeof contact !== 'object' || contact === null || !text(contact.tipo) || !text(contact.valor)))
+    throw new ApiError(502, 'A API retornou dados incompatíveis com o contrato esperado.')
+  return { user, endereco: address as ProfileAddress | undefined, contato: contact as ProfileContact | undefined }
+}
+
+export const getProfile = async (token: string, signal?: AbortSignal) =>
+  parseProfile(await apiRequest('/api/v1/users/me/profile', { token, signal }))
+
+export const updateProfile = async (token: string, changes: ProfileUpdate, signal?: AbortSignal) =>
+  parseProfile(await apiRequest('/api/v1/users/me/profile', { method: 'PATCH', token, body: changes, signal }))

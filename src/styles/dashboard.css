@@ -93,6 +93,20 @@ h1 {
   color: var(--color-secondary);
 }
 
+.hero-kicker {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  color: #accbff;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  font-weight: 600;
+}
+
+.hero-kicker > svg {
+  color: var(--color-secondary);
+}
+
 .hero-copy h2 {
   margin-top: 10px;
   font-size: 34px;

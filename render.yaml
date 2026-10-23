@@ -1,0 +1,21 @@
+# Deploy do front no Render (Static Site). Ver docs/DEPLOY.md no Resolvai_Backend_Node.
+services:
+  - type: web
+    name: resolvai-front
+    runtime: static
+    branch: main
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./dist
+    # Só publica depois que o CI do GitHub (lint, testes e build) passar.
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # URL da API no Render, lida no build (ex.: https://resolvai-api.onrender.com).
+      - key: VITE_API_BASE_URL
+        sync: false
+    # O React Router controla as rotas no navegador: qualquer caminho serve o index.html.
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

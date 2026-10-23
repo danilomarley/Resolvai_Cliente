@@ -2,7 +2,7 @@
 
 Frontend em React, TypeScript e Vite. Login, cadastro, perfil, resumo, pedidos e propostas usam a API do ResolvAI. Quando a API falha, a interface exibe o erro. Uma conta sem pedidos apresenta uma lista vazia.
 
-## Executar neste PC sem .NET
+## Executar somente o frontend
 
 Configure uma API acessível em `Resolvai_Cliente/.env.local`:
 
@@ -22,7 +22,7 @@ Também é possível iniciar pelo terminal com `npm run dev` e abrir o endereço
 
 ## Executar com backend local
 
-Execute `iniciar-prototipo.cmd` sem argumentos. O inicializador reutiliza uma API local existente ou inicia o projeto `Resolvai_Backend` ao lado de `Resolvai_Cliente`. Para iniciar o backend, é necessário o SDK .NET 10 e a configuração descrita na documentação do backend.
+Execute `iniciar-prototipo.cmd` sem argumentos. O inicializador reutiliza uma API local existente ou inicia o projeto `Resolvai_Backend_Node` ao lado de `Resolvai_Cliente`. O backend precisa das dependências instaladas (`npm ci`) e do arquivo `.env` descrito no README dele. A API em C# (`Resolvai_Backend`) foi descontinuada.
 
 ## Requisitos
 
@@ -46,18 +46,23 @@ npm run preview
 ## Funcionalidades
 
 - Autenticação e cadastro pela API.
-- Consulta do perfil e finalização de cadastro com CPF, endereço e contato.
-- Resumo da conta, busca nos registros carregados e filtros de pedidos recentes.
+- Configurações da conta: finalização de cadastro, edição de nome, endereço e contato, e saída da conta.
+- Tela principal com os cards de pedidos ativos, propostas recebidas e serviços concluídos, pedidos recentes e serviços concluídos.
 - Lista de pedidos paginada, detalhes, propostas e acompanhamento.
-- Formulário de criação de pedido com campos inicialmente vazios e publicação pela API.
+- Criação de pedido com assistente de IA, que monta o escopo pela conversa, formulário para revisão e envio de até 4 fotos.
 
-O backend precisa disponibilizar os endpoints correspondentes. Recuperação de senha, pagamentos, mensagens, avaliações, contratos e IA ainda não possuem integração; a interface informa a indisponibilidade. O envio de arquivos depende de um endpoint de upload. Fotos já retornadas pela API continuam visíveis nos detalhes.
+O card "Sua avaliação" aguarda uma fonte de dados: ainda não existem avaliações na API. Pagamentos, mensagens e contratos ainda não possuem integração; a interface informa a indisponibilidade.
+
+## Deploy
+
+O `render.yaml` publica o front como Static Site no Render. Configure `VITE_API_BASE_URL` com a URL da API e coloque a URL do front em `CORS_ALLOWED_ORIGINS` da API. O passo a passo está em `docs/DEPLOY.md` do Resolvai_Backend_Node.
 
 ## Organização
 
 - `src/services/`: comunicação com a API e sessão.
 - `src/types/orders.ts`: tipos de pedidos e propostas.
-- `src/components/OrderForm.tsx`: formulário de criação de pedido.
+- `src/components/OrderAssistant.tsx`: assistente de IA da criação de pedido.
+- `src/components/OrderForm.tsx`: formulário de criação e revisão do pedido, com fotos.
 - `src/pages/Dashboard/`: tela integrada à conta autenticada.
 - `tests/frontend.test.mjs`: verificações sem contas ou respostas HTTP pré-fabricadas.
 

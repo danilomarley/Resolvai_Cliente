@@ -11,7 +11,9 @@ export type OrderDto = {
 }
 export type OrdersPage = { items: OrderDto[]; page: number; pageSize: number; totalItems: number; totalPages: number }
 export type HomeSummary = {
-  orders: { total: number; pending: number; inProgress: number; completed: number; cancelled: number }
+  orders: { total: number; pending: number; inProgress: number; completed: number; cancelled: number
+    active?: number; createdLast7Days?: number }
+  proposals?: { total: number; awaitingDecision: number; unviewed: number }
   recentOrders: OrderDto[]
 }
 export type UserDto = { id: string; name: string; email: string; role: string; isActive: boolean; createdAt: string; cpf?: string | null }
@@ -29,7 +31,12 @@ function isOrder(value: unknown): value is OrderDto {
 export function parseSummary(value: unknown): HomeSummary {
   if (!object(value) || !object(value.orders) || !Array.isArray(value.recentOrders)) throw invalid()
   const counts = value.orders
-  if (!['total', 'pending', 'inProgress', 'completed', 'cancelled'].every((key) => Number.isSafeInteger(counts[key]) && Number(counts[key]) >= 0)
+  const count = (source: Record<string, unknown>, key: string) => Number.isSafeInteger(source[key]) && Number(source[key]) >= 0
+  // Campos dos cards (#50): opcionais para manter compatibilidade, mas validados quando presentes.
+  if (['active', 'createdLast7Days'].some((key) => counts[key] !== undefined && !count(counts, key))
+    || value.proposals !== undefined && (!object(value.proposals)
+      || !['total', 'awaitingDecision', 'unviewed'].every((key) => count(value.proposals as Record<string, unknown>, key)))) throw invalid()
+  if (!['total', 'pending', 'inProgress', 'completed', 'cancelled'].every((key) => count(counts, key))
     || value.recentOrders.length > 5 || value.recentOrders.length > Number(counts.total) || !value.recentOrders.every(isOrder)
     || counts.total !== Number(counts.pending) + Number(counts.inProgress) + Number(counts.completed) + Number(counts.cancelled)) throw invalid()
   return value as HomeSummary
@@ -62,8 +69,8 @@ export function parseLogin(value: unknown): LoginDto {
 }
 export const getSummary = async (token: string, signal?: AbortSignal) => parseSummary(await apiRequest('/api/v1/home/summary', { token, signal }))
 export const getCurrentUser = async (token: string, signal?: AbortSignal) => parseUser(await apiRequest('/api/v1/users/me', { token, signal }))
-export async function getOrders(token: string, query: { status?: OrderStatusDto; page?: number } = {}, signal?: AbortSignal) {
-  const params = new URLSearchParams({ page: String(query.page ?? 1), pageSize: '10' })
+export async function getOrders(token: string, query: { status?: OrderStatusDto; page?: number; pageSize?: number } = {}, signal?: AbortSignal) {
+  const params = new URLSearchParams({ page: String(query.page ?? 1), pageSize: String(query.pageSize ?? 10) })
   if (query.status) params.set('status', query.status)
   return parsePage(await apiRequest(`/api/v1/orders?${params}`, { token, signal }))
 }
@@ -106,3 +113,30 @@ export const createOrder = async (token: string, order: NewOrder, photoUrls: str
       fotos: photoUrls.map((url) => ({ url })),
     },
   }))
+
+// Fotos do pedido (#67): cada foto é enviada à API antes da criação do pedido; a URL devolvida vai em fotos[].
+export const photoTypes = ['image/jpeg', 'image/png', 'image/webp']
+export const maxPhotoBytes = 5 * 1024 * 1024
+export const maxPhotos = 4
+
+export async function uploadOrderPhoto(token: string, photo: File, signal?: AbortSignal) {
+  const form = new FormData()
+  form.append('foto', photo, photo.name)
+  const value = await apiRequest('/api/v1/orders/photos', { method: 'POST', token, form, signal })
+  if (!object(value) || typeof value.url !== 'string' || !/^https:\/\//.test(value.url)) throw invalid()
+  return value.url
+}
+
+// Chat de criação de pedido (#69): as chaves de scope são as mesmas do corpo de POST /api/v1/orders.
+export type AssistantMessage = { role: 'user' | 'assistant'; content: string }
+export type AssistantScope = Partial<Record<'titulo' | 'categoria' | 'descricao' | 'localizacao' | 'detalhes' | 'urgencia' | 'especificacoes', string>>
+export type AssistantReply = { reply: string; scope: AssistantScope; complete: boolean }
+
+export function parseAssistantReply(value: unknown): AssistantReply {
+  if (!object(value) || typeof value.reply !== 'string' || !value.reply.trim() || typeof value.complete !== 'boolean'
+    || !object(value.scope) || !Object.values(value.scope).every((item) => typeof item === 'string')) throw invalid()
+  return value as AssistantReply
+}
+
+export const askAssistant = async (token: string, messages: AssistantMessage[], signal?: AbortSignal) =>
+  parseAssistantReply(await apiRequest('/api/v1/orders/assistant', { method: 'POST', token, body: { messages }, signal }))
