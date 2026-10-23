@@ -1,7 +1,6 @@
 import { existsSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { tmpdir } from 'node:os'
 import { spawn, execFileSync } from 'node:child_process'
 import { loadEnv } from 'vite'
 
@@ -45,7 +44,7 @@ async function main() {
     throw new Error('Use sem argumentos ou --front (somente frontend).')
   }
   if (args.includes('--front')) {
-    console.log('ResolvAI - iniciando somente o frontend, sem exigir .NET. Para encerrar, pressione Ctrl+C.')
+    console.log('ResolvAI - iniciando somente o frontend. Para encerrar, pressione Ctrl+C.')
     startFrontend('/login')
     return
   }
@@ -56,19 +55,21 @@ async function main() {
     if (!local || target.protocol !== 'http:') {
       throw new Error('A API configurada nao respondeu. Inicie essa API ou confira API_PROXY_TARGET/VITE_API_BASE_URL no .env.local.')
     }
-    const project = resolve(root, '../Resolvai_Backend/src/Resolvai.Api/Resolvai.Api.csproj')
-    if (!existsSync(project)) throw new Error('Backend nao encontrado. Coloque Resolvai_Backend ao lado de Resolvai_Cliente.')
-    let sdks
-    try { sdks = execFileSync('dotnet', ['--list-sdks'], { encoding: 'utf8', windowsHide: true }) }
-    catch { throw new Error('SDK .NET 10 indisponivel. Configure uma API existente e use iniciar-prototipo.cmd --front.') }
-    if (!sdks.split(/\r?\n/).some((line) => /^10\./.test(line))) {
-      throw new Error('SDK .NET 10 nao encontrado. Configure uma API existente e use iniciar-prototipo.cmd --front.')
+    // A API agora e o Resolvai_Backend_Node (a API C# foi descontinuada).
+    const backendDir = resolve(root, '../Resolvai_Backend_Node')
+    if (!existsSync(resolve(backendDir, 'src/server.ts'))) {
+      throw new Error('Backend nao encontrado. Coloque Resolvai_Backend_Node ao lado de Resolvai_Cliente.')
     }
-    console.log('Compilando e iniciando o backend. A primeira execucao pode levar alguns minutos...')
-    // All generated build files stay outside the backend repository.
-    const artifacts = resolve(tmpdir(), 'resolvai-prototype-artifacts')
-    const backend = start('dotnet', ['run', '--project', project, '--artifacts-path', artifacts, '--no-launch-profile'], {
-      env: { ...env, ASPNETCORE_ENVIRONMENT: 'Development', ASPNETCORE_URLS: target.origin, DOTNET_CLI_TELEMETRY_OPTOUT: '1' },
+    if (!existsSync(resolve(backendDir, 'node_modules/tsx'))) {
+      throw new Error('Dependencias do backend nao instaladas. Execute "npm ci" na pasta Resolvai_Backend_Node.')
+    }
+    if (!existsSync(resolve(backendDir, '.env'))) {
+      throw new Error('Configuracao do backend nao encontrada. Crie Resolvai_Backend_Node/.env a partir do .env.example.')
+    }
+    console.log('Iniciando o backend...')
+    const backend = start(process.execPath, ['--env-file-if-exists=.env', '--import', 'tsx', 'src/server.ts'], {
+      cwd: backendDir,
+      env: { ...process.env, PORT: target.port || '5172', HOST: target.hostname.replace(/^\[|\]$/g, '') },
     })
     let backendFailure
     backend.on('error', (error) => { backendFailure = error.message })
