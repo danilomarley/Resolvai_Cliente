@@ -12,6 +12,11 @@ dist
 dist-ssr
 .e2e-backend/
 .candidate-front/
+.test-services/
+.review-api/
+.professional-schema/
+.security-api/
+.baseline-api/
 test-results/
 playwright-report/
 e2e-artifacts/
