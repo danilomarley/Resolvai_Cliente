@@ -45,7 +45,7 @@ const { ReviewForm } = await import('../src/components/OrderReview.tsx')
 const { Modal } = await import('../src/components/Modal.tsx')
 const { Sidebar } = await import('../src/components/dashboard/Sidebar.tsx')
 const { CreateOrderModal } = await import('../src/components/CreateOrderModal.tsx')
-const { readModal, readNext, searchWithModal } = await import('../src/services/modalRoute.ts')
+const { readModal, readNext, readOrder, searchWithModal, modalLink } = await import('../src/services/modalRoute.ts')
 const { buildRegistration, emptyRegistration, maskCpf, maskCep, maskPhone, isValidPhone } = await import('../src/services/registrationForm.ts')
 const { CompleteRegistrationForm } = await import('../src/components/CompleteRegistrationForm.tsx')
 const { parseReview, parseReviewSummary, validRating, submitReview } = await import('../src/services/reviews.ts')
@@ -174,7 +174,7 @@ test('review form has five named radio inputs, optional comment and prevents emp
 test('only completed order details offer the review route', () => {
   const id = randomUUID(), customerId = randomUUID()
   const order = { id, customerId, title: 'Serviço', category: 'Pedido', location: '', description: '', status: 'completed', icon: 'bag', proposals: 0 }
-  assert.match(renderOrders({ orders: [order], customerId, orderId: id }), new RegExp(`/pedidos/${id}/avaliar`))
+  assert.match(renderOrders({ orders: [order], customerId, orderId: id }), new RegExp(`href="/pedidos\\?modal=avaliar&amp;pedido=${id}"`))
   assert.doesNotMatch(renderOrders({ orders: [{ ...order, status: 'progress' }], customerId, orderId: id }), /Avaliar serviço/)
 })
 
@@ -323,4 +323,29 @@ test('create order opens as a wide modal on the assistant, without a page headin
   assert.doesNotMatch(html, /<h1/)
   assert.doesNotMatch(html, /Descartar este pedido/)
   assert.doesNotMatch(html, /hidden=""/)
+})
+
+test('review modal link keeps the current page and carries the order id in the URL', () => {
+  const id = randomUUID()
+  assert.equal(readOrder(`?modal=avaliar&pedido=${id.toUpperCase()}`), id)
+  assert.equal(readOrder('?pedido=../../etc'), null)
+  assert.equal(searchWithModal('?status=Completed', 'avaliar', undefined, id), `?status=Completed&modal=avaliar&pedido=${id}`)
+  assert.equal(searchWithModal(`?modal=avaliar&pedido=${id}&status=Completed`, null), '?status=Completed')
+  const link = modalLink('/pedidos', '?status=Completed', 'avaliar', id)
+  assert.deepEqual(link.to, { pathname: '/pedidos', search: `?status=Completed&modal=avaliar&pedido=${id}` })
+  assert.equal(link.state.modalOpened, true)
+})
+
+test('order details show section tabs instead of per-page back buttons', () => {
+  const id = randomUUID(), customerId = randomUUID()
+  const order = { id, customerId, title: 'Serviço', category: 'Pedido', location: '', description: '', status: 'waiting', icon: 'bag', proposals: 2, proposalList: [] }
+  for (const [view, active] of [[undefined, 'Detalhes'], ['propostas', 'Propostas \\(2\\)'], ['acompanhar', 'Acompanhamento']]) {
+    const html = renderOrders({ orders: [order], customerId, orderId: id, view })
+    assert.match(html, /aria-label="Seções do pedido"/)
+    assert.match(html, new RegExp(`class="order-tab active" aria-current="page"[^>]*>${active}<`))
+    assert.equal((html.match(/aria-current="page"/g) ?? []).length, 1)
+    assert.match(html, new RegExp(`href="/pedidos/${id}/propostas"`))
+    assert.match(html, new RegExp(`href="/pedidos/${id}/acompanhar"`))
+    assert.doesNotMatch(html, /Ver detalhes do pedido/)
+  }
 })

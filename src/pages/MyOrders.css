@@ -21,3 +21,8 @@
 .order-history li::before { content: '• '; }
 .scope-photos { display: flex; flex-wrap: wrap; gap: var(--spacing-sm); }
 .scope-photos img { width: 160px; max-width: 100%; height: 120px; object-fit: cover; border-radius: 8px; }
+
+.order-tabs { display: flex; gap: 4px; margin: var(--spacing-md) 0; border-bottom: 1px solid var(--color-border); overflow-x: auto; }
+.order-tab { padding: 10px 14px; border-bottom: 3px solid transparent; margin-bottom: -1px; font-weight: 600; color: var(--color-muted); white-space: nowrap; text-decoration: none; }
+.order-tab:hover { color: var(--color-text); }
+.order-tab.active { color: var(--color-primary); border-bottom-color: var(--color-primary); }

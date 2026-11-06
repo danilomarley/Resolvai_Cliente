@@ -52,13 +52,17 @@ export function Dashboard() {
       return next
     })
   }
+  // Perfil, ajuda, cadastro, criação de pedido e avaliação vivem na URL (?modal=...): recarregar reabre e "voltar" fecha.
+  const urlModal = useModalRoute(['perfil', 'ajuda', 'finalizar-cadastro', 'criar-pedido', 'avaliar'] as const)
+  // O modal de avaliação usa o pedido da URL (?pedido=) ou, no detalhe, o pedido aberto.
+  const reviewId = urlModal.current === 'avaliar' ? urlModal.order ?? orderId : undefined
+  const ownDetail = useOrderDetail(reviewId && reviewId !== orderId ? reviewId : undefined, session.accessToken)
+  const reviewOrder = reviewId && reviewId === orderId ? detail : ownDetail
   const ordersList = useOrdersList(session.accessToken, viewingOrders && !orderId, statusFilter, page)
   const orderView = location.pathname.endsWith('/propostas') ? 'propostas'
     : location.pathname.endsWith('/acompanhar') ? 'acompanhar' : undefined
   const [tab, setTab] = useState<Tab>('all')
   const [search, setSearch] = useState('')
-  // Perfil, ajuda, cadastro e criação de pedido vivem na URL (?modal=...): recarregar reabre e "voltar" fecha.
-  const urlModal = useModalRoute(['perfil', 'ajuda', 'finalizar-cadastro', 'criar-pedido'] as const)
   const registrationHandled = useRef(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [notice, setNotice] = useState('')
@@ -67,7 +71,6 @@ export function Dashboard() {
   const profile = { name: dashboard.data?.user.name ?? 'Minha conta', location: 'Localização não informada' }
   // O modal "Criar pedido" abre sobre a tela atual, que continua sendo o item ativo do menu.
   const activeNav: NavKey = !viewingOrders ? 'Visão geral'
-    : location.pathname.endsWith('/avaliar') ? 'Avaliações'
     : orderId ? 'Meus pedidos'
     : statusFilter === 'Pending' ? 'Propostas'
     : statusFilter === 'Completed' ? 'Avaliações' : 'Meus pedidos'
@@ -156,9 +159,6 @@ export function Dashboard() {
               <button className="button button-secondary" onClick={session.error ? session.retry : dashboard.retry}>Tentar novamente</button>
               {dashboard.error?.status === 401 && <Link to="/login" state={{ from: location.pathname }}>Entrar novamente</Link>}
             </section>
-            : location.pathname.endsWith('/avaliar') && detail.data && session.accessToken ? <OrderReview
-              key={`${session.accessToken}:${orderId}`} order={toOrder(detail.data, session.customerId!)} token={session.accessToken}
-              onSaved={() => setReviewRevision((value) => value + 1)} />
             : viewingOrders ? <MyOrders
               orders={orderId
                 ? (detail.data ? [toOrder(detail.data, session.customerId!)] : [])
@@ -189,6 +189,14 @@ export function Dashboard() {
           reason={urlModal.next === 'criar-pedido' ? 'Para criar um pedido, precisamos concluir seu cadastro. Leva menos de um minuto.' : undefined} />}
       {!session.loading && urlModal.current === 'criar-pedido' && session.accessToken && dashboard.data && !needsRegistration
         && <CreateOrderModal token={session.accessToken} onClose={urlModal.close} onCreated={orderCreated} />}
+      {!session.loading && urlModal.current === 'avaliar' && session.accessToken && reviewOrder.data
+        && <OrderReview key={`${session.accessToken}:${reviewOrder.data.id}`} order={toOrder(reviewOrder.data, session.customerId!)}
+          token={session.accessToken} onClose={urlModal.close} onSaved={() => setReviewRevision((value) => value + 1)} />}
+      {!session.loading && urlModal.current === 'avaliar' && reviewOrder.error && !reviewOrder.data
+        && <Modal size="sm" title="Avaliar serviço" onClose={urlModal.close}
+          footer={<button type="button" className="button button-secondary" onClick={urlModal.close}>Fechar</button>}>
+          <p role="alert">{reviewOrder.error.status === 404 ? 'Este pedido não está disponível para sua conta.' : reviewOrder.error.message}</p>
+        </Modal>}
       {!session.loading && (urlModal.current === 'perfil' || urlModal.current === 'ajuda') && <Modal size="lg" onClose={urlModal.close}
         title={urlModal.current === 'perfil' ? 'Configurações da conta' : 'Central de ajuda'}>
         {urlModal.current === 'perfil' ? <AccountSettings key={`${session.customerId}:${session.accessToken}`}
