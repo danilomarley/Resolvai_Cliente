@@ -55,6 +55,16 @@ export function useModalRoute<T extends string>(allowed: readonly T[]) {
     [navigate, location.pathname, location.search, location.state],
   )
 
+  /** Troca o modal aberto por outro sem empilhar histórico (ex.: cadastro concluído → criar pedido). */
+  const swap = useCallback(
+    (name: T, nextAction?: NextAction) =>
+      navigate(
+        { pathname: location.pathname, search: searchWithModal(location.search, name, nextAction) },
+        { replace: true, state: { ...(location.state as object | null), modalOpened: true } satisfies ModalState },
+      ),
+    [navigate, location.pathname, location.search, location.state],
+  )
+
   const close = useCallback(() => {
     if ((location.state as ModalState | null)?.modalOpened) navigate(-1)
     else
@@ -64,5 +74,5 @@ export function useModalRoute<T extends string>(allowed: readonly T[]) {
       )
   }, [navigate, location.pathname, location.search, location.state])
 
-  return { current, next, open, close }
+  return { current, next, open, swap, close }
 }

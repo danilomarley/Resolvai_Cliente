@@ -3,17 +3,15 @@ import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } 
 import { MyOrders } from '../MyOrders'
 import { useCustomerSession } from '../../services/useCustomerSession'
 import { useDashboardData, useOrderDetail, useOrdersList } from '../../services/useDashboardData'
-import { askAssistant, createOrder, toOrder, uploadOrderPhoto, type OrderStatusDto } from '../../services/dashboardApi'
+import { toOrder, type OrderStatusDto } from '../../services/dashboardApi'
 import { Icon } from '../../components/Icon'
 import { Modal } from '../../components/Modal'
 import { AccountSettings } from '../../components/AccountSettings'
 import { CompleteRegistrationModal } from '../../components/CompleteRegistrationModal'
-import { OrderForm } from '../../components/OrderForm'
-import { OrderAssistant } from '../../components/OrderAssistant'
+import { CreateOrderModal } from '../../components/CreateOrderModal'
 import { OrderReview } from '../../components/OrderReview'
 import { useReviewSummary } from '../../services/useReviewSummary'
 import { useModalRoute } from '../../services/modalRoute'
-import type { NewOrder } from '../../types/orders'
 import { Sidebar } from '../../components/dashboard/Sidebar'
 import { DashboardOverview } from '../../components/dashboard/DashboardOverview'
 import type { Order } from '../../types/orders'
@@ -59,22 +57,16 @@ export function Dashboard() {
     : location.pathname.endsWith('/acompanhar') ? 'acompanhar' : undefined
   const [tab, setTab] = useState<Tab>('all')
   const [search, setSearch] = useState('')
-  const [dialog, setDialog] = useState<Dialog>(null)
-  // Perfil, ajuda e finalização de cadastro vivem na URL (?modal=...): recarregar reabre e "voltar" fecha.
-  const urlModal = useModalRoute(['perfil', 'ajuda', 'finalizar-cadastro'] as const)
+  // Perfil, ajuda, cadastro e criação de pedido vivem na URL (?modal=...): recarregar reabre e "voltar" fecha.
+  const urlModal = useModalRoute(['perfil', 'ajuda', 'finalizar-cadastro', 'criar-pedido'] as const)
   const registrationHandled = useRef(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [notice, setNotice] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [submitError, setSubmitError] = useState('')
-  // Criação de pedido (#67/#69): começa pelo assistente; o formulário recebe o escopo sugerido para revisão.
-  const [createMode, setCreateMode] = useState<'assistant' | 'form'>('assistant')
-  const [draft, setDraft] = useState<NewOrder>()
   const completedList = useOrdersList(session.accessToken, !viewingOrders && !!dashboard.data, 'Completed', 1, 3)
   const orders = dashboard.data?.summary.recentOrders.map((dto) => toOrder(dto, session.customerId!)) ?? []
   const profile = { name: dashboard.data?.user.name ?? 'Minha conta', location: 'Localização não informada' }
-  const activeNav: NavKey = dialog === 'create' ? 'Criar pedido'
-    : !viewingOrders ? 'Visão geral'
+  // O modal "Criar pedido" abre sobre a tela atual, que continua sendo o item ativo do menu.
+  const activeNav: NavKey = !viewingOrders ? 'Visão geral'
     : location.pathname.endsWith('/avaliar') ? 'Avaliações'
     : orderId ? 'Meus pedidos'
     : statusFilter === 'Pending' ? 'Propostas'
@@ -85,16 +77,13 @@ export function Dashboard() {
     if (value === 'profile') urlModal.open('perfil')
     else if (value === 'help') urlModal.open('ajuda')
     else if (value === 'create' && dashboard.data && !dashboard.data.user.cpf) urlModal.open('finalizar-cadastro', 'criar-pedido')
-    else if (value === 'create') startCreate()
+    else if (value === 'create') urlModal.open('criar-pedido')
   }
-  function startCreate() { setSubmitError(''); setCreateMode('assistant'); setDraft(undefined); setDialog('create') }
   function registrationCompleted() {
     registrationHandled.current = true
-    const next = urlModal.next
-    urlModal.close()
     dashboard.retry()
-    if (next === 'criar-pedido') startCreate()
-    else setNotice('Cadastro finalizado com sucesso.')
+    if (urlModal.next === 'criar-pedido') urlModal.swap('criar-pedido')
+    else { urlModal.close(); setNotice('Cadastro finalizado com sucesso.') }
   }
   // Link direto (?modal=finalizar-cadastro) de quem já finalizou: não há o que preencher.
   const alreadyRegistered = urlModal.current === 'finalizar-cadastro' && !!dashboard.data?.user.cpf
@@ -102,34 +91,25 @@ export function Dashboard() {
     if (urlModal.current !== 'finalizar-cadastro') registrationHandled.current = false
     else if (alreadyRegistered && !registrationHandled.current) {
       registrationHandled.current = true
-      const next = urlModal.next
-      urlModal.close()
-      if (next === 'criar-pedido') startCreate()
+      if (urlModal.next === 'criar-pedido') urlModal.swap('criar-pedido')
+      else urlModal.close()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlModal.current, alreadyRegistered])
-  async function publishOrder(order: NewOrder, photos: File[]) {
-    if (!session.accessToken || !session.customerId) return
-    setSubmitting(true)
-    setSubmitError('')
-    try {
-      // As fotos vão primeiro para o Storage pela API; o pedido é criado com as URLs devolvidas.
-      const photoUrls: string[] = []
-      for (const photo of photos) photoUrls.push(await uploadOrderPhoto(session.accessToken, photo))
-      const created = await createOrder(session.accessToken, order, photoUrls)
-      setDialog(null)
-      dashboard.retry()
-      routerNavigate(`/pedidos/${created.id}`)
-    } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : 'Não foi possível publicar o pedido. Tente novamente.')
-    } finally {
-      setSubmitting(false)
-    }
+  // Link direto para criar pedido sem cadastro finalizado: pede o cadastro primeiro.
+  const needsRegistration = urlModal.current === 'criar-pedido' && !!dashboard.data && !dashboard.data.user.cpf
+  useEffect(() => {
+    if (needsRegistration) urlModal.swap('finalizar-cadastro', 'criar-pedido')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [needsRegistration])
+  function orderCreated(orderId: string) {
+    dashboard.retry()
+    // Troca a entrada do modal pelo pedido novo: "voltar" retorna à tela de onde a pessoa partiu.
+    routerNavigate(`/pedidos/${orderId}`, { replace: true })
   }
   function navigate(item: NavKey) {
     setMobileOpen(false)
     if (item === 'Criar pedido') { openDialog('create'); return }
-    setDialog(null)
     setTab('all')
     setSearch('')
     routerNavigate(destinations[item])
@@ -176,13 +156,6 @@ export function Dashboard() {
               <button className="button button-secondary" onClick={session.error ? session.retry : dashboard.retry}>Tentar novamente</button>
               {dashboard.error?.status === 401 && <Link to="/login" state={{ from: location.pathname }}>Entrar novamente</Link>}
             </section>
-            : dialog === 'create' ? (createMode === 'assistant'
-              ? <OrderAssistant onCancel={() => setDialog(null)} onManual={() => { setDraft(undefined); setCreateMode('form') }}
-                onAsk={(messages) => askAssistant(session.accessToken!, messages)}
-                onReview={(order) => { setDraft(order); setCreateMode('form') }} />
-              : <OrderForm key={draft ? 'revisao' : 'manual'} initial={draft} submitting={submitting} submitError={submitError}
-                onCancel={() => setDialog(null)} onCreate={publishOrder}
-                onBackToAssistant={draft ? () => setCreateMode('assistant') : undefined} />)
             : location.pathname.endsWith('/avaliar') && detail.data && session.accessToken ? <OrderReview
               key={`${session.accessToken}:${orderId}`} order={toOrder(detail.data, session.customerId!)} token={session.accessToken}
               onSaved={() => setReviewRevision((value) => value + 1)} />
@@ -214,6 +187,8 @@ export function Dashboard() {
         && <CompleteRegistrationModal token={session.accessToken} customerId={session.customerId}
           defaultName={dashboard.data.user.name} onClose={urlModal.close} onCompleted={registrationCompleted}
           reason={urlModal.next === 'criar-pedido' ? 'Para criar um pedido, precisamos concluir seu cadastro. Leva menos de um minuto.' : undefined} />}
+      {!session.loading && urlModal.current === 'criar-pedido' && session.accessToken && dashboard.data && !needsRegistration
+        && <CreateOrderModal token={session.accessToken} onClose={urlModal.close} onCreated={orderCreated} />}
       {!session.loading && (urlModal.current === 'perfil' || urlModal.current === 'ajuda') && <Modal size="lg" onClose={urlModal.close}
         title={urlModal.current === 'perfil' ? 'Configurações da conta' : 'Central de ajuda'}>
         {urlModal.current === 'perfil' ? <AccountSettings key={`${session.customerId}:${session.accessToken}`}
