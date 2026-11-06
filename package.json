@@ -12,7 +12,7 @@
     "e2e:up": "node e2e/manage.mjs up",
     "e2e:down": "node e2e/manage.mjs down",
     "test:e2e": "playwright test",
-    "test:e2e-tools": "node --test e2e/sanitize.test.mjs",
+    "test:e2e-tools": "node --test e2e/sanitize.test.mjs e2e/runtime.test.mjs",
     "e2e:artifacts": "node e2e/sanitize.mjs"
   },
   "dependencies": {

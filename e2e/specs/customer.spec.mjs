@@ -55,7 +55,7 @@ test('criação de pedido pelo formulário confirma registro e escopo na API', a
   await page.getByRole('button', { name: 'Prefiro preencher o formulário', exact: true }).click()
   const values = { Título: 'Reparo elétrico E2E', Categoria: 'Elétrica', Descrição: 'Tomada sem energia no ambiente de teste.', 'Local do serviço': 'Bairro E2E, Fortaleza', 'Detalhes do ambiente': 'Cozinha do imóvel de teste', 'Escopo solicitado': 'Verificar circuito e reparar a tomada sem energia.' }
   for (const [label, value] of Object.entries(values)) await page.getByLabel(label, { exact: true }).fill(value)
-  await page.getByLabel('Urgência', { exact: true }).selectOption('Nos próximos dias')
+  await page.getByRole('combobox', { name: 'Urgência', exact: true }).selectOption('Nos próximos dias')
   await page.getByRole('button', { name: 'Publicar pedido', exact: true }).click()
   await expect(page).toHaveURL(/\/pedidos\/[0-9a-f-]{36}$/)
   const id = new URL(page.url()).pathname.split('/').pop()
@@ -68,6 +68,7 @@ test('Meus pedidos lista somente dados da conta e abre detalhes e estados', asyn
   await completeAccount(request, account)
   const order = await apiCall(request, account, '/api/v1/orders', { titulo: 'Pedido isolado E2E', categoria: 'Pintura', descricao: 'Pintar a parede do ambiente de teste.', localizacao: 'Fortaleza, CE', fotos: [] }, 201)
   await browserLogin(page, account)
+  await expect(page.getByRole('heading', { name: 'Olá, Cliente' })).toBeVisible()
   await page.goto('/pedidos')
   const card = page.getByRole('article').filter({ has: page.getByRole('heading', { name: /Pedido isolado E2E/ }) })
   await expect(card).toBeVisible()
