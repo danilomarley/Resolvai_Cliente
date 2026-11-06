@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { MyOrders } from '../MyOrders'
+import { PublicProvider } from '../PublicProvider'
 import { useCustomerSession } from '../../services/useCustomerSession'
 import { useDashboardData, useOrderDetail, useOrdersList } from '../../services/useDashboardData'
 import { askAssistant, createOrder, toOrder, uploadOrderPhoto, type OrderStatusDto } from '../../services/dashboardApi'
@@ -18,7 +19,7 @@ import type { Dialog, Tab } from '../../types/dashboard'
 export function Dashboard() {
   const routerNavigate = useNavigate()
   const location = useLocation()
-  const { orderId } = useParams()
+  const { orderId, providerId } = useParams()
   const viewingOrders = location.pathname.startsWith('/pedidos')
   const session = useCustomerSession()
   const dashboard = useDashboardData(session.accessToken, session.customerId)
@@ -38,7 +39,7 @@ export function Dashboard() {
   // Criação de pedido (#67/#69): começa pelo assistente; o formulário recebe o escopo sugerido para revisão.
   const [createMode, setCreateMode] = useState<'assistant' | 'form'>('assistant')
   const [draft, setDraft] = useState<NewOrder>()
-  const completedList = useOrdersList(session.accessToken, !viewingOrders && !!dashboard.data, 'Completed', 1, 3)
+  const completedList = useOrdersList(session.accessToken, !viewingOrders && !providerId && !!dashboard.data, 'Completed', 1, 3)
   const orders = dashboard.data?.summary.recentOrders.map((dto) => toOrder(dto, session.customerId!)) ?? []
   const profile = { name: dashboard.data?.user.name ?? 'Minha conta', location: 'Localização não informada' }
 
@@ -93,7 +94,7 @@ export function Dashboard() {
     <div className="app-shell">
       <a className="skip-link" href="#main">Pular para o conteúdo</a>
       <Sidebar mobileOpen={mobileOpen} setMobileOpen={setMobileOpen}
-        activeNav={viewingOrders ? 'Meus pedidos' : 'Visão geral'} navigate={navigate}
+        activeNav={viewingOrders || providerId ? 'Meus pedidos' : 'Visão geral'} navigate={navigate}
         openDialog={openDialog} profile={profile} />
       <div className="main-shell">
         <header className="topbar">
@@ -101,7 +102,7 @@ export function Dashboard() {
             <button className="icon-button mobile-menu" aria-label="Abrir menu"
               aria-expanded={mobileOpen} onClick={() => setMobileOpen(true)}><Icon name="menu" /></button>
             <span>Meu espaço</span><Icon name="chevron" size={13} />
-            <strong>{viewingOrders ? 'Meus pedidos' : 'Visão geral'}</strong>
+            <strong>{providerId ? 'Perfil do prestador' : viewingOrders ? 'Meus pedidos' : 'Visão geral'}</strong>
           </div>
           <div className="topbar-actions">
             <label className="search-box">
@@ -139,6 +140,7 @@ export function Dashboard() {
               onRetry={orderId ? detail.retry : ordersList.retry}
               filter={orderId ? undefined : { value: statusFilter, onChange: (value) => { setStatusFilter(value); setPage(1) } }}
               pager={orderId || !ordersList.data ? undefined : { page, totalPages: ordersList.data.totalPages, onPage: setPage }} />
+            : providerId && session.accessToken ? <PublicProvider key={`${session.accessToken}:${providerId}`} providerId={providerId} token={session.accessToken} />
             : dashboard.data && <DashboardOverview orders={orders} summary={dashboard.data.summary}
               completed={{ orders: completedList.data?.items.map((dto) => toOrder(dto, session.customerId!)) ?? [],
                 loading: completedList.loading, error: completedList.error?.message }}

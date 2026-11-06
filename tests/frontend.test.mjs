@@ -39,6 +39,8 @@ const { DashboardOverview } = await import('../src/components/dashboard/Dashboar
 const { OrderAssistant } = await import('../src/components/OrderAssistant.tsx')
 const { ApiError, createApiClient } = await import('../src/services/api.ts')
 const { MyOrders } = await import('../src/pages/MyOrders.tsx')
+const { parsePublicProvider } = await import('../src/services/providers.ts')
+const { PublicProviderContent } = await import('../src/pages/PublicProvider.tsx')
 const { OrderForm } = await import('../src/components/OrderForm.tsx')
 const renderOrders = (props = {}) => renderToStaticMarkup(React.createElement(StaticRouter, { location: '/pedidos' },
   React.createElement(MyOrders, { orders: [], customerId: null, search: '', ...props })))
@@ -85,6 +87,36 @@ test('API identifiers accept UUIDs and reject invalid route values', () => {
 test('native fetch failures report API unavailability', async () => {
   // Invalid URL fails locally; no server or intercepted HTTP response is used.
   await assert.rejects(createApiClient('http://[')('/api/v1/users/me'), error => error instanceof ApiError && error.status === 0)
+})
+
+test('public provider contracts distinguish unavailable data and reject unsafe photos and ratings', () => {
+  const provider = { id: randomUUID(), name: 'Prestador', photoUrl: null, categories: null, region: null,
+    completedServices: 0, reviewsAvailable: false, reviewsCount: null, averageRating: null, reviews: [] }
+  assert.deepEqual(parsePublicProvider(provider), provider)
+  for (const patch of [{ photoUrl: 'javascript:alert(1)' }, { completedServices: -1 }, { averageRating: 6 }, { reviewsAvailable: false, averageRating: 5 }]) assert.throws(() => parsePublicProvider({ ...provider, ...patch }), ApiError)
+  const html = renderToStaticMarkup(React.createElement(PublicProviderContent, { provider }))
+  assert.match(html, /Foto não informada/)
+  assert.match(html, /Categorias não informadas/)
+  assert.match(html, /Avaliações indisponíveis/)
+  assert.doesNotMatch(html, /ainda não recebeu avaliações/)
+})
+
+test('public provider renders API fields and escapes review comments', () => {
+  const provider = { id: randomUUID(), name: 'Profissional', photoUrl: 'https://example.invalid/photo.jpg', categories: ['Elétrica'], region: 'Fortaleza, CE',
+    completedServices: 8, reviewsAvailable: true, reviewsCount: 2, averageRating: 4.5, reviews: [{ rating: 4, comment: '<script>alert(1)</script>', createdAt: new Date().toISOString() }, { rating: 5, createdAt: new Date().toISOString() }] }
+  const html = renderToStaticMarkup(React.createElement(PublicProviderContent, { provider: parsePublicProvider(provider) }))
+  for (const text of ['Profissional', 'Elétrica', 'Fortaleza, CE', '4,5 de 5', 'Nota: 4 de 5 estrelas']) assert.ok(html.includes(text))
+  assert.match(html, /&lt;script&gt;/)
+  assert.doesNotMatch(html, /<script>/)
+  assert.match(html, /Avaliações recebidas/)
+  assert.throws(() => parsePublicProvider({ ...provider, reviewsCount: 0 }), ApiError)
+  assert.throws(() => parsePublicProvider({ ...provider, reviewsCount: -1 }), ApiError)
+})
+
+test('proposal provides a route to its actual provider', () => {
+  const customerId = randomUUID(), id = randomUUID(), providerId = randomUUID()
+  const order = { id, customerId, title: 'Pedido', status: 'waiting', proposals: 1, proposalList: [{ id: randomUUID(), providerId, providerName: 'Profissional', status: 'Sent', value: 100 }] }
+  assert.match(renderOrders({ customerId, orders: [order], orderId: id, view: 'propostas' }), new RegExp(`/prestadores/${providerId}`))
 })
 
 test('order creation starts empty and disables editing during submission', () => {
