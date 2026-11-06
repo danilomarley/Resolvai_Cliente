@@ -39,9 +39,9 @@ const { DashboardOverview } = await import('../src/components/dashboard/Dashboar
 const { OrderAssistant } = await import('../src/components/OrderAssistant.tsx')
 const { ApiError, createApiClient } = await import('../src/services/api.ts')
 const { MyOrders } = await import('../src/pages/MyOrders.tsx')
-const { OrderForm } = await import('../src/components/OrderForm.tsx')
 const { parsePublicProvider } = await import('../src/services/providers.ts')
 const { PublicProviderContent } = await import('../src/pages/PublicProvider.tsx')
+const { OrderForm } = await import('../src/components/OrderForm.tsx')
 const renderOrders = (props = {}) => renderToStaticMarkup(React.createElement(StaticRouter, { location: '/pedidos' },
   React.createElement(MyOrders, { orders: [], customerId: null, search: '', ...props })))
 

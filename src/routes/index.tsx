@@ -12,11 +12,11 @@ export function AppRoutes() {
         <Route path="/cadastro" element={<Cadastro />} />
         <Route path="/complemento-cadastro" element={<CompleteRegistration />} />
         <Route path="/" element={<Dashboard />}>
+          <Route path="prestadores/:providerId" element={null} />
           <Route path="pedidos" element={null} />
           <Route path="pedidos/:orderId" element={null} />
           <Route path="pedidos/:orderId/propostas" element={null} />
           <Route path="pedidos/:orderId/acompanhar" element={null} />
-          <Route path="prestadores/:providerId" element={null} />
         </Route>
       </Routes>
     </BrowserRouter>

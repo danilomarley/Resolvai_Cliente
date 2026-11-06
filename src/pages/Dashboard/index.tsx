@@ -129,7 +129,6 @@ export function Dashboard() {
               : <OrderForm key={draft ? 'revisao' : 'manual'} initial={draft} submitting={submitting} submitError={submitError}
                 onCancel={() => setDialog(null)} onCreate={publishOrder}
                 onBackToAssistant={draft ? () => setCreateMode('assistant') : undefined} />)
-            : providerId && session.accessToken ? <PublicProvider key={`${session.accessToken}:${providerId}`} providerId={providerId} token={session.accessToken} />
             : viewingOrders ? <MyOrders
               orders={orderId
                 ? (detail.data ? [toOrder(detail.data, session.customerId!)] : [])
@@ -141,6 +140,7 @@ export function Dashboard() {
               onRetry={orderId ? detail.retry : ordersList.retry}
               filter={orderId ? undefined : { value: statusFilter, onChange: (value) => { setStatusFilter(value); setPage(1) } }}
               pager={orderId || !ordersList.data ? undefined : { page, totalPages: ordersList.data.totalPages, onPage: setPage }} />
+            : providerId && session.accessToken ? <PublicProvider key={`${session.accessToken}:${providerId}`} providerId={providerId} token={session.accessToken} />
             : dashboard.data && <DashboardOverview orders={orders} summary={dashboard.data.summary}
               completed={{ orders: completedList.data?.items.map((dto) => toOrder(dto, session.customerId!)) ?? [],
                 loading: completedList.loading, error: completedList.error?.message }}
