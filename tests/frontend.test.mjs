@@ -23,6 +23,7 @@ registerHooks({
   },
   load(url, context, nextLoad) {
     if (url.endsWith('.css')) return { format: 'module', source: '', shortCircuit: true }
+    if (url.endsWith('.svg')) return { format: 'module', source: 'export default "/logo.svg"', shortCircuit: true }
     if (/\.tsx?$/.test(url)) return { format: 'module', shortCircuit: true,
       source: ts.transpileModule(readFileSync(fileURLToPath(url), 'utf8'), {
         compilerOptions: { module: ts.ModuleKind.ESNext, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022 },
@@ -41,6 +42,11 @@ const { ApiError, createApiClient } = await import('../src/services/api.ts')
 const { MyOrders } = await import('../src/pages/MyOrders.tsx')
 const { OrderForm } = await import('../src/components/OrderForm.tsx')
 const { ReviewForm } = await import('../src/components/OrderReview.tsx')
+const { Modal } = await import('../src/components/Modal.tsx')
+const { Sidebar } = await import('../src/components/dashboard/Sidebar.tsx')
+const { readModal, readNext, searchWithModal } = await import('../src/services/modalRoute.ts')
+const { buildRegistration, emptyRegistration, maskCpf, maskCep, maskPhone, isValidPhone } = await import('../src/services/registrationForm.ts')
+const { CompleteRegistrationForm } = await import('../src/components/CompleteRegistrationForm.tsx')
 const { parseReview, parseReviewSummary, validRating, submitReview } = await import('../src/services/reviews.ts')
 const renderOrders = (props = {}) => renderToStaticMarkup(React.createElement(StaticRouter, { location: '/pedidos' },
   React.createElement(MyOrders, { orders: [], customerId: null, search: '', ...props })))
@@ -221,3 +227,88 @@ test('photo uploads are sent as multipart without a JSON content type', async ()
   assert.equal(sent.headers.Authorization, 'Bearer t')
 })
 
+
+test('modal state lives in the URL and ignores unknown names', () => {
+  const allowed = ['perfil', 'ajuda']
+  assert.equal(readModal('?modal=perfil', allowed), 'perfil')
+  assert.equal(readModal('?modal=outro', allowed), null)
+  assert.equal(readModal('', allowed), null)
+  assert.equal(searchWithModal('', 'ajuda'), '?modal=ajuda')
+  assert.equal(searchWithModal('?a=1', 'perfil'), '?a=1&modal=perfil')
+  assert.equal(searchWithModal('?a=1&modal=perfil', null), '?a=1')
+  assert.equal(searchWithModal('?modal=perfil', null), '')
+})
+
+test('modal renders size, description, scrollable body and footer; blocks closing when not dismissible', () => {
+  const render = (props) => renderToStaticMarkup(React.createElement(Modal, { title: 'Título', onClose() {}, ...props },
+    React.createElement('p', null, 'Conteúdo')))
+  const html = render({ size: 'lg', description: 'Apoio', footer: React.createElement('button', null, 'Salvar') })
+  assert.match(html, /class="modal modal-lg"/)
+  assert.match(html, /aria-labelledby="[^"]+"/)
+  assert.match(html, /aria-describedby="[^"]+"/)
+  assert.match(html, /class="modal-body"><p>Conteúdo<\/p>/)
+  assert.match(html, /class="modal-footer"><button>Salvar<\/button>/)
+  const plain = render({})
+  assert.match(plain, /class="modal modal-md"/)
+  assert.doesNotMatch(plain, /modal-footer|aria-describedby/)
+  assert.match(render({ dismissible: false }), /aria-label="Fechar janela"[^>]*disabled=""|disabled=""[^>]*aria-label="Fechar janela"/)
+})
+
+test('modal intent is only kept for known actions and leaves with the modal', () => {
+  assert.equal(readNext('?modal=finalizar-cadastro&next=criar-pedido'), 'criar-pedido')
+  assert.equal(readNext('?next=apagar-tudo'), null)
+  assert.equal(searchWithModal('', 'finalizar-cadastro', 'criar-pedido'), '?modal=finalizar-cadastro&next=criar-pedido')
+  assert.equal(searchWithModal('?modal=finalizar-cadastro&next=criar-pedido', null), '')
+  assert.equal(searchWithModal('?modal=perfil&next=criar-pedido', 'ajuda'), '?modal=ajuda')
+})
+
+test('registration masks and validation build the API payload', () => {
+  assert.equal(maskCpf('12345678901'), '123.456.789-01')
+  assert.equal(maskCep('60115000'), '60115-000')
+  assert.equal(maskPhone('85999998888'), '(85) 99999-8888')
+  assert.equal(isValidPhone('(85) 99999-8888'), true)
+  assert.equal(isValidPhone('(85) 89999-8888'), false)
+  const filled = { ...emptyRegistration('  Maria Souza '), cpf: '123.456.789-01', cep: '60115-000', logradouro: ' Rua A ', numero: '10',
+    bairro: 'Centro', cidade: 'Fortaleza', estado: 'ce', contactValue: '(85) 99999-8888' }
+  const ok = buildRegistration(filled)
+  assert.deepEqual(ok.payload, { name: 'Maria Souza', cpf: '12345678901',
+    endereco: { logradouro: 'Rua A', numero: '10', bairro: 'Centro', cidade: 'Fortaleza', estado: 'CE', cep: '60115000' },
+    contato: { tipo: 'whatsapp', valor: '85999998888' } })
+  assert.match(buildRegistration({ ...filled, cpf: '123' }).error, /CPF/)
+  assert.match(buildRegistration({ ...filled, cep: '6011' }).error, /CEP/)
+  assert.match(buildRegistration({ ...filled, estado: 'XX' }).error, /estado/)
+  assert.match(buildRegistration({ ...filled, contactValue: '123' }).error, /telefone/)
+  assert.match(buildRegistration({ ...filled, contactType: 'email_alt', contactValue: 'sem-arroba' }).error, /e-mail/)
+  assert.equal(buildRegistration({ ...filled, contactType: 'email_alt', contactValue: ' A@B.com ' }).payload.contato.valor, 'a@b.com')
+})
+
+test('registration form exposes labelled fields and disables them while saving', () => {
+  const render = (props) => renderToStaticMarkup(React.createElement(CompleteRegistrationForm, { id: 'f', disabled: false, onSubmit() {}, ...props }))
+  const html = render({ defaultName: 'Maria Souza' })
+  for (const label of ['Nome completo', 'CPF', 'CEP', 'Logradouro', 'Bairro', 'Cidade', 'Estado', 'Tipo de contato', 'Número de contato']) assert.match(html, new RegExp(label))
+  assert.match(html, /value="Maria Souza"/)
+  assert.match(html, /não pode ser alterado depois/)
+  assert.doesNotMatch(html, /role="alert"/)
+  assert.match(render({ disabled: true }), /<fieldset disabled=""/)
+  assert.match(render({ error: 'CPF já em uso' }), /role="alert"[^>]*>CPF já em uso/)
+})
+
+test('sidebar only offers working destinations and marks the active one', () => {
+  const render = (activeNav) => renderToStaticMarkup(React.createElement(Sidebar, {
+    mobileOpen: false, setMobileOpen() {}, activeNav, navigate() {}, openDialog() {}, profile: { name: 'Maria Souza', location: '' },
+  }))
+  const html = render('Propostas')
+  for (const label of ['Visão geral', 'Criar pedido', 'Meus pedidos', 'Propostas', 'Avaliações', 'Central de ajuda']) assert.match(html, new RegExp(`<span>${label}</span>`))
+  for (const removed of ['Mensagens', 'Contratos', 'Pagamentos']) assert.doesNotMatch(html, new RegExp(removed))
+  assert.equal((html.match(/aria-current="page"/g) ?? []).length, 1)
+  assert.match(html, /nav-item active"[^>]*aria-current="page"[^>]*><svg[\s\S]*?<span>Propostas<\/span>/)
+  assert.match(render('Criar pedido'), /aria-current="page"[^>]*>(?:(?!<\/button>)[\s\S])*<span>Criar pedido<\/span>/)
+})
+
+test('order list shortcuts can replace the page heading', () => {
+  const heading = { title: 'Propostas', description: 'Pedidos que estão recebendo propostas.' }
+  const html = renderOrders({ heading })
+  assert.match(html, />Propostas<\/h1>/)
+  assert.match(html, /Pedidos que estão recebendo propostas\./)
+  assert.match(renderOrders({}), />Meus pedidos<\/h1>/)
+})

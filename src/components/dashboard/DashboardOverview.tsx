@@ -2,7 +2,7 @@ import { Icon, type IconName } from '../Icon'
 import { HouseIllustration } from '../HouseIllustration'
 import { OrdersPanel } from './OrdersPanel'
 import type { Order } from '../../types/orders'
-import type { Dialog, Profile, Tab } from '../../types/dashboard'
+import type { Dialog, NavKey, OrderTarget, Profile, Tab } from '../../types/dashboard'
 import type { HomeSummary } from '../../services/dashboardApi'
 import { orderMoney } from '../../services/orders'
 import type { ReviewSummary } from '../../services/reviews'
@@ -17,9 +17,9 @@ type Props = {
   setTab: (tab: Tab) => void
   search: string
   setSearch: (search: string) => void
-  navigate: (label: string, target?: Dialog) => void
+  navigate: (item: NavKey) => void
   openDialog: (dialog: Dialog) => void
-  openOrder: (order: Order, target?: Dialog) => void
+  openOrder: (order: Order, target?: OrderTarget) => void
   onViewCompleted: () => void
 }
 
@@ -57,7 +57,7 @@ export function DashboardOverview({ orders, summary, reviews, completed, profile
       color: 'purple', detailIcon: 'clock',
       detail: !proposals ? 'Propostas indisponíveis no momento'
         : proposals.unviewed > 0 ? `${plural(proposals.unviewed, 'proposta', 'propostas')} para conferir` : 'Suas propostas estão em dia',
-      action: () => navigate('Meus pedidos'),
+      action: () => navigate('Propostas'),
     },
     {
       label: 'Serviços concluídos', value: twoDigits(counts.completed), icon: 'circleCheck', color: 'green',

@@ -21,6 +21,8 @@ type Props = {
   requiresLogin?: boolean
   onRetry?: () => void
   view?: 'propostas' | 'acompanhar'
+  /** Título e descrição da listagem; os atalhos do menu (Propostas, Avaliações) trocam o padrão. */
+  heading?: { title: string; description: string }
   filter?: { value?: OrderStatusDto; onChange: (value?: OrderStatusDto) => void }
   pager?: { page: number; totalPages: number; onPage: (page: number) => void }
 }
@@ -135,7 +137,7 @@ function OrderDetails({ order }: { order: Order }) {
   )
 }
 
-export function MyOrders({ orders, customerId, orderId, search, loading, error, requiresLogin, onRetry, view, filter, pager }: Props) {
+export function MyOrders({ orders, customerId, orderId, search, loading, error, requiresLogin, onRetry, view, heading: listHeading, filter, pager }: Props) {
   const heading = useRef<HTMLHeadingElement>(null)
   useEffect(() => { heading.current?.focus() }, [orderId])
   const failure = error || (!customerId ? 'Entre na sua conta para consultar pedidos.' : '')
@@ -236,9 +238,9 @@ export function MyOrders({ orders, customerId, orderId, search, loading, error, 
       <div className="page-heading">
         <div>
           <h1 ref={heading} tabIndex={-1}>
-            {orderId === undefined ? 'Meus pedidos' : 'Detalhes do pedido'}
+            {orderId === undefined ? listHeading?.title ?? 'Meus pedidos' : 'Detalhes do pedido'}
           </h1>
-          <p>{orderId === undefined ? 'Todos os seus pedidos, do mais recente ao mais antigo. A busca considera os pedidos desta página.' : 'Informações do pedido selecionado.'}</p>
+          <p>{orderId === undefined ? listHeading?.description ?? 'Todos os seus pedidos, do mais recente ao mais antigo. A busca considera os pedidos desta página.' : 'Informações do pedido selecionado.'}</p>
         </div>
       </div>
       {orderId !== undefined && (

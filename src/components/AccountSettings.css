@@ -8,3 +8,6 @@
 .account-fields-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .account-success { color: var(--color-success); }
 @media (max-width: 480px) { .account-fields-row { grid-template-columns: 1fr; } }
+
+.account-fields small { color: var(--color-muted); font-size: 13px; }
+.form-error { color: var(--color-danger); background: var(--color-warning-soft); padding: 10px 12px; border-radius: 8px; font-size: 14px; }
