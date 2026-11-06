@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import "../../styles/login.css"; 
 import { Icon } from "../../components/Icon"; 
@@ -18,6 +18,8 @@ export function Login() {
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [recoveryCode, setRecoveryCode] = useState("");
+  const resetting = useRef(false);
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -43,7 +45,8 @@ export function Login() {
     setError("");
     try {
       setLoading(true);
-      await authApi.checkEmailExists(email);
+      await authApi.requestPasswordRecovery(email);
+      setRecoveryCode('');
       setView('reset-password');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Erro ao verificar e-mail.');
@@ -54,17 +57,22 @@ export function Login() {
 
   async function handleResetPassword(event: FormEvent) {
     event.preventDefault();
+    if (resetting.current) return;
     setError("");
+    if (!/^\d{6}$/.test(recoveryCode)) return setError('Informe o código de recuperação de 6 dígitos.');
     if (newPassword.length < 8) return setError('A nova senha deve ter no mínimo 8 caracteres.');
     if (newPassword !== confirmPassword) return setError('As senhas não coincidem.');
 
     try {
       setLoading(true);
-      await authApi.resetPassword(email, newPassword);
+      resetting.current = true;
+      await authApi.resetPassword(email, recoveryCode, newPassword);
+      setRecoveryCode(''); setNewPassword(''); setConfirmPassword('');
       setView('success');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Erro ao redefinir a senha.');
     } finally {
+      resetting.current = false;
       setLoading(false);
     }
   }
@@ -79,7 +87,7 @@ export function Login() {
           </div>
           {view === 'login' && <p>Bem-vindo de volta! Faça login na sua conta.</p>}
           {view === 'verify-email' && <p>Informe seu e-mail para recuperar a senha.</p>}
-          {view === 'reset-password' && <p>Defina sua nova senha de acesso.</p>}
+          {view === 'reset-password' && <p>Se houver uma conta para este e-mail, você receberá um código de recuperação. Informe o código e defina sua nova senha.</p>}
         </header>
 
         {/* Mensagem de Erro Global */}
@@ -144,6 +152,12 @@ export function Login() {
         {/* VIEW: REDEFINIR SENHA */}
         {view === 'reset-password' && (
           <form onSubmit={handleResetPassword} className="login-form">
+            <div className="input-group">
+              <label htmlFor="recoveryCode">Código de recuperação</label>
+              <input id="recoveryCode" type="password" inputMode="numeric" autoComplete="one-time-code" required
+                pattern="[0-9]{6}" minLength={6} maxLength={6} value={recoveryCode} disabled={loading}
+                onChange={(event) => setRecoveryCode(event.target.value.replace(/\D/g, '').slice(0, 6))} />
+            </div>
             <div className="input-group">
               <label htmlFor="newPassword">Nova Senha</label>
               <div className="input-wrapper">

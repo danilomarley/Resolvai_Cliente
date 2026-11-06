@@ -24,6 +24,9 @@ export function createApiClient(baseUrl: string, fetcher: typeof fetch = fetch) 
       throw new ApiError(0, 'Não foi possível conectar à API. Verifique a conexão e tente novamente.')
     }
     if (!response.ok) {
+      if (path === '/api/v1/auth/reset-password' && [400, 401, 403, 422].includes(response.status)) {
+        throw new ApiError(response.status, 'Código inválido, expirado ou já utilizado, ou senha fora das regras. Solicite outro código e tente novamente.')
+      }
       if (response.status === 401 && path === '/api/v1/auth/login') {
         let detail: unknown
         try { detail = (await response.json()).detail } catch { /* Some hosts return an empty 401. */ }
