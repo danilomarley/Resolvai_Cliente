@@ -50,6 +50,10 @@
   width: min(760px, calc(100% - 32px));
 }
 
+.modal-xl {
+  width: min(1120px, calc(100% - 32px));
+}
+
 .modal::backdrop {
   background: #101e38a6;
   backdrop-filter: blur(4px);
@@ -361,7 +365,8 @@ textarea {
 @media (max-width: 560px) {
   .modal,
   .modal-sm,
-  .modal-lg {
+  .modal-lg,
+  .modal-xl {
     width: calc(100% - 16px);
     max-height: calc(100dvh - 16px);
   }

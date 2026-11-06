@@ -44,7 +44,10 @@ const { OrderForm } = await import('../src/components/OrderForm.tsx')
 const { ReviewForm } = await import('../src/components/OrderReview.tsx')
 const { Modal } = await import('../src/components/Modal.tsx')
 const { Sidebar } = await import('../src/components/dashboard/Sidebar.tsx')
-const { readModal, readNext, searchWithModal } = await import('../src/services/modalRoute.ts')
+const { CreateOrderModal } = await import('../src/components/CreateOrderModal.tsx')
+const { safeReturnPath } = await import('../src/services/returnPath.ts')
+const { NotFound } = await import('../src/pages/NotFound/index.tsx')
+const { readModal, readNext, readOrder, searchWithModal, modalLink } = await import('../src/services/modalRoute.ts')
 const { buildRegistration, emptyRegistration, maskCpf, maskCep, maskPhone, isValidPhone } = await import('../src/services/registrationForm.ts')
 const { CompleteRegistrationForm } = await import('../src/components/CompleteRegistrationForm.tsx')
 const { parseReview, parseReviewSummary, validRating, submitReview } = await import('../src/services/reviews.ts')
@@ -173,7 +176,7 @@ test('review form has five named radio inputs, optional comment and prevents emp
 test('only completed order details offer the review route', () => {
   const id = randomUUID(), customerId = randomUUID()
   const order = { id, customerId, title: 'Serviço', category: 'Pedido', location: '', description: '', status: 'completed', icon: 'bag', proposals: 0 }
-  assert.match(renderOrders({ orders: [order], customerId, orderId: id }), new RegExp(`/pedidos/${id}/avaliar`))
+  assert.match(renderOrders({ orders: [order], customerId, orderId: id }), new RegExp(`href="/pedidos\\?modal=avaliar&amp;pedido=${id}"`))
   assert.doesNotMatch(renderOrders({ orders: [{ ...order, status: 'progress' }], customerId, orderId: id }), /Avaliar serviço/)
 })
 
@@ -311,4 +314,65 @@ test('order list shortcuts can replace the page heading', () => {
   assert.match(html, />Propostas<\/h1>/)
   assert.match(html, /Pedidos que estão recebendo propostas\./)
   assert.match(renderOrders({}), />Meus pedidos<\/h1>/)
+})
+
+test('create order opens as a wide modal on the assistant, without a page heading or back button', () => {
+  const html = renderToStaticMarkup(React.createElement(CreateOrderModal, { token: 't', onClose() {}, onCreated() {} }))
+  assert.match(html, /class="modal modal-xl"/)
+  assert.match(html, /<h2[^>]*>Criar pedido<\/h2>/)
+  assert.match(html, /<h3 id="assistant-title">Vamos resolver, juntos\.<\/h3>/)
+  assert.doesNotMatch(html, /Voltar à visão geral/)
+  assert.doesNotMatch(html, /<h1/)
+  assert.doesNotMatch(html, /Descartar este pedido/)
+  assert.doesNotMatch(html, /hidden=""/)
+})
+
+test('review modal link keeps the current page and carries the order id in the URL', () => {
+  const id = randomUUID()
+  assert.equal(readOrder(`?modal=avaliar&pedido=${id.toUpperCase()}`), id)
+  assert.equal(readOrder('?pedido=../../etc'), null)
+  assert.equal(searchWithModal('?status=Completed', 'avaliar', undefined, id), `?status=Completed&modal=avaliar&pedido=${id}`)
+  assert.equal(searchWithModal(`?modal=avaliar&pedido=${id}&status=Completed`, null), '?status=Completed')
+  const link = modalLink('/pedidos', '?status=Completed', 'avaliar', id)
+  assert.deepEqual(link.to, { pathname: '/pedidos', search: `?status=Completed&modal=avaliar&pedido=${id}` })
+  assert.equal(link.state.modalOpened, true)
+})
+
+test('order details show section tabs instead of per-page back buttons', () => {
+  const id = randomUUID(), customerId = randomUUID()
+  const order = { id, customerId, title: 'Serviço', category: 'Pedido', location: '', description: '', status: 'waiting', icon: 'bag', proposals: 2, proposalList: [] }
+  for (const [view, active] of [[undefined, 'Detalhes'], ['propostas', 'Propostas \\(2\\)'], ['acompanhar', 'Acompanhamento']]) {
+    const html = renderOrders({ orders: [order], customerId, orderId: id, view })
+    assert.match(html, /aria-label="Seções do pedido"/)
+    assert.match(html, new RegExp(`class="order-tab active" aria-current="page"[^>]*>${active}<`))
+    assert.equal((html.match(/aria-current="page"/g) ?? []).length, 1)
+    assert.match(html, new RegExp(`href="/pedidos/${id}/propostas"`))
+    assert.match(html, new RegExp(`href="/pedidos/${id}/acompanhar"`))
+    assert.doesNotMatch(html, /Ver detalhes do pedido/)
+  }
+})
+
+test('login only returns to known app screens with known parameters', () => {
+  const id = randomUUID()
+  for (const ok of ['/', '/pedidos', `/pedidos/${id}`, `/pedidos/${id}/propostas`, `/pedidos/${id}/acompanhar`, '/pedidos?status=Completed&page=2',
+    `/pedidos/${id}?modal=avaliar&pedido=${id}`, '/?modal=finalizar-cadastro&next=criar-pedido']) assert.equal(safeReturnPath(ok), ok)
+  for (const bad of [undefined, null, 42, 'https://evil.example', '//evil.example', '/login', '/pedidos/../x', '/pedidos/abc/propostas', `/pedidos/${id}/outra`,
+    '/pedidos?status=Hacked', '/pedidos?redirect=https://evil.example', '/pedidos?status=Pending#x', '/pedidos?a=1?b=2', '/?modal=desconhecido', '/?pedido=1']) assert.equal(safeReturnPath(bad), '/')
+})
+
+test('unknown addresses show a not found page with a way home', () => {
+  const html = renderToStaticMarkup(React.createElement(StaticRouter, { location: '/qualquer' }, React.createElement(NotFound)))
+  assert.match(html, /<h1>Página não encontrada<\/h1>/)
+  assert.match(html, /href="\/"[^>]*>Ir para o início/)
+})
+
+test('order cards offer details, proposals and review without a duplicated tracking button', () => {
+  const id = randomUUID(), customerId = randomUUID()
+  const order = { id, customerId, title: 'Serviço', category: 'Pedido', location: '', description: '', status: 'completed', icon: 'bag', proposals: 3 }
+  const html = renderOrders({ orders: [order], customerId })
+  assert.match(html, /Ver detalhes<\/a>/)
+  assert.match(html, /Ver propostas \(3\)/)
+  assert.match(html, /Avaliar serviço/)
+  assert.doesNotMatch(html, /Acompanhar pedido/)
+  assert.equal((html.match(/class="button/g) ?? []).length, 3)
 })

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { ApiError } from '../services/api'
+import { Modal } from './Modal'
 import { getReview, submitReview, validRating, type Review } from '../services/reviews'
 import type { Order } from '../types/orders'
 import './OrderReview.css'
@@ -29,7 +29,7 @@ export function ReviewForm({ sending, error, onSubmit }: {
   </form>
 }
 
-export function OrderReview({ order, token, onSaved }: { order: Order; token: string; onSaved: () => void }) {
+export function OrderReview({ order, token, onSaved, onClose }: { order: Order; token: string; onSaved: () => void; onClose: () => void }) {
   const [review, setReview] = useState<Review | null>()
   const [error, setError] = useState('')
   const [sending, setSending] = useState(false)
@@ -59,9 +59,8 @@ export function OrderReview({ order, token, onSaved }: { order: Order; token: st
     } finally { sendingRef.current = false; setSending(false) }
   }
 
-  return <section className="panel order-summary" aria-labelledby="review-title">
-    <h1 id="review-title">Avaliar serviço</h1>
-    <h2>{order.title}</h2>
+  return <Modal title="Avaliar serviço" description={order.title} onClose={onClose} dismissible={!sending}
+    footer={review ? <button type="button" className="button button-secondary" onClick={onClose}>Fechar</button> : undefined}>
     {loadError ? <div role="alert"><p>{loadError}</p><button className="button button-secondary" onClick={() => setAttempt((n) => n + 1)}>Tentar novamente</button></div>
       : review === undefined ? <p role="status">Carregando avaliação…</p>
       : review ? <div><p role="status">{saved ? 'Avaliação enviada com sucesso.' : 'Este pedido já foi avaliado.'}</p>
@@ -69,6 +68,5 @@ export function OrderReview({ order, token, onSaved }: { order: Order; token: st
         {review.comment && <p>{review.comment}</p>}</div>
       : order.status !== 'completed' ? <p>Somente pedidos concluídos podem ser avaliados.</p>
       : <ReviewForm sending={sending} error={error} onSubmit={send} />}
-    <Link className="button button-secondary" to={`/pedidos/${order.id}`}>Voltar ao pedido</Link>
-  </section>
+  </Modal>
 }

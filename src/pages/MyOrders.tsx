@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
+import { modalLink } from '../services/modalRoute'
 import type { Order } from '../types/orders'
 import type { OrderStatusDto } from '../services/dashboardApi'
 import {
@@ -36,8 +37,24 @@ const statusFilters: { value?: OrderStatusDto; label: string }[] = [
 ]
 const orderNumber = (order: Order) => order.id.slice(0, 8).toUpperCase()
 const proposalLabels = { Sent: 'Enviada', Viewed: 'Visualizada', Chosen: 'Escolhida' }
-const trackingPath = (order: Order) =>
-  `/pedidos/${order.id}/${order.status === 'waiting' ? 'propostas' : 'acompanhar'}`
+
+/** Seções do pedido: cada aba é uma rota (/pedidos/:id, /propostas, /acompanhar). */
+function OrderTabs({ order, view }: { order: Order; view?: 'propostas' | 'acompanhar' }) {
+  const base = `/pedidos/${order.id}`
+  const tabs = [
+    { key: undefined, label: 'Detalhes', to: base },
+    { key: 'propostas', label: order.proposals ? `Propostas (${order.proposals})` : 'Propostas', to: `${base}/propostas` },
+    { key: 'acompanhar', label: 'Acompanhamento', to: `${base}/acompanhar` },
+  ]
+  return (
+    <nav className="order-tabs" aria-label="Seções do pedido">
+      {tabs.map((tab) => (
+        <Link key={tab.label} to={tab.to} className={`order-tab${view === tab.key ? ' active' : ''}`}
+          aria-current={view === tab.key ? 'page' : undefined}>{tab.label}</Link>
+      ))}
+    </nav>
+  )
+}
 
 function OrderStatus({ order }: { order: Order }) {
   return (
@@ -69,7 +86,6 @@ function Proposals({ order }: { order: Order }) {
           ))}
         </ul>
       ) : <p>Nenhuma proposta recebida ainda. Assim que um profissional enviar, ela aparece aqui.</p>}
-      <Link className="button button-secondary" to={`/pedidos/${order.id}`}>Ver detalhes do pedido</Link>
     </article>
   )
 }
@@ -101,17 +117,17 @@ function Tracking({ order }: { order: Order }) {
           <li key={event.label}>{event.label}{event.date ? ` em ${orderDate(event.date)}` : ''}</li>
         ))}
       </ol>
-      <Link className="button button-secondary" to={`/pedidos/${order.id}`}>Ver detalhes do pedido</Link>
     </article>
   )
 }
 
 function OrderDetails({ order }: { order: Order }) {
+  const location = useLocation()
   return (
     <article className="panel order-summary">
       <h2>Pedido #{orderNumber(order)} · {order.title}</h2>
       <OrderStatus order={order} />
-      {order.status === 'completed' && <Link className="button button-primary" to={`/pedidos/${order.id}/avaliar`}>Avaliar serviço</Link>}
+      {order.status === 'completed' && <Link className="button button-primary" {...modalLink(location.pathname, location.search, 'avaliar', order.id)}>Avaliar serviço</Link>}
       <dl>
         <div><dt>Data de realização</dt><dd>{orderDate(order.createdAt)}</dd></div>
         {order.updatedAt && <div><dt>Última atualização</dt><dd>{orderDate(order.updatedAt)}</dd></div>}
@@ -138,6 +154,7 @@ function OrderDetails({ order }: { order: Order }) {
 }
 
 export function MyOrders({ orders, customerId, orderId, search, loading, error, requiresLogin, onRetry, view, heading: listHeading, filter, pager }: Props) {
+  const location = useLocation()
   const heading = useRef<HTMLHeadingElement>(null)
   useEffect(() => { heading.current?.focus() }, [orderId])
   const failure = error || (!customerId ? 'Entre na sua conta para consultar pedidos.' : '')
@@ -174,11 +191,12 @@ export function MyOrders({ orders, customerId, orderId, search, loading, error, 
         {requiresLogin && <Link to="/login" state={{ from: orderId === undefined ? '/pedidos' : `/pedidos/${orderId}` }}>Entrar novamente</Link>}
       </div>
     )
-    if (orderId !== undefined) return selected ? (
-      view === 'propostas' ? <Proposals order={selected} />
+    if (orderId !== undefined) return selected ? (<>
+      <OrderTabs order={selected} view={view} />
+      {view === 'propostas' ? <Proposals order={selected} />
         : view === 'acompanhar' ? <Tracking order={selected} />
-        : <OrderDetails order={selected} />
-    ) : (
+        : <OrderDetails order={selected} />}
+    </>) : (
       <div className="empty-state" role="status">
         <h2>Pedido não encontrado</h2>
         <p>Este pedido não está disponível para sua conta.</p>
@@ -201,23 +219,19 @@ export function MyOrders({ orders, customerId, orderId, search, loading, error, 
             <h2>Pedido #{orderNumber(order)} · {order.title}</h2>
             <OrderStatus order={order} />
             <p>Data de realização: {orderDate(order.createdAt)}</p>
-            <Link className="button button-secondary" to={`/pedidos/${order.id}`}
-              aria-label={`Ver detalhes do pedido ${order.id}`}>
-              Ver detalhes
-            </Link>
-              <div className="order-actions">
-                {order.proposals > 0 && (
-                  <Link className="button button-secondary" to={`/pedidos/${order.id}/propostas`}
-                    aria-label={`Ver propostas do pedido ${order.id}`}>
-                    Ver propostas ({order.proposals})
-                  </Link>
-                )}
-                <Link className="button button-primary" to={trackingPath(order)}
-                  aria-label={`Acompanhar pedido ${order.id}`}>
-                  Acompanhar pedido
+            <div className="order-actions">
+              <Link className="button button-primary" to={`/pedidos/${order.id}`}
+                aria-label={`Ver detalhes do pedido ${order.id}`}>
+                Ver detalhes
+              </Link>
+              {order.proposals > 0 && (
+                <Link className="button button-secondary" to={`/pedidos/${order.id}/propostas`}
+                  aria-label={`Ver propostas do pedido ${order.id}`}>
+                  Ver propostas ({order.proposals})
                 </Link>
-              </div>
-              {order.status === 'completed' && <Link className="button button-secondary" to={`/pedidos/${order.id}/avaliar`}>Avaliar serviço</Link>}
+              )}
+              {order.status === 'completed' && <Link className="button button-secondary" {...modalLink(location.pathname, location.search, 'avaliar', order.id)}>Avaliar serviço</Link>}
+            </div>
           </article>
         ))}
       </div>
