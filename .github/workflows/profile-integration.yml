@@ -1,0 +1,59 @@
+name: Public provider integration
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  profile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - id: versions
+        run: |
+          echo "backend=$(node -p 'require("./integration/profile/versions.json").backend')" >> "$GITHUB_OUTPUT"
+          echo "reviews=$(node -p 'require("./integration/profile/versions.json").reviews')" >> "$GITHUB_OUTPUT"
+          echo "services=$(node -p 'require("./integration/profile/versions.json").services')" >> "$GITHUB_OUTPUT"
+          echo "professional=$(node -p 'require("./integration/profile/versions.json").professionalSchema')" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          repository: danilomarley/Resolvai_Cliente
+          ref: ${{ steps.versions.outputs.services }}
+          path: .test-services
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: Diegofreitas-mend/Resolvai_Backend_Node
+          ref: ${{ steps.versions.outputs.backend }}
+          path: .test-services/.e2e-backend
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: Diegofreitas-mend/Resolvai_Backend_Node
+          ref: ${{ steps.versions.outputs.reviews }}
+          path: .review-api
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: danilomarley/Resolvai_Backend
+          ref: ${{ steps.versions.outputs.professional }}
+          path: .professional-schema
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm ci && npm run typecheck && npm test && npm run build
+        working-directory: .test-services/.e2e-backend
+      - run: npm ci && npm run build
+        working-directory: .review-api
+      - run: node integration/profile/prepare.mjs reference
+      - run: npx playwright install --with-deps chromium
+      - run: node e2e/manage.mjs up
+        working-directory: .test-services
+      - run: node integration/profile/prepare.mjs schemas
+      - name: Perfil, privacidade, dados reais e responsividade
+        run: npx playwright test --config integration/profile/playwright.config.mjs
+      - if: always()
+        run: node e2e/manage.mjs down
+        working-directory: .test-services

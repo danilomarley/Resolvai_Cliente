@@ -3,7 +3,7 @@ import { isUuid } from './dashboardApi'
 
 export type PublicProvider = {
   id: string; name: string; photoUrl: string | null; categories: string[] | null; region: string | null
-  completedServices: number; reviewsAvailable: boolean; averageRating: number | null
+  completedServices: number; reviewsAvailable: boolean; reviewsCount: number | null; averageRating: number | null
   reviews: { rating: number; comment?: string; createdAt: string }[]
 }
 const object = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value)
@@ -18,7 +18,11 @@ export function parsePublicProvider(value: unknown): PublicProvider {
     || !Array.isArray(value.reviews) || value.reviews.length > 5 || !value.reviews.every(r => object(r)
       && Number.isInteger(r.rating) && Number(r.rating) >= 1 && Number(r.rating) <= 5
       && (r.comment === undefined || typeof r.comment === 'string') && typeof r.createdAt === 'string' && !Number.isNaN(Date.parse(r.createdAt)))
-    || value.reviewsAvailable === false && (value.averageRating !== null || value.reviews.length !== 0)) throw invalid()
+    || (value.reviewsAvailable
+      ? !Number.isSafeInteger(value.reviewsCount) || Number(value.reviewsCount) < 0
+        || value.reviews.length !== Math.min(5, Number(value.reviewsCount))
+        || (value.reviewsCount === 0 ? value.averageRating !== null : value.averageRating === null)
+      : value.reviewsCount !== null || value.averageRating !== null || value.reviews.length !== 0)) throw invalid()
   return value as PublicProvider
 }
 export async function getPublicProvider(id: string, token: string, signal?: AbortSignal) {

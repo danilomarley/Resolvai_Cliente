@@ -30,7 +30,7 @@ export function Login() {
       const result = await login(email, password);
       customerSession.save(result);
       const destination: unknown = location.state?.from;
-      navigate(typeof destination === 'string' && /^\/pedidos(?:\/[0-9a-f-]+)?$/i.test(destination) ? destination : '/', { replace: true });
+      navigate(typeof destination === 'string' && /^(?:\/pedidos(?:\/[0-9a-f-]+(?:\/(?:propostas|acompanhar))?)?|\/prestadores\/[0-9a-f-]{36})$/i.test(destination) ? destination : '/', { replace: true });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Não foi possível entrar. Tente novamente.');
     } finally {

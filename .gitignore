@@ -10,6 +10,12 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+.e2e-backend/
+.test-services/
+.review-api/
+.professional-schema/
+test-results/
+playwright-report/
 *.local
 .env
 

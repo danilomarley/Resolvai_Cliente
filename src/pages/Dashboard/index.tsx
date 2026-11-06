@@ -39,7 +39,7 @@ export function Dashboard() {
   // Criação de pedido (#67/#69): começa pelo assistente; o formulário recebe o escopo sugerido para revisão.
   const [createMode, setCreateMode] = useState<'assistant' | 'form'>('assistant')
   const [draft, setDraft] = useState<NewOrder>()
-  const completedList = useOrdersList(session.accessToken, !viewingOrders && !!dashboard.data, 'Completed', 1, 3)
+  const completedList = useOrdersList(session.accessToken, !viewingOrders && !providerId && !!dashboard.data, 'Completed', 1, 3)
   const orders = dashboard.data?.summary.recentOrders.map((dto) => toOrder(dto, session.customerId!)) ?? []
   const profile = { name: dashboard.data?.user.name ?? 'Minha conta', location: 'Localização não informada' }
 
@@ -94,7 +94,7 @@ export function Dashboard() {
     <div className="app-shell">
       <a className="skip-link" href="#main">Pular para o conteúdo</a>
       <Sidebar mobileOpen={mobileOpen} setMobileOpen={setMobileOpen}
-        activeNav={viewingOrders ? 'Meus pedidos' : 'Visão geral'} navigate={navigate}
+        activeNav={viewingOrders || providerId ? 'Meus pedidos' : 'Visão geral'} navigate={navigate}
         openDialog={openDialog} profile={profile} />
       <div className="main-shell">
         <header className="topbar">
@@ -102,7 +102,7 @@ export function Dashboard() {
             <button className="icon-button mobile-menu" aria-label="Abrir menu"
               aria-expanded={mobileOpen} onClick={() => setMobileOpen(true)}><Icon name="menu" /></button>
             <span>Meu espaço</span><Icon name="chevron" size={13} />
-            <strong>{viewingOrders ? 'Meus pedidos' : 'Visão geral'}</strong>
+            <strong>{providerId ? 'Perfil do prestador' : viewingOrders ? 'Meus pedidos' : 'Visão geral'}</strong>
           </div>
           <div className="topbar-actions">
             <label className="search-box">
