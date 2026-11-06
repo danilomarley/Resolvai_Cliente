@@ -42,6 +42,7 @@ export function parseSummary(value: unknown): HomeSummary {
   return value as HomeSummary
 }
 const isProposal = (value: unknown) => object(value) && typeof value.id === 'string' && typeof value.providerName === 'string'
+  && typeof value.providerId === 'string' && isUuid(value.providerId)
   && ['Sent', 'Viewed', 'Chosen'].includes(String(value.status)) && typeof value.value === 'number'
 export function parsePage(value: unknown): OrdersPage {
   if (!object(value) || !Array.isArray(value.items) || !value.items.every(isOrder)

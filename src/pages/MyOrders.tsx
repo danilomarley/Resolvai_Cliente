@@ -10,6 +10,7 @@ import {
   orderStatusLabel,
 } from '../services/orders'
 import './MyOrders.css'
+import { ProviderProfileLink } from '../components/ProviderProfileLink'
 
 type Props = {
   orders: Order[]
@@ -56,6 +57,7 @@ function Proposals({ order }: { order: Order }) {
           {list.map((proposal) => (
             <li className="proposal-item" key={proposal.id}>
               <strong>{proposal.providerName}</strong>
+              <ProviderProfileLink providerId={proposal.providerId} name={proposal.providerName} />
               <span className="status-badge progress"><i />{proposalLabels[proposal.status]}</span>
               <dl>
                 <div><dt>Valor</dt><dd>{orderMoney(proposal.value)}</dd></div>

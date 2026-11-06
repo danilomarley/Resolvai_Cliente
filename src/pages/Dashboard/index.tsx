@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { MyOrders } from '../MyOrders'
+import { PublicProvider } from '../PublicProvider'
 import { useCustomerSession } from '../../services/useCustomerSession'
 import { useDashboardData, useOrderDetail, useOrdersList } from '../../services/useDashboardData'
 import { askAssistant, createOrder, toOrder, uploadOrderPhoto, type OrderStatusDto } from '../../services/dashboardApi'
@@ -18,7 +19,7 @@ import type { Dialog, Tab } from '../../types/dashboard'
 export function Dashboard() {
   const routerNavigate = useNavigate()
   const location = useLocation()
-  const { orderId } = useParams()
+  const { orderId, providerId } = useParams()
   const viewingOrders = location.pathname.startsWith('/pedidos')
   const session = useCustomerSession()
   const dashboard = useDashboardData(session.accessToken, session.customerId)
@@ -128,6 +129,7 @@ export function Dashboard() {
               : <OrderForm key={draft ? 'revisao' : 'manual'} initial={draft} submitting={submitting} submitError={submitError}
                 onCancel={() => setDialog(null)} onCreate={publishOrder}
                 onBackToAssistant={draft ? () => setCreateMode('assistant') : undefined} />)
+            : providerId && session.accessToken ? <PublicProvider key={`${session.accessToken}:${providerId}`} providerId={providerId} token={session.accessToken} />
             : viewingOrders ? <MyOrders
               orders={orderId
                 ? (detail.data ? [toOrder(detail.data, session.customerId!)] : [])

@@ -16,6 +16,7 @@ export type NewOrder = {
 
 export type OrderProposal = {
   id: string
+  providerId: string
   providerName: string
   status: 'Sent' | 'Viewed' | 'Chosen'
   value: number
