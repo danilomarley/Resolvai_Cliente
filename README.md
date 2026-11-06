@@ -57,7 +57,13 @@ O card "Sua avaliação" aguarda uma fonte de dados: ainda não existem avaliaç
 
 O `render.yaml` publica o front como Static Site no Render. Configure `VITE_API_BASE_URL` com a URL da API e coloque a URL do front em `CORS_ALLOWED_ORIGINS` da API. O passo a passo está em `docs/DEPLOY.md` do Resolvai_Backend_Node.
 
-## Organização
+## Testes E2E do contratante (#94)
+
+Consulte [o guia E2E](docs/E2E.md) para preparar PostgreSQL, Supabase Auth e API isolados, instalar o Chromium e executar Playwright. A suíte cobre login válido/inválido, sessão, finalização de cadastro, criação/listagem de pedidos e recuperação de senha. O workflow executa em PRs para `main` e publica apenas diagnósticos sanitizados.
+
+A entrega permanece parcial: a recuperação atual (#70) troca a senha sem token. O teste obrigatório de rejeição dessa operação deve falhar até existir um contrato seguro, sem ocultar o problema com skip. O banco de teste é efêmero e não utiliza configuração de produção.
+
+## Organização do código
 
 - `src/services/`: comunicação com a API e sessão.
 - `src/types/orders.ts`: tipos de pedidos e propostas.
