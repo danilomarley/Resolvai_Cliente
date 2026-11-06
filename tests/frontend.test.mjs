@@ -41,6 +41,8 @@ const { ApiError, createApiClient } = await import('../src/services/api.ts')
 const { MyOrders } = await import('../src/pages/MyOrders.tsx')
 const { OrderForm } = await import('../src/components/OrderForm.tsx')
 const { ReviewForm } = await import('../src/components/OrderReview.tsx')
+const { Modal } = await import('../src/components/Modal.tsx')
+const { readModal, searchWithModal } = await import('../src/services/modalRoute.ts')
 const { parseReview, parseReviewSummary, validRating, submitReview } = await import('../src/services/reviews.ts')
 const renderOrders = (props = {}) => renderToStaticMarkup(React.createElement(StaticRouter, { location: '/pedidos' },
   React.createElement(MyOrders, { orders: [], customerId: null, search: '', ...props })))
@@ -221,3 +223,29 @@ test('photo uploads are sent as multipart without a JSON content type', async ()
   assert.equal(sent.headers.Authorization, 'Bearer t')
 })
 
+
+test('modal state lives in the URL and ignores unknown names', () => {
+  const allowed = ['perfil', 'ajuda']
+  assert.equal(readModal('?modal=perfil', allowed), 'perfil')
+  assert.equal(readModal('?modal=outro', allowed), null)
+  assert.equal(readModal('', allowed), null)
+  assert.equal(searchWithModal('', 'ajuda'), '?modal=ajuda')
+  assert.equal(searchWithModal('?a=1', 'perfil'), '?a=1&modal=perfil')
+  assert.equal(searchWithModal('?a=1&modal=perfil', null), '?a=1')
+  assert.equal(searchWithModal('?modal=perfil', null), '')
+})
+
+test('modal renders size, description, scrollable body and footer; blocks closing when not dismissible', () => {
+  const render = (props) => renderToStaticMarkup(React.createElement(Modal, { title: 'Título', onClose() {}, ...props },
+    React.createElement('p', null, 'Conteúdo')))
+  const html = render({ size: 'lg', description: 'Apoio', footer: React.createElement('button', null, 'Salvar') })
+  assert.match(html, /class="modal modal-lg"/)
+  assert.match(html, /aria-labelledby="[^"]+"/)
+  assert.match(html, /aria-describedby="[^"]+"/)
+  assert.match(html, /class="modal-body"><p>Conteúdo<\/p>/)
+  assert.match(html, /class="modal-footer"><button>Salvar<\/button>/)
+  const plain = render({})
+  assert.match(plain, /class="modal modal-md"/)
+  assert.doesNotMatch(plain, /modal-footer|aria-describedby/)
+  assert.match(render({ dismissible: false }), /aria-label="Fechar janela"[^>]*disabled=""|disabled=""[^>]*aria-label="Fechar janela"/)
+})

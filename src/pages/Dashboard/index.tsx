@@ -11,6 +11,7 @@ import { OrderForm } from '../../components/OrderForm'
 import { OrderAssistant } from '../../components/OrderAssistant'
 import { OrderReview } from '../../components/OrderReview'
 import { useReviewSummary } from '../../services/useReviewSummary'
+import { useModalRoute } from '../../services/modalRoute'
 import type { NewOrder } from '../../types/orders'
 import { Sidebar } from '../../components/dashboard/Sidebar'
 import { DashboardOverview } from '../../components/dashboard/DashboardOverview'
@@ -35,6 +36,8 @@ export function Dashboard() {
   const [tab, setTab] = useState<Tab>('all')
   const [search, setSearch] = useState('')
   const [dialog, setDialog] = useState<Dialog>(null)
+  // Perfil e ajuda vivem na URL (?modal=perfil|ajuda): recarregar reabre e "voltar" fecha.
+  const urlModal = useModalRoute(['perfil', 'ajuda'] as const)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [notice, setNotice] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -48,7 +51,8 @@ export function Dashboard() {
 
   function openDialog(value: Dialog) {
     setMobileOpen(false)
-    if (value === 'profile' || value === 'help') setDialog(value)
+    if (value === 'profile') urlModal.open('perfil')
+    else if (value === 'help') urlModal.open('ajuda')
     else if (value === 'create' && dashboard.data && !dashboard.data.user.cpf)
       routerNavigate('/complemento-cadastro', { state: { from: location.pathname } })
     else if (value === 'create') { setSubmitError(''); setCreateMode('assistant'); setDraft(undefined); setDialog(value) }
@@ -158,8 +162,9 @@ export function Dashboard() {
       {notice && <div className="toast" role="status"><span>{notice}</span>
         <button className="icon-button" onClick={() => setNotice('')} aria-label="Dispensar aviso"><Icon name="close" size={17} /></button>
       </div>}
-      {dialog && dialog !== 'create' && <Modal title={dialog === 'profile' ? 'Configurações da conta' : 'Central de ajuda'} onClose={() => setDialog(null)}>
-        {dialog === 'profile' ? <AccountSettings key={`${session.customerId}:${session.accessToken}`}
+      {!session.loading && urlModal.current && <Modal size="lg" onClose={urlModal.close}
+        title={urlModal.current === 'perfil' ? 'Configurações da conta' : 'Central de ajuda'}>
+        {urlModal.current === 'perfil' ? <AccountSettings key={`${session.customerId}:${session.accessToken}`}
           token={session.accessToken} customerId={session.customerId} onCompleted={dashboard.retry} />
           : <p>Consulte o resumo da conta, finalize seu cadastro nas configurações e crie pedidos. Em Meus pedidos, filtre por status e consulte detalhes, propostas e acompanhamento.</p>}
       </Modal>}

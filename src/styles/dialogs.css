@@ -33,6 +33,21 @@
   border-radius: 18px;
   box-shadow: 0 20px 100px #07162b35;
   overscroll-behavior: contain;
+  overflow: hidden;
+  padding: 0;
+}
+
+.modal[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-sm {
+  width: min(440px, calc(100% - 32px));
+}
+
+.modal-lg {
+  width: min(760px, calc(100% - 32px));
 }
 
 .modal::backdrop {
@@ -46,12 +61,36 @@ body:has(dialog[open]) {
 
 .modal-inner {
   padding: 28px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* O cabeçalho e o rodapé ficam fixos; só o corpo rola. */
+.modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin: 0 -8px;
+  padding: 2px 8px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-top: 18px;
+  margin-top: 6px;
+  border-top: 1px solid var(--color-border);
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   margin-bottom: 14px;
 }
@@ -65,6 +104,7 @@ body:has(dialog[open]) {
 .modal-description {
   color: var(--color-muted);
   font-size: 15px;
+  margin-top: 4px;
 }
 
 .form-stack,
@@ -319,8 +359,17 @@ textarea {
 }
 
 @media (max-width: 560px) {
+  .modal,
+  .modal-sm,
+  .modal-lg {
+    width: calc(100% - 16px);
+    max-height: calc(100dvh - 16px);
+  }
   .modal-inner {
     padding: 20px;
+  }
+  .modal-footer > * {
+    flex: 1 1 100%;
   }
   .modal-header h2 {
     font-size: 22px;
