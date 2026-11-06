@@ -1,13 +1,13 @@
 import { useEffect, useRef, type Dispatch, type SetStateAction } from 'react'
 import { Icon, type IconName } from '../Icon'
 import brand from '../../assets/resolvai-original.svg'
-import type { Dialog, Profile } from '../../types/dashboard'
+import type { Dialog, NavKey, Profile } from '../../types/dashboard'
 
 type SidebarProps = {
   mobileOpen: boolean
   setMobileOpen: Dispatch<SetStateAction<boolean>>
-  activeNav: string
-  navigate: (label: string, target?: Dialog) => void
+  activeNav: NavKey
+  navigate: (item: NavKey) => void
   openDialog: (dialog: Dialog) => void
   profile: Profile
 }
@@ -48,16 +48,12 @@ export function Sidebar({
     }
   }, [mobileOpen, setMobileOpen])
 
-  function navItem(
-    label: string,
-    icon: IconName,
-    target?: Dialog,
-  ) {
+  function navItem(label: NavKey, icon: IconName) {
     return (
       <button
         className={`nav-item ${activeNav === label ? 'active' : ''}`}
         aria-current={activeNav === label ? 'page' : undefined}
-        onClick={() => navigate(label, target)}
+        onClick={() => navigate(label)}
       >
         <Icon name={icon} />
         <span>{label}</span>
@@ -82,7 +78,7 @@ export function Sidebar({
         <div className="sidebar-content">
           <a
             className="brand"
-            href="#"
+            href="/"
             aria-label="ResolvAI — início do contratante"
             onClick={(event) => {
               event.preventDefault()
@@ -94,14 +90,11 @@ export function Sidebar({
           <nav>
             <p className="nav-label">PRINCIPAL</p>
             {navItem('Visão geral', 'grid')}
-            {navItem('Criar pedido', 'plus', 'create')}
+            {navItem('Criar pedido', 'plus')}
             {navItem('Meus pedidos', 'bag')}
-            {navItem('Propostas', 'file', 'proposals')}
-            {navItem('Mensagens', 'chat', 'messages')}
-            <p className="nav-label management-label">GERENCIAMENTO</p>
-            {navItem('Contratos', 'shield', 'contracts')}
-            {navItem('Pagamentos', 'wallet', 'payments')}
-            {navItem('Avaliações', 'star', 'reviews')}
+            <p className="nav-label management-label">ACOMPANHAMENTO</p>
+            {navItem('Propostas', 'file')}
+            {navItem('Avaliações', 'star')}
           </nav>
           <button
             className="sidebar-help-link"

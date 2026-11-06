@@ -23,6 +23,7 @@ registerHooks({
   },
   load(url, context, nextLoad) {
     if (url.endsWith('.css')) return { format: 'module', source: '', shortCircuit: true }
+    if (url.endsWith('.svg')) return { format: 'module', source: 'export default "/logo.svg"', shortCircuit: true }
     if (/\.tsx?$/.test(url)) return { format: 'module', shortCircuit: true,
       source: ts.transpileModule(readFileSync(fileURLToPath(url), 'utf8'), {
         compilerOptions: { module: ts.ModuleKind.ESNext, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022 },
@@ -42,6 +43,7 @@ const { MyOrders } = await import('../src/pages/MyOrders.tsx')
 const { OrderForm } = await import('../src/components/OrderForm.tsx')
 const { ReviewForm } = await import('../src/components/OrderReview.tsx')
 const { Modal } = await import('../src/components/Modal.tsx')
+const { Sidebar } = await import('../src/components/dashboard/Sidebar.tsx')
 const { readModal, readNext, searchWithModal } = await import('../src/services/modalRoute.ts')
 const { buildRegistration, emptyRegistration, maskCpf, maskCep, maskPhone, isValidPhone } = await import('../src/services/registrationForm.ts')
 const { CompleteRegistrationForm } = await import('../src/components/CompleteRegistrationForm.tsx')
@@ -289,4 +291,24 @@ test('registration form exposes labelled fields and disables them while saving',
   assert.doesNotMatch(html, /role="alert"/)
   assert.match(render({ disabled: true }), /<fieldset disabled=""/)
   assert.match(render({ error: 'CPF já em uso' }), /role="alert"[^>]*>CPF já em uso/)
+})
+
+test('sidebar only offers working destinations and marks the active one', () => {
+  const render = (activeNav) => renderToStaticMarkup(React.createElement(Sidebar, {
+    mobileOpen: false, setMobileOpen() {}, activeNav, navigate() {}, openDialog() {}, profile: { name: 'Maria Souza', location: '' },
+  }))
+  const html = render('Propostas')
+  for (const label of ['Visão geral', 'Criar pedido', 'Meus pedidos', 'Propostas', 'Avaliações', 'Central de ajuda']) assert.match(html, new RegExp(`<span>${label}</span>`))
+  for (const removed of ['Mensagens', 'Contratos', 'Pagamentos']) assert.doesNotMatch(html, new RegExp(removed))
+  assert.equal((html.match(/aria-current="page"/g) ?? []).length, 1)
+  assert.match(html, /nav-item active"[^>]*aria-current="page"[^>]*><svg[\s\S]*?<span>Propostas<\/span>/)
+  assert.match(render('Criar pedido'), /aria-current="page"[^>]*>(?:(?!<\/button>)[\s\S])*<span>Criar pedido<\/span>/)
+})
+
+test('order list shortcuts can replace the page heading', () => {
+  const heading = { title: 'Propostas', description: 'Pedidos que estão recebendo propostas.' }
+  const html = renderOrders({ heading })
+  assert.match(html, />Propostas<\/h1>/)
+  assert.match(html, /Pedidos que estão recebendo propostas\./)
+  assert.match(renderOrders({}), />Meus pedidos<\/h1>/)
 })
