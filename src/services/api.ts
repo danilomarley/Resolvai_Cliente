@@ -34,6 +34,9 @@ export function createApiClient(baseUrl: string, fetcher: typeof fetch = fetch) 
           ? reasons[detail]
           : 'Não foi possível autenticar. Confira o e-mail, a senha e se o e-mail da conta foi confirmado.')
       }
+      if (/^\/api\/v1\/orders\/[^/]+\/review$/.test(path) && [400, 409].includes(response.status)) {
+        throw new ApiError(response.status, response.status === 409 ? 'Este pedido já foi avaliado ou ainda não possui um prestador definido.' : 'A avaliação exige nota de 1 a 5 e pedido concluído.')
+      }
       if (response.status === 409 && path === '/api/v1/users/me/complete-registration') {
         let detail: unknown
         try { detail = (await response.json()).detail } catch { /* Some hosts return an empty body. */ }

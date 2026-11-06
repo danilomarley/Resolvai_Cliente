@@ -51,7 +51,7 @@ npm run preview
 - Lista de pedidos paginada, detalhes, propostas e acompanhamento.
 - Criação de pedido com assistente de IA, que monta o escopo pela conversa, formulário para revisão e envio de até 4 fotos.
 
-O card "Sua avaliação" aguarda uma fonte de dados: ainda não existem avaliações na API. Pagamentos, mensagens e contratos ainda não possuem integração; a interface informa a indisponibilidade.
+Pedidos concluídos permitem avaliar o prestador com 1 a 5 estrelas e comentário opcional. O card "Sua avaliação" mostra a média das notas enviadas pelo contratante e a quantidade de avaliações. Exige as rotas e a migration descritas em [avaliações](docs/AVALIACOES.md). Pagamentos, mensagens e contratos ainda não possuem integração; a interface informa a indisponibilidade.
 
 ## Deploy
 

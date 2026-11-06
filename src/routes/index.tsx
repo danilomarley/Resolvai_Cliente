@@ -16,6 +16,7 @@ export function AppRoutes() {
           <Route path="pedidos/:orderId" element={null} />
           <Route path="pedidos/:orderId/propostas" element={null} />
           <Route path="pedidos/:orderId/acompanhar" element={null} />
+          <Route path="pedidos/:orderId/avaliar" element={null} />
         </Route>
       </Routes>
     </BrowserRouter>

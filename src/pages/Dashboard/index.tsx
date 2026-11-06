@@ -9,6 +9,8 @@ import { Modal } from '../../components/Modal'
 import { AccountSettings } from '../../components/AccountSettings'
 import { OrderForm } from '../../components/OrderForm'
 import { OrderAssistant } from '../../components/OrderAssistant'
+import { OrderReview } from '../../components/OrderReview'
+import { useReviewSummary } from '../../services/useReviewSummary'
 import type { NewOrder } from '../../types/orders'
 import { Sidebar } from '../../components/dashboard/Sidebar'
 import { DashboardOverview } from '../../components/dashboard/DashboardOverview'
@@ -23,6 +25,8 @@ export function Dashboard() {
   const session = useCustomerSession()
   const dashboard = useDashboardData(session.accessToken, session.customerId)
   const detail = useOrderDetail(orderId, session.accessToken)
+  const [reviewRevision, setReviewRevision] = useState(0)
+  const reviews = useReviewSummary(session.accessToken, reviewRevision)
   const [statusFilter, setStatusFilter] = useState<OrderStatusDto>()
   const [page, setPage] = useState(1)
   const ordersList = useOrdersList(session.accessToken, viewingOrders && !orderId, statusFilter, page)
@@ -128,6 +132,9 @@ export function Dashboard() {
               : <OrderForm key={draft ? 'revisao' : 'manual'} initial={draft} submitting={submitting} submitError={submitError}
                 onCancel={() => setDialog(null)} onCreate={publishOrder}
                 onBackToAssistant={draft ? () => setCreateMode('assistant') : undefined} />)
+            : location.pathname.endsWith('/avaliar') && detail.data && session.accessToken ? <OrderReview
+              key={`${session.accessToken}:${orderId}`} order={toOrder(detail.data, session.customerId!)} token={session.accessToken}
+              onSaved={() => setReviewRevision((value) => value + 1)} />
             : viewingOrders ? <MyOrders
               orders={orderId
                 ? (detail.data ? [toOrder(detail.data, session.customerId!)] : [])
@@ -140,6 +147,7 @@ export function Dashboard() {
               filter={orderId ? undefined : { value: statusFilter, onChange: (value) => { setStatusFilter(value); setPage(1) } }}
               pager={orderId || !ordersList.data ? undefined : { page, totalPages: ordersList.data.totalPages, onPage: setPage }} />
             : dashboard.data && <DashboardOverview orders={orders} summary={dashboard.data.summary}
+              reviews={reviews}
               completed={{ orders: completedList.data?.items.map((dto) => toOrder(dto, session.customerId!)) ?? [],
                 loading: completedList.loading, error: completedList.error?.message }}
               onViewCompleted={viewCompleted}
