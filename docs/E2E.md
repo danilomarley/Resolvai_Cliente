@@ -38,10 +38,14 @@ Cada teste registra uma conta aleatória na API real, com e-mail @e2e.example.te
 - Finalização: campos obrigatórios, envio, persistência de perfil/endereço/contato e navegação.
 - Criação: cadastro concluído, formulário, envio e conferência de pedido/escopo na API.
 - Meus pedidos: conta isolada, lista, estado e navegação a detalhes.
-- Recuperação atual: solicitação, nova senha, login com ela e rejeição da senha anterior.
-- Recuperação segura: a API deve rejeitar troca sem token/prova de posse.
+- Recuperação segura: solicitação, obtenção do código no Mailpit local, nova senha, login com ela e rejeição da senha anterior.
+- Rejeição sem prova: a tentativa sem token deve ser recusada e a senha original deve continuar funcionando.
 
-A main implementa o fluxo #70 sem confirmação por e-mail: não existe solicitação de token, entrega segura nem validação desse token no reset. O último teste verifica a falha real e não usa skip, fixme, expected-failure ou continue-on-error. Não há como obter um token inexistente. A issue #94 permanece parcial e a PR deve ficar Draft até a equipe definir/implementar o contrato seguro e estender o teste para obter o token no ambiente isolado. Esta entrega não altera silenciosamente o contrato de autenticação de produção.
+As correções estão nas PRs [backend #4](https://github.com/danilomarley/Resolvai_Backend_Node/pull/4) e [frontend #102](https://github.com/danilomarley/Resolvai_Cliente/pull/102), ainda pendentes de integração. A referência principal em backend-ref.json não foi trocada por uma branch pendente. Portanto a suíte principal evidencia os contratos ausentes na main; ela não usa skip, expected-failure ou continue-on-error. Depois da integração autorizada, atualizar o SHA da main e executar novamente. A PR permanece Draft enquanto a execução principal não passar.
+
+Um job separado **Candidatos de seguranca (sem merge)** valida os sete cenários em checkouts descartáveis das revisões registradas em e2e/candidates.json. prepare-candidate.mjs copia apenas testes/configuração/manifests para esse ambiente e registra ali o SHA candidato. Nenhum commit de segurança é incorporado à branch #94 e nenhum resultado candidato é apresentado como aprovação da main. Esse job oferece evidência de integração enquanto o merge está sob controle dos mantenedores.
+
+O SMTP é o Mailpit do Compose, com API somente em 127.0.0.1:8025. O código é extraído da mensagem recebida pelo destinatário sintético correto usando espera por condição; não é lido do banco Auth nem gerado pelo teste. O template usa {{ .Token }} e a janela local é de 600 segundos. A sanitização remove também códigos de seis dígitos de corpos SMTP, recursos e ações de preenchimento. Não publicar mensagens ou traces brutos.
 
 ## CI e diagnósticos
 

@@ -24,3 +24,9 @@ test('redacts passwords from plain error contexts and preserves normal diagnosti
   assert.match(result, /\[REDACTED\]/)
   assert.match(result, /Status 401/)
 })
+
+test('redacts OTPs from SMTP bodies, browser fill params and plain resources', () => {
+  for (const input of ['Seu código é 987654', JSON.stringify({ Text: 'Seu código é 987654', params: { value: '987654' }, token: '987654' }), JSON.stringify({ code: 987654 })]) {
+    assert.doesNotMatch(sanitizeText(input), /987654/)
+  }
+})

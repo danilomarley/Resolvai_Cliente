@@ -6,9 +6,10 @@ import { unzipSync, zipSync } from 'fflate'
 const sensitive = /password|secret|token|authorization|apikey|cookie/i
 const jwt = /eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g
 const credential = /(?:Nova!|SemProva!)?E2e![0-9a-f-]{36}/gi
+const otp = /\b\d{6}\b/g
 function value(input) {
   if (typeof input === 'string') {
-    try { return JSON.stringify(value(JSON.parse(input))) } catch { return input.replace(jwt, '[REDACTED]').replace(credential, '[REDACTED]') }
+    try { return JSON.stringify(value(JSON.parse(input))) } catch { return input.replace(jwt, '[REDACTED]').replace(credential, '[REDACTED]').replace(otp, '[REDACTED]') }
   }
   if (Array.isArray(input)) return input.map(value)
   if (input && typeof input === 'object') {
@@ -16,12 +17,12 @@ function value(input) {
     if (input.encoding === 'base64' && typeof input.text === 'string') return { ...input, text: Buffer.from(sanitizeText(Buffer.from(input.text, 'base64').toString('utf8'))).toString('base64') }
     return Object.fromEntries(Object.entries(input).map(([key, item]) => [key, sensitive.test(key) ? '[REDACTED]' : value(item)]))
   }
-  return input
+  return typeof input === 'number' && /^\d{6}$/.test(String(input)) ? '[REDACTED]' : input
 }
 export function sanitizeText(text) {
   return text.split('\n').map(line => {
     try { return JSON.stringify(value(JSON.parse(line))) }
-    catch { return line.replace(jwt, '[REDACTED]').replace(credential, '[REDACTED]') }
+    catch { return line.replace(jwt, '[REDACTED]').replace(credential, '[REDACTED]').replace(otp, '[REDACTED]') }
   }).join('\n')
 }
 export function sanitizeBuffer(bytes, name) {

@@ -1,4 +1,4 @@
-import { test, expect, apiCall, browserLogin, completeAccount, registration } from '../fixtures.mjs'
+import { test, expect, apiCall, browserLogin, completeAccount, recoveryCode, registration } from '../fixtures.mjs'
 import { api } from '../runtime.mjs'
 
 test('login válido mantém sessão e volta para Meus pedidos', async ({ page, account }) => {
@@ -79,12 +79,14 @@ test('Meus pedidos lista somente dados da conta e abre detalhes e estados', asyn
   expect((await apiCall(request, account, `/api/v1/orders/${order.id}`)).status).toBe('Pending')
 })
 
-test('recuperação atual redefine senha e permite novo login', async ({ page, request, account }) => {
+test('recuperação segura usa código do SMTP e permite novo login', async ({ page, request, account }) => {
   const newPassword = `Nova!${account.password}`
   await page.goto('/login')
   await page.getByRole('link', { name: 'Esqueceu a senha?', exact: true }).click()
   await page.getByLabel('E-mail', { exact: true }).fill(account.email)
   await page.getByRole('button', { name: 'Avançar', exact: true }).click()
+  await expect(page.getByLabel('Código de recuperação')).toBeVisible()
+  await page.getByLabel('Código de recuperação').fill(await recoveryCode(request, account.email))
   await page.getByLabel('Nova Senha', { exact: true }).fill(newPassword)
   await page.getByLabel('Confirmar Senha', { exact: true }).fill(newPassword)
   await page.getByRole('button', { name: 'Confirmar Nova Senha', exact: true }).click()
@@ -96,8 +98,12 @@ test('recuperação atual redefine senha e permite novo login', async ({ page, r
   expect(oldLogin.status()).toBe(401)
 })
 
-test('recuperação segura rejeita troca sem token de confirmação', async ({ request, account }) => {
-  // Critério da #94 ainda ausente na main (#70): teste real, sem skip nem expected-failure.
-  const response = await request.post(`${api}/api/v1/auth/reset-password`, { data: { email: account.email, newPassword: `SemProva!${account.password}` } })
+test('recuperação segura rejeita troca sem token e preserva a senha original', async ({ request, account }) => {
+  const newPassword = `SemProva!${account.password}`
+  const response = await request.post(`${api}/api/v1/auth/reset-password`, { data: { email: account.email, newPassword } })
   expect([400, 401, 403], 'A API deve exigir prova de posse antes de alterar a senha').toContain(response.status())
+  const original = await request.post(`${api}/api/v1/auth/login`, { data: { email: account.email, password: account.password } })
+  const changed = await request.post(`${api}/api/v1/auth/login`, { data: { email: account.email, password: newPassword } })
+  expect(original.status()).toBe(200)
+  expect(changed.status()).toBe(401)
 })

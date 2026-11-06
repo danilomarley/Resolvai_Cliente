@@ -36,7 +36,13 @@ services:
       GOTRUE_JWT_EXP: 3600
       GOTRUE_EXTERNAL_EMAIL_ENABLED: 'true'
       GOTRUE_MAILER_AUTOCONFIRM: 'true'
+      GOTRUE_MAILER_OTP_EXP: 600
       GOTRUE_DISABLE_SIGNUP: 'false'
+      GOTRUE_SMTP_HOST: mail
+      GOTRUE_SMTP_PORT: 1025
+      GOTRUE_SMTP_ADMIN_EMAIL: noreply@e2e.example.test
+      GOTRUE_SMTP_SENDER_NAME: ResolvAI E2E
+      GOTRUE_MAILER_TEMPLATES_RECOVERY: http://mail-template/recovery.html
       LOG_LEVEL: error
     healthcheck:
       test: ['CMD', 'wget', '--quiet', '--spider', 'http://localhost:9999/health']
@@ -50,3 +56,9 @@ services:
     ports: ['127.0.0.1:54321:80']
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+  mail:
+    image: axllent/mailpit:v1.27
+    ports: ['127.0.0.1:8025:8025']
+  mail-template:
+    image: nginx:alpine
+    volumes: ['./recovery.html:/usr/share/nginx/html/recovery.html:ro']

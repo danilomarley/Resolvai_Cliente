@@ -51,3 +51,53 @@ jobs:
       - name: Encerrar somente os serviços E2E
         if: always()
         run: npm run e2e:down
+
+  candidate-integration:
+    name: Candidatos de seguranca (sem merge)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - id: candidates
+        run: |
+          echo "front=$(node -p 'require("./e2e/candidates.json").frontend')" >> "$GITHUB_OUTPUT"
+          echo "back=$(node -p 'require("./e2e/candidates.json").backend')" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          repository: danilomarley/Resolvai_Cliente
+          ref: ${{ steps.candidates.outputs.front }}
+          path: .candidate-front
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: Diegofreitas-mend/Resolvai_Backend_Node
+          ref: ${{ steps.candidates.outputs.back }}
+          path: .candidate-front/.e2e-backend
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: node e2e/prepare-candidate.mjs
+      - run: npm ci
+        working-directory: .candidate-front
+      - run: npm ci && npm run build
+        working-directory: .candidate-front/.e2e-backend
+      - run: npx playwright install --with-deps chromium
+        working-directory: .candidate-front
+      - run: npm run e2e:up
+        working-directory: .candidate-front
+      - run: npm run test:e2e
+        working-directory: .candidate-front
+      - if: always()
+        id: sanitize-candidate
+        run: npm run e2e:artifacts
+        working-directory: .candidate-front
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.sanitize-candidate.outcome == 'success'
+        with:
+          name: e2e-candidatos-sanitizados
+          path: .candidate-front/e2e-artifacts/
+          retention-days: 7
+          if-no-files-found: ignore
+      - if: always()
+        run: npm run e2e:down
+        working-directory: .candidate-front

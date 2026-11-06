@@ -24,6 +24,19 @@ export async function browserLogin(page, account, navigate = true) {
   await page.getByRole('button', { name: 'Entrar', exact: true }).click()
 }
 
+export async function recoveryCode(request, email) {
+  let token
+  await expect.poll(async () => {
+    const messages = await (await request.get('http://127.0.0.1:8025/api/v1/messages')).json()
+    const message = messages.messages.find(item => item.To.some(to => to.Address.toLowerCase() === email.toLowerCase()))
+    if (!message) return false
+    const body = await (await request.get(`http://127.0.0.1:8025/api/v1/message/${message.ID}`)).json()
+    token = (body.Text || body.HTML).match(/\b\d{6}\b/)?.[0]
+    return typeof token === 'string'
+  }, { message: 'Código recebido pelo SMTP isolado', timeout: 15000 }).toBe(true)
+  return token
+}
+
 export const test = base.extend({
   account: async ({ request }, use) => {
     const account = { name: 'Cliente E2E', email: `${randomUUID()}@e2e.example.test`, password: `E2e!${randomUUID()}`, cpf: String(randomInt(10000000000, 99999999999)) }

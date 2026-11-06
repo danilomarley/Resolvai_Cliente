@@ -61,7 +61,7 @@ O `render.yaml` publica o front como Static Site no Render. Configure `VITE_API_
 
 Consulte [o guia E2E](docs/E2E.md) para preparar PostgreSQL, Supabase Auth e API isolados, instalar o Chromium e executar Playwright. A suíte cobre login válido/inválido, sessão, finalização de cadastro, criação/listagem de pedidos e recuperação de senha. O workflow executa em PRs para `main` e publica apenas diagnósticos sanitizados.
 
-A entrega permanece parcial: a recuperação atual (#70) troca a senha sem token. O teste obrigatório de rejeição dessa operação deve falhar até existir um contrato seguro, sem ocultar o problema com skip. O banco de teste é efêmero e não utiliza configuração de produção.
+A entrega depende das correções de segurança [backend #4](https://github.com/danilomarley/Resolvai_Backend_Node/pull/4) e [frontend #102](https://github.com/danilomarley/Resolvai_Cliente/pull/102). A referência principal continua sendo a main; um job separado testa cópias descartáveis dos candidatos, sem incorporar seus commits. A recuperação usa código recebido por SMTP local e testa também que uma tentativa sem código não altera a senha. A PR fica Draft até integração e aprovação da suíte principal.
 
 ## Organização do código
 
