@@ -12,6 +12,7 @@ dist
 dist-ssr
 .security-api/
 .baseline-api/
+.e2e-backend/
 test-results/
 playwright-report/
 *.local
