@@ -24,6 +24,9 @@ export function createApiClient(baseUrl: string, fetcher: typeof fetch = fetch) 
       throw new ApiError(0, 'Não foi possível conectar à API. Verifique a conexão e tente novamente.')
     }
     if (!response.ok) {
+      if (/^\/api\/v1\/orders\/[^/]+\/review$/.test(path) && [400, 409].includes(response.status)) {
+        throw new ApiError(response.status, response.status === 409 ? 'Este pedido já foi avaliado ou ainda não possui um prestador definido.' : 'A avaliação exige nota de 1 a 5 e pedido concluído.')
+      }
       if (response.status === 401 && path === '/api/v1/auth/login') {
         let detail: unknown
         try { detail = (await response.json()).detail } catch { /* Some hosts return an empty 401. */ }

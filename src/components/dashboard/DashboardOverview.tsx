@@ -5,8 +5,10 @@ import type { Order } from '../../types/orders'
 import type { Dialog, Profile, Tab } from '../../types/dashboard'
 import type { HomeSummary } from '../../services/dashboardApi'
 import { orderMoney } from '../../services/orders'
+import type { ReviewSummary } from '../../services/reviews'
 
 type Props = {
+  reviews?: { data?: ReviewSummary; loading: boolean; error?: string }
   orders: Order[]
   summary: HomeSummary
   completed: { orders: Order[]; loading: boolean; error?: string }
@@ -35,14 +37,14 @@ type Stat = {
 const twoDigits = (value: number) => String(value).padStart(2, '0')
 const plural = (value: number, singular: string, plural: string) => `${value} ${value === 1 ? singular : plural}`
 
-export function DashboardOverview({ orders, summary, completed, profile, tab, setTab, search, setSearch, navigate,
+export function DashboardOverview({ orders, summary, reviews, completed, profile, tab, setTab, search, setSearch, navigate,
   openDialog, openOrder, onViewCompleted }: Props) {
   const counts = summary.orders
   const active = counts.active ?? counts.pending + counts.inProgress
   const newThisWeek = counts.createdLast7Days
   const proposals = summary.proposals
 
-  // Cards do layout aprovado (#64). "Sua avaliação" ainda não tem fonte de dados: não existe tabela de avaliações.
+  // O card de avaliação resume as notas enviadas pelo próprio contratante (#92).
   const stats: Stat[] = [
     {
       label: 'Pedidos ativos', value: twoDigits(active), icon: 'bag', color: 'blue', detailIcon: 'trend',
@@ -63,8 +65,11 @@ export function DashboardOverview({ orders, summary, completed, profile, tab, se
       action: onViewCompleted,
     },
     {
-      label: 'Sua avaliação', value: '—', icon: 'star', color: 'amber', detailIcon: 'star',
-      detail: 'Avaliações em breve',
+      label: 'Sua avaliação', value: reviews?.data?.averageRating?.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) ?? '—', icon: 'star', color: 'amber', detailIcon: 'star',
+      detail: reviews?.loading ? 'Carregando avaliações…' : reviews?.error ? reviews.error
+        : !reviews?.data ? 'Avaliações indisponíveis' : reviews.data.count === 0 ? 'Nenhuma avaliação enviada'
+        : `${plural(reviews.data.count, 'avaliação enviada', 'avaliações enviadas')} · média das suas notas`,
+      action: onViewCompleted,
     },
   ]
 

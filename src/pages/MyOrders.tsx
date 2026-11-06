@@ -109,6 +109,7 @@ function OrderDetails({ order }: { order: Order }) {
     <article className="panel order-summary">
       <h2>Pedido #{orderNumber(order)} · {order.title}</h2>
       <OrderStatus order={order} />
+      {order.status === 'completed' && <Link className="button button-primary" to={`/pedidos/${order.id}/avaliar`}>Avaliar serviço</Link>}
       <dl>
         <div><dt>Data de realização</dt><dd>{orderDate(order.createdAt)}</dd></div>
         {order.updatedAt && <div><dt>Última atualização</dt><dd>{orderDate(order.updatedAt)}</dd></div>}
@@ -214,6 +215,7 @@ export function MyOrders({ orders, customerId, orderId, search, loading, error, 
                   Acompanhar pedido
                 </Link>
               </div>
+              {order.status === 'completed' && <Link className="button button-secondary" to={`/pedidos/${order.id}/avaliar`}>Avaliar serviço</Link>}
           </article>
         ))}
       </div>

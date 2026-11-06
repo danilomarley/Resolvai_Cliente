@@ -40,6 +40,8 @@ const { OrderAssistant } = await import('../src/components/OrderAssistant.tsx')
 const { ApiError, createApiClient } = await import('../src/services/api.ts')
 const { MyOrders } = await import('../src/pages/MyOrders.tsx')
 const { OrderForm } = await import('../src/components/OrderForm.tsx')
+const { ReviewForm } = await import('../src/components/OrderReview.tsx')
+const { parseReview, parseReviewSummary, validRating, submitReview } = await import('../src/services/reviews.ts')
 const renderOrders = (props = {}) => renderToStaticMarkup(React.createElement(StaticRouter, { location: '/pedidos' },
   React.createElement(MyOrders, { orders: [], customerId: null, search: '', ...props })))
 
@@ -127,9 +129,46 @@ test('home cards follow the approved layout with real data and no invented ratin
   assert.match(html, />03</)
   assert.match(html, /\+1 novo nesta semana/)
   assert.match(html, /2 propostas para conferir/)
-  assert.match(html, /Avaliações em breve/)
+  assert.match(html, /Avaliações indisponíveis/)
   assert.doesNotMatch(html, /4,8/)
   assert.match(html, /Nenhum serviço concluído ainda/)
+  const withReviews = renderToStaticMarkup(React.createElement(DashboardOverview, { ...props, reviews: { data: { count: 2, averageRating: 4.5 }, loading: false } }))
+  assert.match(withReviews, /4,5/)
+  assert.match(withReviews, /2 avaliações enviadas/)
+  const empty = renderToStaticMarkup(React.createElement(DashboardOverview, { ...props, reviews: { data: { count: 0, averageRating: null }, loading: false } }))
+  assert.match(empty, /Nenhuma avaliação enviada/)
+})
+
+test('review contracts reject invalid scores and inconsistent summaries', async () => {
+  const review = { orderId: randomUUID(), providerId: randomUUID(), rating: 5, createdAt: new Date().toISOString() }
+  assert.deepEqual(parseReview(review), review)
+  for (const rating of [0, 6, 1.5, '5', undefined]) {
+    assert.equal(validRating(rating), false)
+    assert.throws(() => parseReview({ ...review, rating }), ApiError)
+  }
+  for (const value of [{ count: 0, averageRating: 5 }, { count: 1, averageRating: null }, { count: -1, averageRating: null }]) assert.throws(() => parseReviewSummary(value), ApiError)
+  await assert.rejects(submitReview(review.orderId, 'test', 0, ''), ApiError)
+  await assert.rejects(submitReview(review.orderId, 'test', 5, 'x'.repeat(2001)), ApiError)
+})
+
+test('review form has five named radio inputs, optional comment and prevents empty submission', () => {
+  const html = renderToStaticMarkup(React.createElement(ReviewForm, { sending: false, error: '', onSubmit() {} }))
+  assert.equal((html.match(/type="radio"/g) ?? []).length, 5)
+  assert.match(html, /aria-label="1 estrela"/)
+  assert.match(html, /aria-label="5 estrelas"/)
+  assert.match(html, /Comentário \(opcional\)/)
+  assert.match(html, /maxLength="2000"/)
+  assert.match(html, /type="submit" disabled=""/)
+  const pending = renderToStaticMarkup(React.createElement(ReviewForm, { sending: true, error: 'Falha de envio', onSubmit() {} }))
+  assert.match(pending, /fieldset disabled/)
+  assert.match(pending, /role="alert"/)
+})
+
+test('only completed order details offer the review route', () => {
+  const id = randomUUID(), customerId = randomUUID()
+  const order = { id, customerId, title: 'Serviço', category: 'Pedido', location: '', description: '', status: 'completed', icon: 'bag', proposals: 0 }
+  assert.match(renderOrders({ orders: [order], customerId, orderId: id }), new RegExp(`/pedidos/${id}/avaliar`))
+  assert.doesNotMatch(renderOrders({ orders: [{ ...order, status: 'progress' }], customerId, orderId: id }), /Avaliar serviço/)
 })
 
 test('assistant replies and suggested scope are validated and mapped to the order form', () => {
