@@ -42,7 +42,9 @@ const { MyOrders } = await import('../src/pages/MyOrders.tsx')
 const { OrderForm } = await import('../src/components/OrderForm.tsx')
 const { ReviewForm } = await import('../src/components/OrderReview.tsx')
 const { Modal } = await import('../src/components/Modal.tsx')
-const { readModal, searchWithModal } = await import('../src/services/modalRoute.ts')
+const { readModal, readNext, searchWithModal } = await import('../src/services/modalRoute.ts')
+const { buildRegistration, emptyRegistration, maskCpf, maskCep, maskPhone, isValidPhone } = await import('../src/services/registrationForm.ts')
+const { CompleteRegistrationForm } = await import('../src/components/CompleteRegistrationForm.tsx')
 const { parseReview, parseReviewSummary, validRating, submitReview } = await import('../src/services/reviews.ts')
 const renderOrders = (props = {}) => renderToStaticMarkup(React.createElement(StaticRouter, { location: '/pedidos' },
   React.createElement(MyOrders, { orders: [], customerId: null, search: '', ...props })))
@@ -248,4 +250,43 @@ test('modal renders size, description, scrollable body and footer; blocks closin
   assert.match(plain, /class="modal modal-md"/)
   assert.doesNotMatch(plain, /modal-footer|aria-describedby/)
   assert.match(render({ dismissible: false }), /aria-label="Fechar janela"[^>]*disabled=""|disabled=""[^>]*aria-label="Fechar janela"/)
+})
+
+test('modal intent is only kept for known actions and leaves with the modal', () => {
+  assert.equal(readNext('?modal=finalizar-cadastro&next=criar-pedido'), 'criar-pedido')
+  assert.equal(readNext('?next=apagar-tudo'), null)
+  assert.equal(searchWithModal('', 'finalizar-cadastro', 'criar-pedido'), '?modal=finalizar-cadastro&next=criar-pedido')
+  assert.equal(searchWithModal('?modal=finalizar-cadastro&next=criar-pedido', null), '')
+  assert.equal(searchWithModal('?modal=perfil&next=criar-pedido', 'ajuda'), '?modal=ajuda')
+})
+
+test('registration masks and validation build the API payload', () => {
+  assert.equal(maskCpf('12345678901'), '123.456.789-01')
+  assert.equal(maskCep('60115000'), '60115-000')
+  assert.equal(maskPhone('85999998888'), '(85) 99999-8888')
+  assert.equal(isValidPhone('(85) 99999-8888'), true)
+  assert.equal(isValidPhone('(85) 89999-8888'), false)
+  const filled = { ...emptyRegistration('  Maria Souza '), cpf: '123.456.789-01', cep: '60115-000', logradouro: ' Rua A ', numero: '10',
+    bairro: 'Centro', cidade: 'Fortaleza', estado: 'ce', contactValue: '(85) 99999-8888' }
+  const ok = buildRegistration(filled)
+  assert.deepEqual(ok.payload, { name: 'Maria Souza', cpf: '12345678901',
+    endereco: { logradouro: 'Rua A', numero: '10', bairro: 'Centro', cidade: 'Fortaleza', estado: 'CE', cep: '60115000' },
+    contato: { tipo: 'whatsapp', valor: '85999998888' } })
+  assert.match(buildRegistration({ ...filled, cpf: '123' }).error, /CPF/)
+  assert.match(buildRegistration({ ...filled, cep: '6011' }).error, /CEP/)
+  assert.match(buildRegistration({ ...filled, estado: 'XX' }).error, /estado/)
+  assert.match(buildRegistration({ ...filled, contactValue: '123' }).error, /telefone/)
+  assert.match(buildRegistration({ ...filled, contactType: 'email_alt', contactValue: 'sem-arroba' }).error, /e-mail/)
+  assert.equal(buildRegistration({ ...filled, contactType: 'email_alt', contactValue: ' A@B.com ' }).payload.contato.valor, 'a@b.com')
+})
+
+test('registration form exposes labelled fields and disables them while saving', () => {
+  const render = (props) => renderToStaticMarkup(React.createElement(CompleteRegistrationForm, { id: 'f', disabled: false, onSubmit() {}, ...props }))
+  const html = render({ defaultName: 'Maria Souza' })
+  for (const label of ['Nome completo', 'CPF', 'CEP', 'Logradouro', 'Bairro', 'Cidade', 'Estado', 'Tipo de contato', 'Número de contato']) assert.match(html, new RegExp(label))
+  assert.match(html, /value="Maria Souza"/)
+  assert.match(html, /não pode ser alterado depois/)
+  assert.doesNotMatch(html, /role="alert"/)
+  assert.match(render({ disabled: true }), /<fieldset disabled=""/)
+  assert.match(render({ error: 'CPF já em uso' }), /role="alert"[^>]*>CPF já em uso/)
 })

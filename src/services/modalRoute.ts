@@ -2,6 +2,10 @@ import { useCallback } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 const param = 'modal'
+const nextParam = 'next'
+/** O que fazer ao fechar o modal com sucesso; só valores conhecidos são aceitos. */
+const nextActions = ['criar-pedido'] as const
+export type NextAction = (typeof nextActions)[number]
 
 /** Lê o modal da query string; nomes fora da lista permitida são ignorados. */
 export function readModal<T extends string>(search: string, allowed: readonly T[]): T | null {
@@ -9,11 +13,22 @@ export function readModal<T extends string>(search: string, allowed: readonly T[
   return allowed.find((name) => name === value) ?? null
 }
 
-/** Devolve a query string com o modal definido (ou removido, com null), preservando os demais parâmetros. */
-export function searchWithModal(search: string, name: string | null): string {
+export function readNext(search: string): NextAction | null {
+  const value = new URLSearchParams(search).get(nextParam)
+  return nextActions.find((action) => action === value) ?? null
+}
+
+/**
+ * Devolve a query string com o modal definido (ou removido, com null), preservando os demais
+ * parâmetros. A intenção `next` só existe junto com um modal e sai com ele.
+ */
+export function searchWithModal(search: string, name: string | null, next?: NextAction): string {
   const params = new URLSearchParams(search)
-  if (name) params.set(param, name)
-  else params.delete(param)
+  params.delete(nextParam)
+  if (name) {
+    params.set(param, name)
+    if (next) params.set(nextParam, next)
+  } else params.delete(param)
   const text = params.toString()
   return text ? `?${text}` : ''
 }
@@ -29,11 +44,12 @@ export function useModalRoute<T extends string>(allowed: readonly T[]) {
   const location = useLocation()
   const navigate = useNavigate()
   const current = readModal(location.search, allowed)
+  const next = current ? readNext(location.search) : null
 
   const open = useCallback(
-    (name: T) =>
+    (name: T, nextAction?: NextAction) =>
       navigate(
-        { pathname: location.pathname, search: searchWithModal(location.search, name) },
+        { pathname: location.pathname, search: searchWithModal(location.search, name, nextAction) },
         { state: { ...(location.state as object | null), modalOpened: true } satisfies ModalState },
       ),
     [navigate, location.pathname, location.search, location.state],
@@ -48,5 +64,5 @@ export function useModalRoute<T extends string>(allowed: readonly T[]) {
       )
   }, [navigate, location.pathname, location.search, location.state])
 
-  return { current, open, close }
+  return { current, next, open, close }
 }

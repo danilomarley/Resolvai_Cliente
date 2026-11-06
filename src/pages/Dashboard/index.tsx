@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { MyOrders } from '../MyOrders'
 import { useCustomerSession } from '../../services/useCustomerSession'
@@ -7,6 +7,7 @@ import { askAssistant, createOrder, toOrder, uploadOrderPhoto, type OrderStatusD
 import { Icon } from '../../components/Icon'
 import { Modal } from '../../components/Modal'
 import { AccountSettings } from '../../components/AccountSettings'
+import { CompleteRegistrationModal } from '../../components/CompleteRegistrationModal'
 import { OrderForm } from '../../components/OrderForm'
 import { OrderAssistant } from '../../components/OrderAssistant'
 import { OrderReview } from '../../components/OrderReview'
@@ -36,8 +37,9 @@ export function Dashboard() {
   const [tab, setTab] = useState<Tab>('all')
   const [search, setSearch] = useState('')
   const [dialog, setDialog] = useState<Dialog>(null)
-  // Perfil e ajuda vivem na URL (?modal=perfil|ajuda): recarregar reabre e "voltar" fecha.
-  const urlModal = useModalRoute(['perfil', 'ajuda'] as const)
+  // Perfil, ajuda e finalização de cadastro vivem na URL (?modal=...): recarregar reabre e "voltar" fecha.
+  const urlModal = useModalRoute(['perfil', 'ajuda', 'finalizar-cadastro'] as const)
+  const registrationHandled = useRef(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [notice, setNotice] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -53,11 +55,31 @@ export function Dashboard() {
     setMobileOpen(false)
     if (value === 'profile') urlModal.open('perfil')
     else if (value === 'help') urlModal.open('ajuda')
-    else if (value === 'create' && dashboard.data && !dashboard.data.user.cpf)
-      routerNavigate('/complemento-cadastro', { state: { from: location.pathname } })
-    else if (value === 'create') { setSubmitError(''); setCreateMode('assistant'); setDraft(undefined); setDialog(value) }
+    else if (value === 'create' && dashboard.data && !dashboard.data.user.cpf) urlModal.open('finalizar-cadastro', 'criar-pedido')
+    else if (value === 'create') startCreate()
     else setNotice('Esta funcionalidade ainda não está disponível na API.')
   }
+  function startCreate() { setSubmitError(''); setCreateMode('assistant'); setDraft(undefined); setDialog('create') }
+  function registrationCompleted() {
+    registrationHandled.current = true
+    const next = urlModal.next
+    urlModal.close()
+    dashboard.retry()
+    if (next === 'criar-pedido') startCreate()
+    else setNotice('Cadastro finalizado com sucesso.')
+  }
+  // Link direto (?modal=finalizar-cadastro) de quem já finalizou: não há o que preencher.
+  const alreadyRegistered = urlModal.current === 'finalizar-cadastro' && !!dashboard.data?.user.cpf
+  useEffect(() => {
+    if (urlModal.current !== 'finalizar-cadastro') registrationHandled.current = false
+    else if (alreadyRegistered && !registrationHandled.current) {
+      registrationHandled.current = true
+      const next = urlModal.next
+      urlModal.close()
+      if (next === 'criar-pedido') startCreate()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlModal.current, alreadyRegistered])
   async function publishOrder(order: NewOrder, photos: File[]) {
     if (!session.accessToken || !session.customerId) return
     setSubmitting(true)
@@ -162,7 +184,11 @@ export function Dashboard() {
       {notice && <div className="toast" role="status"><span>{notice}</span>
         <button className="icon-button" onClick={() => setNotice('')} aria-label="Dispensar aviso"><Icon name="close" size={17} /></button>
       </div>}
-      {!session.loading && urlModal.current && <Modal size="lg" onClose={urlModal.close}
+      {!session.loading && urlModal.current === 'finalizar-cadastro' && dashboard.data && !alreadyRegistered
+        && <CompleteRegistrationModal token={session.accessToken} customerId={session.customerId}
+          defaultName={dashboard.data.user.name} onClose={urlModal.close} onCompleted={registrationCompleted}
+          reason={urlModal.next === 'criar-pedido' ? 'Para criar um pedido, precisamos concluir seu cadastro. Leva menos de um minuto.' : undefined} />}
+      {!session.loading && (urlModal.current === 'perfil' || urlModal.current === 'ajuda') && <Modal size="lg" onClose={urlModal.close}
         title={urlModal.current === 'perfil' ? 'Configurações da conta' : 'Central de ajuda'}>
         {urlModal.current === 'perfil' ? <AccountSettings key={`${session.customerId}:${session.accessToken}`}
           token={session.accessToken} customerId={session.customerId} onCompleted={dashboard.retry} />
