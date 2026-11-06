@@ -45,6 +45,8 @@ const { ReviewForm } = await import('../src/components/OrderReview.tsx')
 const { Modal } = await import('../src/components/Modal.tsx')
 const { Sidebar } = await import('../src/components/dashboard/Sidebar.tsx')
 const { CreateOrderModal } = await import('../src/components/CreateOrderModal.tsx')
+const { safeReturnPath } = await import('../src/services/returnPath.ts')
+const { NotFound } = await import('../src/pages/NotFound/index.tsx')
 const { readModal, readNext, readOrder, searchWithModal, modalLink } = await import('../src/services/modalRoute.ts')
 const { buildRegistration, emptyRegistration, maskCpf, maskCep, maskPhone, isValidPhone } = await import('../src/services/registrationForm.ts')
 const { CompleteRegistrationForm } = await import('../src/components/CompleteRegistrationForm.tsx')
@@ -348,4 +350,29 @@ test('order details show section tabs instead of per-page back buttons', () => {
     assert.match(html, new RegExp(`href="/pedidos/${id}/acompanhar"`))
     assert.doesNotMatch(html, /Ver detalhes do pedido/)
   }
+})
+
+test('login only returns to known app screens with known parameters', () => {
+  const id = randomUUID()
+  for (const ok of ['/', '/pedidos', `/pedidos/${id}`, `/pedidos/${id}/propostas`, `/pedidos/${id}/acompanhar`, '/pedidos?status=Completed&page=2',
+    `/pedidos/${id}?modal=avaliar&pedido=${id}`, '/?modal=finalizar-cadastro&next=criar-pedido']) assert.equal(safeReturnPath(ok), ok)
+  for (const bad of [undefined, null, 42, 'https://evil.example', '//evil.example', '/login', '/pedidos/../x', '/pedidos/abc/propostas', `/pedidos/${id}/outra`,
+    '/pedidos?status=Hacked', '/pedidos?redirect=https://evil.example', '/pedidos?status=Pending#x', '/pedidos?a=1?b=2', '/?modal=desconhecido', '/?pedido=1']) assert.equal(safeReturnPath(bad), '/')
+})
+
+test('unknown addresses show a not found page with a way home', () => {
+  const html = renderToStaticMarkup(React.createElement(StaticRouter, { location: '/qualquer' }, React.createElement(NotFound)))
+  assert.match(html, /<h1>Página não encontrada<\/h1>/)
+  assert.match(html, /href="\/"[^>]*>Ir para o início/)
+})
+
+test('order cards offer details, proposals and review without a duplicated tracking button', () => {
+  const id = randomUUID(), customerId = randomUUID()
+  const order = { id, customerId, title: 'Serviço', category: 'Pedido', location: '', description: '', status: 'completed', icon: 'bag', proposals: 3 }
+  const html = renderOrders({ orders: [order], customerId })
+  assert.match(html, /Ver detalhes<\/a>/)
+  assert.match(html, /Ver propostas \(3\)/)
+  assert.match(html, /Avaliar serviço/)
+  assert.doesNotMatch(html, /Acompanhar pedido/)
+  assert.equal((html.match(/class="button/g) ?? []).length, 3)
 })

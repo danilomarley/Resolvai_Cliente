@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useLocation, useMatch, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { MyOrders } from '../MyOrders'
 import { useCustomerSession } from '../../services/useCustomerSession'
 import { useDashboardData, useOrderDetail, useOrdersList } from '../../services/useDashboardData'
@@ -34,7 +34,10 @@ export function Dashboard() {
   const routerNavigate = useNavigate()
   const location = useLocation()
   const { orderId } = useParams()
-  const viewingOrders = location.pathname.startsWith('/pedidos')
+  const viewingOrders = !!useMatch('/pedidos/*')
+  const proposalsRoute = !!useMatch('/pedidos/:orderId/propostas')
+  const trackingRoute = !!useMatch('/pedidos/:orderId/acompanhar')
+  const returnTo = location.pathname + location.search
   const session = useCustomerSession()
   const dashboard = useDashboardData(session.accessToken, session.customerId)
   const detail = useOrderDetail(orderId, session.accessToken)
@@ -59,8 +62,7 @@ export function Dashboard() {
   const ownDetail = useOrderDetail(reviewId && reviewId !== orderId ? reviewId : undefined, session.accessToken)
   const reviewOrder = reviewId && reviewId === orderId ? detail : ownDetail
   const ordersList = useOrdersList(session.accessToken, viewingOrders && !orderId, statusFilter, page)
-  const orderView = location.pathname.endsWith('/propostas') ? 'propostas'
-    : location.pathname.endsWith('/acompanhar') ? 'acompanhar' : undefined
+  const orderView = proposalsRoute ? 'propostas' : trackingRoute ? 'acompanhar' : undefined
   const [tab, setTab] = useState<Tab>('all')
   const [search, setSearch] = useState('')
   const registrationHandled = useRef(false)
@@ -122,9 +124,11 @@ export function Dashboard() {
   }
   function viewCompleted() { navigate('Avaliações') }
 
+  // A busca só filtra o painel da Visão geral e a lista de pedidos; no detalhe não teria efeito.
+  const searchable = !orderId && (viewingOrders || location.pathname === '/')
   const failure = session.error || dashboard.error?.message
   if (!session.loading && !session.error && !session.customerId) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />
+    return <Navigate to="/login" replace state={{ from: returnTo }} />
   }
 
   return (
@@ -142,11 +146,11 @@ export function Dashboard() {
             <strong>{activeNav}</strong>
           </div>
           <div className="topbar-actions">
-            <label className="search-box">
+            {searchable && <label className="search-box">
               <Icon name="search" size={18} />
               <input type="search" placeholder="Buscar pedido..." aria-label="Buscar pedido"
                 value={search} onChange={(event) => { setSearch(event.target.value); setTab('all') }} />
-            </label>
+            </label>}
             <button className="avatar small-avatar" aria-label="Abrir meu perfil" onClick={() => openDialog('profile')}>
               {profile.name.charAt(0)}
             </button>
@@ -157,7 +161,7 @@ export function Dashboard() {
             : failure ? <section className="panel order-summary" role="alert">
               <h1>Não foi possível carregar sua conta</h1><p>{failure}</p>
               <button className="button button-secondary" onClick={session.error ? session.retry : dashboard.retry}>Tentar novamente</button>
-              {dashboard.error?.status === 401 && <Link to="/login" state={{ from: location.pathname }}>Entrar novamente</Link>}
+              {dashboard.error?.status === 401 && <Link to="/login" state={{ from: returnTo }}>Entrar novamente</Link>}
             </section>
             : viewingOrders ? <MyOrders
               orders={orderId

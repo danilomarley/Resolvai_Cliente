@@ -37,8 +37,6 @@ const statusFilters: { value?: OrderStatusDto; label: string }[] = [
 ]
 const orderNumber = (order: Order) => order.id.slice(0, 8).toUpperCase()
 const proposalLabels = { Sent: 'Enviada', Viewed: 'Visualizada', Chosen: 'Escolhida' }
-const trackingPath = (order: Order) =>
-  `/pedidos/${order.id}/${order.status === 'waiting' ? 'propostas' : 'acompanhar'}`
 
 /** Seções do pedido: cada aba é uma rota (/pedidos/:id, /propostas, /acompanhar). */
 function OrderTabs({ order, view }: { order: Order; view?: 'propostas' | 'acompanhar' }) {
@@ -221,23 +219,19 @@ export function MyOrders({ orders, customerId, orderId, search, loading, error, 
             <h2>Pedido #{orderNumber(order)} · {order.title}</h2>
             <OrderStatus order={order} />
             <p>Data de realização: {orderDate(order.createdAt)}</p>
-            <Link className="button button-secondary" to={`/pedidos/${order.id}`}
-              aria-label={`Ver detalhes do pedido ${order.id}`}>
-              Ver detalhes
-            </Link>
-              <div className="order-actions">
-                {order.proposals > 0 && (
-                  <Link className="button button-secondary" to={`/pedidos/${order.id}/propostas`}
-                    aria-label={`Ver propostas do pedido ${order.id}`}>
-                    Ver propostas ({order.proposals})
-                  </Link>
-                )}
-                <Link className="button button-primary" to={trackingPath(order)}
-                  aria-label={`Acompanhar pedido ${order.id}`}>
-                  Acompanhar pedido
+            <div className="order-actions">
+              <Link className="button button-primary" to={`/pedidos/${order.id}`}
+                aria-label={`Ver detalhes do pedido ${order.id}`}>
+                Ver detalhes
+              </Link>
+              {order.proposals > 0 && (
+                <Link className="button button-secondary" to={`/pedidos/${order.id}/propostas`}
+                  aria-label={`Ver propostas do pedido ${order.id}`}>
+                  Ver propostas ({order.proposals})
                 </Link>
-              </div>
+              )}
               {order.status === 'completed' && <Link className="button button-secondary" {...modalLink(location.pathname, location.search, 'avaliar', order.id)}>Avaliar serviço</Link>}
+            </div>
           </article>
         ))}
       </div>

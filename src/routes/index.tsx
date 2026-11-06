@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-
 import { Login } from "../pages/Login";
 import { Dashboard } from "../pages/Dashboard";
 import { Cadastro } from "../pages/Cadastro";
+import { NotFound } from "../pages/NotFound";
 
 /** Rota antiga da avaliação: agora é um modal sobre o pedido. */
 function ReviewRedirect() {
@@ -24,6 +25,7 @@ export function AppRoutes() {
           <Route path="pedidos/:orderId/propostas" element={null} />
           <Route path="pedidos/:orderId/acompanhar" element={null} />
         </Route>
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   );
