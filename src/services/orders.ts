@@ -25,3 +25,24 @@ export const orderDate = (value?: string) => value
 export const orderMoney = (value?: number) => value === undefined
   ? 'Valor não informado'
   : value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+
+export type CompletedOrdersParams = {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  period?: 'all' | '30d' | '90d' | '180d' | '365d';
+  signal?: AbortSignal;
+};
+
+export const orderProviderName = (order: Order) =>
+  order.proposalList?.find((proposal) => proposal.status === 'Chosen')?.providerName
+  ?? 'Prestador não informado'
+
+export const orderCompletedDate = (order: Order) =>
+  orderDate(order.updatedAt ?? order.createdAt)
+
+export const orderRatingLabel = (rating?: number | null) =>
+  typeof rating === 'number' && Number.isFinite(rating)
+    ? `${rating.toFixed(1).replace('.', ',')} / 5`
+    : 'Não avaliado'
+
