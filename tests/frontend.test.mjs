@@ -51,6 +51,7 @@ const { CancelOrderModal } = await import('../src/components/CancelOrderModal.ts
 const { parseProposals, bestIds, ratingLabel, getOrderProposals, parseProposalDetail, getProposalDetail, acceptProposal, acceptBlock } = await import('../src/services/proposalsApi.ts')
 const { parseAlerts, getProposalAlerts } = await import('../src/services/alertsApi.ts')
 const { parseContract, getContract, signContract } = await import('../src/services/contractApi.ts')
+const { ContractView } = await import('../src/components/ContractPanel.tsx')
 const { AlertsBell, AlertsList } = await import('../src/components/AlertsBell.tsx')
 const { safeReturnPath } = await import('../src/services/returnPath.ts')
 const { NotFound } = await import('../src/pages/NotFound/index.tsx')
@@ -362,7 +363,7 @@ test('order details show section tabs instead of per-page back buttons', () => {
 test('login only returns to known app screens with known parameters', () => {
   const id = randomUUID()
   for (const ok of ['/', '/pedidos', `/pedidos/${id}`, `/pedidos/${id}/propostas`, `/pedidos/${id}/propostas/${randomUUID()}`, `/pedidos/${id}/acompanhar`, '/pedidos?status=Completed&page=2',
-    `/pedidos/${id}?modal=avaliar&pedido=${id}`, `/pedidos/${id}?modal=editar-pedido&pedido=${id}`, `/pedidos/${id}?modal=cancelar-pedido&pedido=${id}`, `/pedidos/${id}/propostas/${randomUUID()}?modal=aceitar-proposta`,
+    `/pedidos/${id}?modal=avaliar&pedido=${id}`, `/pedidos/${id}?modal=editar-pedido&pedido=${id}`, `/pedidos/${id}?modal=cancelar-pedido&pedido=${id}`, `/pedidos/${id}/propostas/${randomUUID()}?modal=aceitar-proposta`, `/pedidos/${id}/contrato`,
     '/?modal=finalizar-cadastro&next=criar-pedido']) assert.equal(safeReturnPath(ok), ok)
   for (const bad of [undefined, null, 42, 'https://evil.example', '//evil.example', '/login', '/pedidos/../x', '/pedidos/abc/propostas', `/pedidos/${id}/outra`,
     '/pedidos?status=Hacked', '/pedidos?redirect=https://evil.example', '/pedidos?status=Pending#x', '/pedidos?a=1?b=2', '/?modal=desconhecido', '/?pedido=1']) assert.equal(safeReturnPath(bad), '/')
@@ -672,4 +673,52 @@ test('the contract is read and signed through the order routes, sending the hash
   }
   await assert.rejects(client(409, {})(`/api/v1/orders/${orderId}/contract/sign`, { method: 'POST', token: 't', body: { textHash: hash } }),
     (error) => /não pode mais ser alterado/.test(error.message))
+})
+
+const contractOrder = () => ({ id: randomUUID(), customerId: randomUUID(), title: 'Serviço', category: 'Pedido', location: '', description: '', status: 'waiting', icon: 'bag', proposals: 1 })
+const renderContract = (contract, extra = {}) => renderAt(React.createElement(ContractView, { order: contractOrder(), contract, onSign() {}, ...extra }))
+
+test('the contract screen shows the text, both signatures and a single sign action while the customer has not signed', () => {
+  const html = renderContract(parseContract(contractDto()))
+  assert.match(html, /Contrato do pedido #/)
+  assert.match(html, /Aguardando assinaturas/)
+  assert.match(html, /CONTRATO DE PRESTAÇÃO DE SERVIÇOS/)
+  assert.match(html, /aria-label="Texto do contrato"/)
+  assert.match(html, /R\$\s?800,00/)
+  assert.match(html, /Maria Contratante/)
+  assert.match(html, /Ana Eletricista/)
+  assert.match(html, /Aguardando a sua assinatura/)
+  assert.match(html, /Aguardando assinatura do prestador/)
+  assert.match(html, />Assinar contrato</)
+  assert.doesNotMatch(html, /type="checkbox"/)
+  assert.doesNotMatch(html, /Ir para pagamento/)
+})
+
+test('after the customer signs the screen waits for the provider, and after both it points to the payment', () => {
+  const when = new Date().toISOString()
+  const waiting = renderContract(parseContract(contractDto({ customerSignedAt: when })))
+  assert.doesNotMatch(waiting, />Assinar contrato</)
+  assert.match(waiting, /Você já assinou\. Falta o prestador assinar/)
+  assert.match(waiting, /Assinou em/)
+  assert.match(waiting, /Aguardando assinatura do prestador/)
+
+  const signed = parseContract(contractDto({ status: 'Signed', customerSignedAt: when, providerSignedAt: when }))
+  const done = renderContract(signed)
+  assert.match(done, /Assinado pelas duas partes/)
+  assert.match(done, /Contrato assinado/)
+  assert.doesNotMatch(done, />Assinar contrato</)
+  assert.doesNotMatch(done, /Ir para pagamento/)
+  assert.match(renderContract(signed, { onPay: '/pedidos/x/pagamento' }), /href="\/pedidos\/x\/pagamento"[^>]*>Ir para pagamento/)
+  assert.match(renderContract(parseContract(contractDto()), { signError: 'Você já assinou este contrato.' }), /role="alert">Você já assinou este contrato\./)
+  assert.match(renderContract(parseContract(contractDto()), { signing: true }), /disabled=""[^>]*>Assinando…/)
+})
+
+test('the contract tab only exists after a proposal was accepted, and loads from the API', () => {
+  const id = randomUUID(), customerId = randomUUID()
+  const base = { id, customerId, title: 'Serviço', category: 'Pedido', location: '', description: '', status: 'waiting', icon: 'bag', proposals: 1 }
+  const withChosen = renderOrders({ orders: [{ ...base, proposalList: [proposal({ status: 'Chosen' })] }], customerId, orderId: id })
+  assert.match(withChosen, new RegExp(`href="/pedidos/${id}/contrato"[^>]*>Contrato<`))
+  assert.doesNotMatch(renderOrders({ orders: [{ ...base, proposalList: [proposal({ status: 'Sent' })] }], customerId, orderId: id }), /\/contrato/)
+  assert.match(renderOrders({ orders: [base], customerId, orderId: id, view: 'contrato' }), /Entre na sua conta para consultar o contrato/)
+  assert.match(renderOrders({ orders: [base], customerId, orderId: id, view: 'contrato', token: 'abc' }), /Carregando contrato/)
 })

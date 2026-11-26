@@ -3,9 +3,11 @@ import { Link, useLocation } from 'react-router-dom'
 import { modalLink } from '../services/modalRoute'
 import type { Order } from '../types/orders'
 import { ProposalsPanel } from '../components/ProposalsPanel'
+import { ContractPanel } from '../components/ContractPanel'
 import type { OrderStatusDto } from '../services/dashboardApi'
 import {
   canChangeOrder,
+  hasChosenProposal,
   customerOrders,
   customerOrder,
   orderDate,
@@ -23,13 +25,15 @@ type Props = {
   error?: string
   requiresLogin?: boolean
   onRetry?: () => void
-  view?: 'propostas' | 'acompanhar'
+  view?: 'propostas' | 'acompanhar' | 'contrato'
   /** Proposta aberta em /pedidos/:id/propostas/:proposalId. */
   proposalId?: string
   /** Token da sessão; as propostas são consultadas na API (#86). */
   token?: string | null
   /** Chamado depois que o contratante aceita uma proposta (#89), para recarregar o pedido. */
   onProposalAccepted?: () => void
+  /** Chamado depois que o contratante assina o contrato (#95), para recarregar o pedido. */
+  onContractSigned?: () => void
   /** Título e descrição da listagem; os atalhos do menu (Propostas, Avaliações) trocam o padrão. */
   heading?: { title: string; description: string }
   filter?: { value?: OrderStatusDto; onChange: (value?: OrderStatusDto) => void }
@@ -46,11 +50,13 @@ const statusFilters: { value?: OrderStatusDto; label: string }[] = [
 const orderNumber = (order: Order) => order.id.slice(0, 8).toUpperCase()
 
 /** Seções do pedido: cada aba é uma rota (/pedidos/:id, /propostas, /acompanhar). */
-function OrderTabs({ order, view }: { order: Order; view?: 'propostas' | 'acompanhar' }) {
+function OrderTabs({ order, view }: { order: Order; view?: 'propostas' | 'acompanhar' | 'contrato' }) {
   const base = `/pedidos/${order.id}`
   const tabs = [
     { key: undefined, label: 'Detalhes', to: base },
     { key: 'propostas', label: order.proposals ? `Propostas (${order.proposals})` : 'Propostas', to: `${base}/propostas` },
+    // O contrato existe depois que uma proposta é aceita.
+    ...(hasChosenProposal(order) ? [{ key: 'contrato', label: 'Contrato', to: `${base}/contrato` }] : []),
     { key: 'acompanhar', label: 'Acompanhamento', to: `${base}/acompanhar` },
   ]
   return (
@@ -146,7 +152,7 @@ function OrderDetails({ order }: { order: Order }) {
   )
 }
 
-export function MyOrders({ orders, customerId, orderId, search, loading, error, requiresLogin, onRetry, view, proposalId, token, onProposalAccepted, heading: listHeading, filter, pager }: Props) {
+export function MyOrders({ orders, customerId, orderId, search, loading, error, requiresLogin, onRetry, view, proposalId, token, onProposalAccepted, onContractSigned, heading: listHeading, filter, pager }: Props) {
   const location = useLocation()
   const heading = useRef<HTMLHeadingElement>(null)
   useEffect(() => { heading.current?.focus() }, [orderId])
@@ -187,6 +193,7 @@ export function MyOrders({ orders, customerId, orderId, search, loading, error, 
     if (orderId !== undefined) return selected ? (<>
       <OrderTabs order={selected} view={view} />
       {view === 'propostas' ? <ProposalsPanel key={selected.id} order={selected} token={token} proposalId={proposalId} onAccepted={onProposalAccepted} />
+        : view === 'contrato' ? <ContractPanel key={selected.id} order={selected} token={token} onSigned={onContractSigned} />
         : view === 'acompanhar' ? <Tracking order={selected} />
         : <OrderDetails order={selected} />}
     </>) : (

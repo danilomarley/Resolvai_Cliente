@@ -41,6 +41,7 @@ export function ProposalDetail({ order, proposalId, token, onAccepted }: {
           <h3>Proposta aceita</h3>
           <p>Você escolheu {proposal.providerName} para este pedido. As demais propostas foram encerradas.
             O serviço começa depois do contrato e do pagamento.</p>
+          <Link className="button button-primary" to={`/pedidos/${order.id}/contrato`}>Ver e assinar contrato</Link>
         </div>
       )}
 
@@ -71,7 +72,7 @@ export function ProposalDetail({ order, proposalId, token, onAccepted }: {
 
       {modal.current === 'aceitar-proposta' && !blocked && (
         <AcceptProposalModal order={order} proposal={proposal} token={token} onClose={modal.close}
-          onAccepted={() => { modal.close(); retry(); onAccepted?.() }} />
+          onAccepted={() => { retry(); if (onAccepted) onAccepted(); else modal.close() }} />
       )}
     </article>
   )
