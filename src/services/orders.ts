@@ -16,7 +16,11 @@ export const orderStatus = {
   cancelled: 'Cancelado',
 }
 
-export const orderStatusLabel = (order: Order) => orderStatus[order.status]
+export const hasChosenProposal = (order: Order) => !!order.proposalList?.some((proposal) => proposal.status === 'Chosen')
+
+/** Com uma proposta aceita o pedido segue aberto até o pagamento; o rótulo evita dizer que ainda recebe propostas. */
+export const orderStatusLabel = (order: Order) =>
+  order.status === 'waiting' && hasChosenProposal(order) ? 'Proposta aceita' : orderStatus[order.status]
 
 export const orderDate = (value?: string) => value
   ? new Date(value).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
@@ -27,8 +31,7 @@ export const orderMoney = (value?: number) => value === undefined
   : value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
 /** Editar e cancelar só valem enquanto o pedido recebe propostas e nenhuma foi aceita (#88). */
-export const canChangeOrder = (order: Order) =>
-  order.status === 'waiting' && !order.proposalList?.some((proposal) => proposal.status === 'Chosen')
+export const canChangeOrder = (order: Order) => order.status === 'waiting' && !hasChosenProposal(order)
 
 /** Valores do formulário de edição; os textos de apoio da tela ("Pedido", "Localização não informada") não são dados do pedido. */
 export function orderToForm(order: Order): NewOrder {

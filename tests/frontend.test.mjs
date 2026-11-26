@@ -32,7 +32,7 @@ registerHooks({
   },
 })
 
-const { customerOrders, customerOrder, orderMoney, orderDate, canChangeOrder, orderToForm } = await import('../src/services/orders.ts')
+const { customerOrders, customerOrder, orderMoney, orderDate, canChangeOrder, orderToForm, orderStatusLabel } = await import('../src/services/orders.ts')
 const { parseSummary, parsePage, parseDetail, parseUser, parseLogin, parseAssistantReply, isUuid, updateOrder, cancelOrder, toOrder } = await import('../src/services/dashboardApi.ts')
 const { parseProfile } = await import('../src/services/accountApi.ts')
 const { scopeToOrder } = await import('../src/services/orderDraft.ts')
@@ -47,7 +47,7 @@ const { Sidebar } = await import('../src/components/dashboard/Sidebar.tsx')
 const { CreateOrderModal } = await import('../src/components/CreateOrderModal.tsx')
 const { EditOrderModal } = await import('../src/components/EditOrderModal.tsx')
 const { CancelOrderModal } = await import('../src/components/CancelOrderModal.tsx')
-const { parseProposals, bestIds, ratingLabel, getOrderProposals } = await import('../src/services/proposalsApi.ts')
+const { parseProposals, bestIds, ratingLabel, getOrderProposals, parseProposalDetail, getProposalDetail, acceptProposal, acceptBlock } = await import('../src/services/proposalsApi.ts')
 const { safeReturnPath } = await import('../src/services/returnPath.ts')
 const { NotFound } = await import('../src/pages/NotFound/index.tsx')
 const { readModal, readNext, readOrder, searchWithModal, modalLink } = await import('../src/services/modalRoute.ts')
@@ -509,4 +509,44 @@ test('the cancel modal asks for confirmation with an optional reason and the edi
   assert.match(edit, /value="Trocar chuveiro"/)
   assert.match(edit, /Salvar alterações/)
   assert.match(edit, /Remover foto salva 1/)
+})
+
+test('proposal detail needs the provider summary and rejects a different proposal', async () => {
+  const detail = proposal({ providerProfile: { memberSince: '2026-01-10T12:00:00Z', completedServices: 3 } })
+  assert.equal(parseProposalDetail(detail).providerProfile.completedServices, 3)
+  for (const bad of [proposal(), proposal({ providerProfile: {} }), proposal({ providerProfile: { memberSince: 'ontem', completedServices: 1 } }),
+    proposal({ providerProfile: { memberSince: '2026-01-10T12:00:00Z', completedServices: -1 } })]) assert.throws(() => parseProposalDetail(bad), ApiError)
+  await assert.rejects(getProposalDetail('abc', randomUUID(), 't'), (error) => error.status === 404)
+  await assert.rejects(getProposalDetail(randomUUID(), 'abc', 't'), (error) => error.status === 404)
+  await assert.rejects(acceptProposal(randomUUID(), 'abc', 't'), (error) => error.status === 404)
+})
+
+test('accepting a proposal shows the API explanation when it conflicts', async () => {
+  const orderId = randomUUID(), proposalId = randomUUID()
+  const path = `/api/v1/orders/${orderId}/proposals/${proposalId}/accept`
+  const client = (status, body) => createApiClient('', async () => new Response(JSON.stringify(body), { status }))
+  await assert.rejects(client(409, { detail: 'Este pedido já tem uma proposta aceita.' })(path, { method: 'POST', token: 't' }),
+    (error) => error.status === 409 && error.message === 'Este pedido já tem uma proposta aceita.')
+  await assert.rejects(client(409, {})(path, { method: 'POST', token: 't' }), (error) => /não pode mais ser alterado/.test(error.message))
+  await assert.rejects(client(404, {})(path, { method: 'POST', token: 't' }), (error) => error.status === 404)
+})
+
+test('a proposal can only be accepted on an open order that has no accepted proposal', () => {
+  const base = { id: randomUUID(), customerId: randomUUID(), title: 'Serviço', category: 'Pedido', location: '', description: '', icon: 'bag', proposals: 2 }
+  const sent = { id: randomUUID(), status: 'Sent' }
+  assert.equal(acceptBlock({ ...base, status: 'waiting' }, sent), undefined)
+  assert.equal(acceptBlock({ ...base, status: 'waiting', proposalList: [proposal({ status: 'Sent' })] }, { id: randomUUID(), status: 'Viewed' }), undefined)
+  assert.match(acceptBlock({ ...base, status: 'waiting' }, { id: randomUUID(), status: 'Chosen' }), /já aceitou esta proposta/)
+  assert.match(acceptBlock({ ...base, status: 'cancelled' }, sent), /foi cancelado/)
+  assert.match(acceptBlock({ ...base, status: 'progress' }, sent), /em andamento/)
+  assert.match(acceptBlock({ ...base, status: 'completed' }, sent), /em andamento ou foi concluído/)
+  assert.match(acceptBlock({ ...base, status: 'waiting', proposalList: [proposal({ status: 'Chosen' })] }, sent), /Outra proposta já foi aceita/)
+  assert.match(acceptBlock({ ...base, status: 'waiting' }, { id: randomUUID(), status: 'NotChosen' }), /não está mais disponível/)
+})
+
+test('an open order with an accepted proposal is labelled as accepted, not as receiving proposals', () => {
+  const base = { id: randomUUID(), customerId: randomUUID(), title: 'Serviço', category: 'Pedido', location: '', description: '', icon: 'bag', proposals: 1 }
+  assert.equal(orderStatusLabel({ ...base, status: 'waiting' }), 'Recebendo propostas')
+  assert.equal(orderStatusLabel({ ...base, status: 'waiting', proposalList: [proposal({ status: 'Chosen' })] }), 'Proposta aceita')
+  assert.equal(orderStatusLabel({ ...base, status: 'progress', proposalList: [proposal({ status: 'Chosen' })] }), 'Em andamento')
 })

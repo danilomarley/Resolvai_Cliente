@@ -5,8 +5,8 @@ export class ApiError extends Error {
 type Options = { token?: string; signal?: AbortSignal; body?: unknown; form?: FormData; method?: string }
 
 // Rotas em que a mensagem de erro da API (detail) já é escrita para o cliente final.
-// Editar (PATCH) e cancelar (POST .../cancel) um pedido: 400 e 409 trazem a explicação em português (#88).
-const orderChangePath = /^\/api\/v1\/orders\/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}(?:\/cancel)?$/i
+// Editar (PATCH), cancelar (POST .../cancel) e aceitar proposta (POST .../proposals/{id}/accept): 400 e 409 trazem a explicação em português (#88, #89).
+const orderChangePath = /^\/api\/v1\/orders\/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}(?:\/cancel|\/proposals\/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\/accept)?$/i
 const detailPaths = ['/api/v1/orders', '/api/v1/orders/photos', '/api/v1/orders/assistant', '/api/v1/users/me/profile']
 
 export function createApiClient(baseUrl: string, fetcher: typeof fetch = fetch) {

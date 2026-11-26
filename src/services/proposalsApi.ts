@@ -1,9 +1,12 @@
 import { apiRequest, ApiError } from './api'
-import { isUuid } from './dashboardApi'
-import type { OrderProposal } from '../types/orders'
+import { isUuid, parseDetail } from './dashboardApi'
+import type { Order, OrderProposal } from '../types/orders'
+import { hasChosenProposal } from './orders'
 
 export type ProposalSort = 'rating' | 'price' | 'deadline'
 export type ProposalDto = OrderProposal & { providerId: string }
+export type ProviderProfile = { memberSince: string; completedServices: number }
+export type ProposalDetailDto = ProposalDto & { providerProfile: ProviderProfile }
 
 export const proposalSorts: { value: ProposalSort; label: string }[] = [
   { value: 'rating', label: 'Melhor avaliação' },
@@ -53,3 +56,35 @@ export const ratingLabel = (rating?: ProposalDto['providerRating']) =>
   rating?.average != null && rating.count > 0
     ? `${rating.average.toFixed(1).replace('.', ',')} ★ (${rating.count} ${rating.count === 1 ? 'avaliação' : 'avaliações'})`
     : 'Sem avaliações'
+
+export function parseProposalDetail(value: unknown): ProposalDetailDto {
+  const profile = object(value) ? value.providerProfile : undefined
+  if (!isProposal(value) || !object(profile)
+    || typeof profile.memberSince !== 'string' || Number.isNaN(Date.parse(profile.memberSince))
+    || !Number.isSafeInteger(profile.completedServices) || Number(profile.completedServices) < 0) throw invalid()
+  return value as ProposalDetailDto
+}
+
+/** Abrir o detalhe marca a proposta como visualizada na API. */
+export async function getProposalDetail(orderId: string, proposalId: string, token: string, signal?: AbortSignal) {
+  if (!isUuid(orderId) || !isUuid(proposalId)) throw new ApiError(404, 'Pedido não encontrado ou indisponível para sua conta.')
+  const detail = parseProposalDetail(await apiRequest(`/api/v1/orders/${orderId}/proposals/${proposalId}`, { token, signal }))
+  if (detail.id.toLowerCase() !== proposalId.toLowerCase()) throw invalid()
+  return detail
+}
+
+/** Aceita a proposta e devolve o pedido atualizado. O pedido segue aberto até o pagamento. */
+export async function acceptProposal(orderId: string, proposalId: string, token: string, signal?: AbortSignal) {
+  if (!isUuid(orderId) || !isUuid(proposalId)) throw new ApiError(404, 'Pedido não encontrado ou indisponível para sua conta.')
+  return parseDetail(await apiRequest(`/api/v1/orders/${orderId}/proposals/${proposalId}/accept`, { method: 'POST', token, signal }))
+}
+
+/** Motivo pelo qual a proposta não pode ser aceita agora; undefined quando pode. */
+export function acceptBlock(order: Order, proposal: Pick<ProposalDto, 'id' | 'status'>): string | undefined {
+  if (proposal.status === 'Chosen') return 'Você já aceitou esta proposta.'
+  if (order.status === 'cancelled') return 'Este pedido foi cancelado.'
+  if (order.status !== 'waiting') return 'Este pedido já está em andamento ou foi concluído.'
+  if (hasChosenProposal(order)) return 'Outra proposta já foi aceita para este pedido.'
+  if (proposal.status === 'NotChosen') return 'Esta proposta não está mais disponível.'
+  return undefined
+}
