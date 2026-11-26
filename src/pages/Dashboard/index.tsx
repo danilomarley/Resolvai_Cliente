@@ -13,6 +13,8 @@ import { CreateOrderModal } from '../../components/CreateOrderModal'
 import { OrderReview } from '../../components/OrderReview'
 import { EditOrderModal } from '../../components/EditOrderModal'
 import { CancelOrderModal } from '../../components/CancelOrderModal'
+import { AlertsBell } from '../../components/AlertsBell'
+import { useProposalAlerts } from '../../services/useProposalAlerts'
 import { useReviewSummary } from '../../services/useReviewSummary'
 import { useModalRoute } from '../../services/modalRoute'
 import { Sidebar } from '../../components/dashboard/Sidebar'
@@ -44,6 +46,8 @@ export function Dashboard() {
   const returnTo = location.pathname + location.search
   const session = useCustomerSession()
   const dashboard = useDashboardData(session.accessToken, session.customerId)
+  // Os alertas recarregam a cada navegação: abrir uma proposta a marca como visualizada e o contador acompanha (#90).
+  const alerts = useProposalAlerts(session.accessToken, location.pathname + location.search)
   const detail = useOrderDetail(orderId, session.accessToken)
   const [reviewRevision, setReviewRevision] = useState(0)
   const reviews = useReviewSummary(session.accessToken, reviewRevision)
@@ -164,6 +168,7 @@ export function Dashboard() {
               <input type="search" placeholder="Buscar pedido..." aria-label="Buscar pedido"
                 value={search} onChange={(event) => { setSearch(event.target.value); setTab('all') }} />
             </label>}
+            {session.accessToken && <AlertsBell alerts={alerts.data} failed={alerts.failed} loading={alerts.loading} />}
             <button className="avatar small-avatar" aria-label="Abrir meu perfil" onClick={() => openDialog('profile')}>
               {profile.name.charAt(0)}
             </button>

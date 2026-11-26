@@ -50,6 +50,7 @@ const { AcceptProposalModal } = await import('../src/components/AcceptProposalMo
 const { CancelOrderModal } = await import('../src/components/CancelOrderModal.tsx')
 const { parseProposals, bestIds, ratingLabel, getOrderProposals, parseProposalDetail, getProposalDetail, acceptProposal, acceptBlock } = await import('../src/services/proposalsApi.ts')
 const { parseAlerts, getProposalAlerts } = await import('../src/services/alertsApi.ts')
+const { AlertsBell, AlertsList } = await import('../src/components/AlertsBell.tsx')
 const { safeReturnPath } = await import('../src/services/returnPath.ts')
 const { NotFound } = await import('../src/pages/NotFound/index.tsx')
 const { readModal, readNext, readOrder, searchWithModal, modalLink } = await import('../src/services/modalRoute.ts')
@@ -598,4 +599,40 @@ test('proposal alerts are requested with a limit and the session token', async (
   assert.equal((await client('/api/v1/proposals/unviewed?limit=5', { token: 't' })).total, 1)
   assert.deepEqual(calls, [['/api/v1/proposals/unviewed?limit=5', 'Bearer t']])
   assert.equal(typeof getProposalAlerts, 'function')
+})
+
+const renderAt = (element) => renderToStaticMarkup(React.createElement(StaticRouter, { location: '/' }, element))
+
+test('the alerts bell shows how many new proposals there are, capped, and is labelled for screen readers', () => {
+  const html = (total) => renderAt(React.createElement(AlertsBell, { alerts: total === undefined ? undefined : { total, items: [] } }))
+  assert.match(html(0), /aria-label="Alertas: nenhuma proposta nova"/)
+  assert.doesNotMatch(html(0), /alerts-badge/)
+  assert.match(html(1), /aria-label="Alertas: 1 proposta nova"/)
+  assert.match(html(1), /<span class="alerts-badge" aria-hidden="true">1<\/span>/)
+  assert.match(html(4), /aria-label="Alertas: 4 propostas novas"/)
+  assert.match(html(25), />9\+<\/span>/)
+  assert.match(html(undefined), /aria-label="Alertas: nenhuma proposta nova"/)
+  assert.match(html(2), /aria-expanded="false"/)
+  assert.doesNotMatch(html(2), /Novas propostas/)
+})
+
+test('the alerts list links each new proposal to its detail with order, provider and value', () => {
+  const first = alertItem({ providerName: 'Ana Eletricista', orderTitle: 'Trocar chuveiro', value: 300 })
+  const html = renderAt(React.createElement(AlertsList, { alerts: { total: 5, items: [first, alertItem({ providerName: 'Bruno Pedreiro' })] } }))
+  assert.match(html, new RegExp(`href="/pedidos/${first.orderId}/propostas/${first.id}"`))
+  assert.match(html, /Ana Eletricista/)
+  assert.match(html, /Trocar chuveiro/)
+  assert.match(html, /R\$\s?300,00/)
+  assert.match(html, /Bruno Pedreiro/)
+  assert.match(html, /3 a mais/)
+  assert.match(html, /href="\/pedidos\?status=Pending"/)
+  const all = renderAt(React.createElement(AlertsList, { alerts: { total: 1, items: [first] } }))
+  assert.doesNotMatch(all, /a mais/)
+})
+
+test('the alerts list explains loading, failure and the empty state', () => {
+  assert.match(renderAt(React.createElement(AlertsList, { loading: true })), /Carregando alertas/)
+  assert.match(renderAt(React.createElement(AlertsList, {})), /Não foi possível carregar os alertas/)
+  assert.match(renderAt(React.createElement(AlertsList, { alerts: { total: 0, items: [] } })), /Nenhuma proposta nova/)
+  assert.match(renderAt(React.createElement(AlertsList, { alerts: { total: 1, items: [alertItem()] }, failed: true })), /mostrando o último resultado/)
 })
