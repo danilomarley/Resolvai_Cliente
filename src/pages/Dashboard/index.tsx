@@ -36,6 +36,7 @@ export function Dashboard() {
   const { orderId } = useParams()
   const viewingOrders = !!useMatch('/pedidos/*')
   const proposalsRoute = !!useMatch('/pedidos/:orderId/propostas')
+  const proposalMatch = useMatch('/pedidos/:orderId/propostas/:proposalId')
   const trackingRoute = !!useMatch('/pedidos/:orderId/acompanhar')
   const returnTo = location.pathname + location.search
   const session = useCustomerSession()
@@ -62,7 +63,7 @@ export function Dashboard() {
   const ownDetail = useOrderDetail(reviewId && reviewId !== orderId ? reviewId : undefined, session.accessToken)
   const reviewOrder = reviewId && reviewId === orderId ? detail : ownDetail
   const ordersList = useOrdersList(session.accessToken, viewingOrders && !orderId, statusFilter, page)
-  const orderView = proposalsRoute ? 'propostas' : trackingRoute ? 'acompanhar' : undefined
+  const orderView = proposalsRoute || proposalMatch ? 'propostas' : trackingRoute ? 'acompanhar' : undefined
   const [tab, setTab] = useState<Tab>('all')
   const [search, setSearch] = useState('')
   const registrationHandled = useRef(false)
@@ -168,6 +169,7 @@ export function Dashboard() {
                 ? (detail.data ? [toOrder(detail.data, session.customerId!)] : [])
                 : ordersList.data?.items.map((dto) => toOrder(dto, session.customerId!)) ?? []}
               customerId={session.customerId} search={search} orderId={orderId} view={orderView}
+              token={session.accessToken} proposalId={proposalMatch?.params.proposalId}
               loading={orderId ? detail.loading : ordersList.loading}
               error={orderId ? (detail.error?.status === 404 ? undefined : detail.error?.message) : ordersList.error?.message}
               requiresLogin={(orderId ? detail.error : ordersList.error)?.status === 401}

@@ -1,5 +1,5 @@
 const uuid = '[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}'
-const paths = new RegExp(`^/(?:pedidos(?:/${uuid}(?:/(?:propostas|acompanhar))?)?)?$`, 'i')
+const paths = new RegExp(`^/(?:pedidos(?:/${uuid}(?:/(?:propostas(?:/${uuid})?|acompanhar))?)?)?$`, 'i')
 
 // Só parâmetros que o próprio app grava na URL são aceitos de volta.
 const queryRules: Record<string, (value: string) => boolean> = {

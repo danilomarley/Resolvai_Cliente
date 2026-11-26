@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { modalLink } from '../services/modalRoute'
 import type { Order } from '../types/orders'
+import { ProposalsPanel } from '../components/ProposalsPanel'
 import type { OrderStatusDto } from '../services/dashboardApi'
 import {
   customerOrders,
@@ -22,6 +23,10 @@ type Props = {
   requiresLogin?: boolean
   onRetry?: () => void
   view?: 'propostas' | 'acompanhar'
+  /** Proposta aberta em /pedidos/:id/propostas/:proposalId. */
+  proposalId?: string
+  /** Token da sessão; as propostas são consultadas na API (#86). */
+  token?: string | null
   /** Título e descrição da listagem; os atalhos do menu (Propostas, Avaliações) trocam o padrão. */
   heading?: { title: string; description: string }
   filter?: { value?: OrderStatusDto; onChange: (value?: OrderStatusDto) => void }
@@ -36,7 +41,6 @@ const statusFilters: { value?: OrderStatusDto; label: string }[] = [
   { value: 'Cancelled', label: 'Cancelados' },
 ]
 const orderNumber = (order: Order) => order.id.slice(0, 8).toUpperCase()
-const proposalLabels = { Sent: 'Enviada', Viewed: 'Visualizada', Chosen: 'Escolhida' }
 
 /** Seções do pedido: cada aba é uma rota (/pedidos/:id, /propostas, /acompanhar). */
 function OrderTabs({ order, view }: { order: Order; view?: 'propostas' | 'acompanhar' }) {
@@ -61,32 +65,6 @@ function OrderStatus({ order }: { order: Order }) {
     <span className={`status-badge ${order.status}`}>
       <i />{orderStatusLabel(order)}
     </span>
-  )
-}
-
-function Proposals({ order }: { order: Order }) {
-  const list = order.proposalList ?? []
-  return (
-    <article className="panel order-summary">
-      <h2>Propostas do pedido #{orderNumber(order)}</h2>
-      <OrderStatus order={order} />
-      {list.length ? (
-        <ul className="proposal-list">
-          {list.map((proposal) => (
-            <li className="proposal-item" key={proposal.id}>
-              <strong>{proposal.providerName}</strong>
-              <span className="status-badge progress"><i />{proposalLabels[proposal.status]}</span>
-              <dl>
-                <div><dt>Valor</dt><dd>{orderMoney(proposal.value)}</dd></div>
-                <div><dt>Prazo</dt><dd>{proposal.deadline ?? 'Não informado'}</dd></div>
-                <div><dt>Garantia</dt><dd>{proposal.warranty ?? 'Não informada'}</dd></div>
-              </dl>
-              {proposal.description && <p>{proposal.description}</p>}
-            </li>
-          ))}
-        </ul>
-      ) : <p>Nenhuma proposta recebida ainda. Assim que um profissional enviar, ela aparece aqui.</p>}
-    </article>
   )
 }
 
@@ -153,7 +131,7 @@ function OrderDetails({ order }: { order: Order }) {
   )
 }
 
-export function MyOrders({ orders, customerId, orderId, search, loading, error, requiresLogin, onRetry, view, heading: listHeading, filter, pager }: Props) {
+export function MyOrders({ orders, customerId, orderId, search, loading, error, requiresLogin, onRetry, view, proposalId, token, heading: listHeading, filter, pager }: Props) {
   const location = useLocation()
   const heading = useRef<HTMLHeadingElement>(null)
   useEffect(() => { heading.current?.focus() }, [orderId])
@@ -193,7 +171,7 @@ export function MyOrders({ orders, customerId, orderId, search, loading, error, 
     )
     if (orderId !== undefined) return selected ? (<>
       <OrderTabs order={selected} view={view} />
-      {view === 'propostas' ? <Proposals order={selected} />
+      {view === 'propostas' ? <ProposalsPanel key={selected.id} order={selected} token={token} proposalId={proposalId} />
         : view === 'acompanhar' ? <Tracking order={selected} />
         : <OrderDetails order={selected} />}
     </>) : (

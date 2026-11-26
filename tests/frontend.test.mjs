@@ -45,6 +45,7 @@ const { ReviewForm } = await import('../src/components/OrderReview.tsx')
 const { Modal } = await import('../src/components/Modal.tsx')
 const { Sidebar } = await import('../src/components/dashboard/Sidebar.tsx')
 const { CreateOrderModal } = await import('../src/components/CreateOrderModal.tsx')
+const { parseProposals, bestIds, ratingLabel, getOrderProposals } = await import('../src/services/proposalsApi.ts')
 const { safeReturnPath } = await import('../src/services/returnPath.ts')
 const { NotFound } = await import('../src/pages/NotFound/index.tsx')
 const { readModal, readNext, readOrder, searchWithModal, modalLink } = await import('../src/services/modalRoute.ts')
@@ -354,7 +355,7 @@ test('order details show section tabs instead of per-page back buttons', () => {
 
 test('login only returns to known app screens with known parameters', () => {
   const id = randomUUID()
-  for (const ok of ['/', '/pedidos', `/pedidos/${id}`, `/pedidos/${id}/propostas`, `/pedidos/${id}/acompanhar`, '/pedidos?status=Completed&page=2',
+  for (const ok of ['/', '/pedidos', `/pedidos/${id}`, `/pedidos/${id}/propostas`, `/pedidos/${id}/propostas/${randomUUID()}`, `/pedidos/${id}/acompanhar`, '/pedidos?status=Completed&page=2',
     `/pedidos/${id}?modal=avaliar&pedido=${id}`, '/?modal=finalizar-cadastro&next=criar-pedido']) assert.equal(safeReturnPath(ok), ok)
   for (const bad of [undefined, null, 42, 'https://evil.example', '//evil.example', '/login', '/pedidos/../x', '/pedidos/abc/propostas', `/pedidos/${id}/outra`,
     '/pedidos?status=Hacked', '/pedidos?redirect=https://evil.example', '/pedidos?status=Pending#x', '/pedidos?a=1?b=2', '/?modal=desconhecido', '/?pedido=1']) assert.equal(safeReturnPath(bad), '/')
@@ -375,4 +376,44 @@ test('order cards offer details, proposals and review without a duplicated track
   assert.match(html, /Avaliar serviço/)
   assert.doesNotMatch(html, /Acompanhar pedido/)
   assert.equal((html.match(/class="button/g) ?? []).length, 3)
+})
+
+const proposal = (overrides = {}) => ({ id: randomUUID(), providerId: randomUUID(), providerName: 'Prestador', status: 'Sent', value: 100,
+  deadline: '3 dias', deadlineDays: 3, description: 'Serviço completo', warranty: '90 dias', createdAt: new Date().toISOString(),
+  providerRating: { average: 4.5, count: 2 }, ...overrides })
+
+test('proposals from the API are validated and legacy ones without optional fields are accepted', () => {
+  assert.equal(parseProposals([proposal(), proposal({ status: 'NotChosen', deadline: undefined, deadlineDays: undefined, providerRating: { average: null, count: 0 } })]).length, 2)
+  assert.deepEqual(parseProposals([]), [])
+  for (const bad of [null, {}, [{}], [proposal({ status: 'Outro' })], [proposal({ value: 'caro' })], [proposal({ providerRating: { average: 'x', count: 1 } })]]) {
+    assert.throws(() => parseProposals(bad), ApiError)
+  }
+})
+
+test('comparison highlights the lowest price and deadline only when there is something to compare', () => {
+  const a = proposal({ value: 300, deadlineDays: 2 }), b = proposal({ value: 200, deadlineDays: 5 }), c = proposal({ value: 200, deadlineDays: undefined })
+  const best = bestIds([a, b, c])
+  assert.deepEqual([...best.price].sort(), [b.id, c.id].sort())
+  assert.deepEqual([...best.deadline], [a.id])
+  assert.equal(bestIds([a, c]).deadline.size, 0)
+  assert.equal(bestIds([a]).price.size, 0)
+  assert.equal(ratingLabel({ average: 4.5, count: 1 }), '4,5 ★ (1 avaliação)')
+  assert.equal(ratingLabel({ average: null, count: 0 }), 'Sem avaliações')
+  assert.equal(ratingLabel(undefined), 'Sem avaliações')
+})
+
+test('proposals are requested sorted by the API and only for valid order ids', async () => {
+  await assert.rejects(getOrderProposals('abc', 'token', 'price'), (error) => error.status === 404)
+  const orderId = randomUUID()
+  const calls = []
+  const client = createApiClient('', async (url, init) => { calls.push([url, init.headers.Authorization]); return new Response(JSON.stringify([proposal()]), { status: 200 }) })
+  assert.equal((await client(`/api/v1/orders/${orderId}/proposals?sort=deadline`, { token: 't' })).length, 1)
+  assert.deepEqual(calls, [[`/api/v1/orders/${orderId}/proposals?sort=deadline`, 'Bearer t']])
+})
+
+test('the proposals tab asks for login without a session and loads from the API with one', () => {
+  const id = randomUUID(), customerId = randomUUID()
+  const order = { id, customerId, title: 'Serviço', category: 'Pedido', location: '', description: '', status: 'waiting', icon: 'bag', proposals: 2 }
+  assert.match(renderOrders({ orders: [order], customerId, orderId: id, view: 'propostas' }), /Entre na sua conta para consultar as propostas/)
+  assert.match(renderOrders({ orders: [order], customerId, orderId: id, view: 'propostas', token: 'abc' }), /Carregando propostas/)
 })

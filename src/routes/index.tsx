@@ -23,6 +23,7 @@ export function AppRoutes() {
           <Route path="pedidos" element={null} />
           <Route path="pedidos/:orderId" element={null} />
           <Route path="pedidos/:orderId/propostas" element={null} />
+          <Route path="pedidos/:orderId/propostas/:proposalId" element={null} />
           <Route path="pedidos/:orderId/acompanhar" element={null} />
         </Route>
         <Route path="*" element={<NotFound />} />
