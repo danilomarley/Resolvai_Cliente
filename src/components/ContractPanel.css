@@ -1,0 +1,10 @@
+.contract-summary { margin: 0; }
+.contract-text { margin: 0; padding: var(--spacing-md); max-height: 420px; overflow-y: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font-secondary); font-size: var(--font-size-sm); line-height: 1.55; background: var(--color-background); border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
+.contract-text:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.contract-signatures { display: grid; gap: var(--spacing-sm); grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); margin: 0; padding: 0; list-style: none; }
+.contract-signatures li { display: grid; gap: 2px; padding: var(--spacing-md); border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-muted); }
+.contract-signatures li strong { color: var(--color-text); overflow-wrap: anywhere; }
+.contract-signatures li.is-signed { border-color: var(--color-success); background: var(--color-success-soft); color: var(--color-success); }
+.contract-party { font-size: var(--font-size-sm); font-weight: 600; }
+.contract-sign { display: grid; gap: var(--spacing-sm); justify-items: start; }
+.contract-sign p, .contract-wait { margin: 0; color: var(--color-muted); font-size: var(--font-size-sm); }
