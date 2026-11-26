@@ -1,0 +1,12 @@
+.alerts { position: relative; }
+.alerts-badge { position: absolute; top: 2px; right: 2px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--color-secondary); color: #fff; font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; }
+.alerts-panel { position: absolute; top: calc(100% + 8px); right: 0; z-index: 30; width: min(360px, calc(100vw - 32px)); padding: var(--spacing-md); display: grid; gap: var(--spacing-sm); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); box-shadow: 0 12px 32px #17283f26; }
+.alerts-panel h2 { margin: 0; font-size: var(--font-size-md); }
+.alerts-panel p { margin: 0; color: var(--color-muted); font-size: var(--font-size-sm); }
+.alerts-panel ul { display: grid; gap: var(--spacing-xs); margin: 0; padding: 0; list-style: none; max-height: 320px; overflow-y: auto; }
+.alerts-panel li a { display: grid; grid-template-columns: 1fr auto; gap: 2px var(--spacing-sm); padding: var(--spacing-sm); border-radius: var(--radius-sm); color: var(--color-text); text-decoration: none; }
+.alerts-panel li a:hover, .alerts-panel li a:focus-visible { background: var(--color-primary-soft); }
+.alerts-panel li strong, .alerts-panel li span { overflow-wrap: anywhere; }
+.alerts-panel li span:nth-of-type(1) { grid-column: 1; color: var(--color-muted); font-size: var(--font-size-sm); }
+.alerts-value { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-weight: 600; }
+.alerts-more { font-size: var(--font-size-sm); font-weight: 600; }
