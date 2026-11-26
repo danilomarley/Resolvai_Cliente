@@ -46,6 +46,7 @@ const { Modal } = await import('../src/components/Modal.tsx')
 const { Sidebar } = await import('../src/components/dashboard/Sidebar.tsx')
 const { CreateOrderModal } = await import('../src/components/CreateOrderModal.tsx')
 const { EditOrderModal } = await import('../src/components/EditOrderModal.tsx')
+const { AcceptProposalModal } = await import('../src/components/AcceptProposalModal.tsx')
 const { CancelOrderModal } = await import('../src/components/CancelOrderModal.tsx')
 const { parseProposals, bestIds, ratingLabel, getOrderProposals, parseProposalDetail, getProposalDetail, acceptProposal, acceptBlock } = await import('../src/services/proposalsApi.ts')
 const { safeReturnPath } = await import('../src/services/returnPath.ts')
@@ -358,7 +359,7 @@ test('order details show section tabs instead of per-page back buttons', () => {
 test('login only returns to known app screens with known parameters', () => {
   const id = randomUUID()
   for (const ok of ['/', '/pedidos', `/pedidos/${id}`, `/pedidos/${id}/propostas`, `/pedidos/${id}/propostas/${randomUUID()}`, `/pedidos/${id}/acompanhar`, '/pedidos?status=Completed&page=2',
-    `/pedidos/${id}?modal=avaliar&pedido=${id}`, `/pedidos/${id}?modal=editar-pedido&pedido=${id}`, `/pedidos/${id}?modal=cancelar-pedido&pedido=${id}`,
+    `/pedidos/${id}?modal=avaliar&pedido=${id}`, `/pedidos/${id}?modal=editar-pedido&pedido=${id}`, `/pedidos/${id}?modal=cancelar-pedido&pedido=${id}`, `/pedidos/${id}/propostas/${randomUUID()}?modal=aceitar-proposta`,
     '/?modal=finalizar-cadastro&next=criar-pedido']) assert.equal(safeReturnPath(ok), ok)
   for (const bad of [undefined, null, 42, 'https://evil.example', '//evil.example', '/login', '/pedidos/../x', '/pedidos/abc/propostas', `/pedidos/${id}/outra`,
     '/pedidos?status=Hacked', '/pedidos?redirect=https://evil.example', '/pedidos?status=Pending#x', '/pedidos?a=1?b=2', '/?modal=desconhecido', '/?pedido=1']) assert.equal(safeReturnPath(bad), '/')
@@ -549,4 +550,28 @@ test('an open order with an accepted proposal is labelled as accepted, not as re
   assert.equal(orderStatusLabel({ ...base, status: 'waiting' }), 'Recebendo propostas')
   assert.equal(orderStatusLabel({ ...base, status: 'waiting', proposalList: [proposal({ status: 'Chosen' })] }), 'Proposta aceita')
   assert.equal(orderStatusLabel({ ...base, status: 'progress', proposalList: [proposal({ status: 'Chosen' })] }), 'Em andamento')
+})
+
+test('the accept modal confirms who is hired, for how much and what happens next', () => {
+  const order = { id: randomUUID(), customerId: randomUUID(), title: 'Serviço', category: 'Pedido', location: '', description: '', status: 'waiting', icon: 'bag', proposals: 2 }
+  const html = renderToStaticMarkup(React.createElement(AcceptProposalModal, { order, proposal: proposal({ providerName: 'Ana Eletricista', value: 900, deadline: '10 dias' }),
+    token: 't', onClose() {}, onAccepted() {} }))
+  assert.match(html, /Aceitar proposta/)
+  assert.match(html, /Ana Eletricista/)
+  assert.match(html, /R\$\s?900,00/)
+  assert.match(html, /prazo de 10 dias/)
+  assert.match(html, /demais propostas do pedido serão encerradas/)
+  assert.match(html, /depois do contrato e do pagamento/)
+  assert.match(html, />Voltar</)
+})
+
+test('opening a proposal asks for login without a session and loads the detail from the API with one', () => {
+  const id = randomUUID(), customerId = randomUUID()
+  const order = { id, customerId, title: 'Serviço', category: 'Pedido', location: '', description: '', status: 'waiting', icon: 'bag', proposals: 2 }
+  const route = `/pedidos/${id}/propostas/${randomUUID()}`
+  const render = (props) => renderToStaticMarkup(React.createElement(StaticRouter, { location: route },
+    React.createElement(MyOrders, { orders: [order], customerId, search: '', orderId: id, view: 'propostas', proposalId: randomUUID(), ...props })))
+  assert.match(render({}), /Entre na sua conta para consultar a proposta/)
+  assert.match(render({ token: 'abc' }), /Carregando proposta/)
+  assert.match(render({}), new RegExp(`href="/pedidos/${id}/propostas"[^>]*>Voltar às propostas`))
 })

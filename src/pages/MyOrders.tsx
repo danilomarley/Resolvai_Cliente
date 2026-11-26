@@ -28,6 +28,8 @@ type Props = {
   proposalId?: string
   /** Token da sessão; as propostas são consultadas na API (#86). */
   token?: string | null
+  /** Chamado depois que o contratante aceita uma proposta (#89), para recarregar o pedido. */
+  onProposalAccepted?: () => void
   /** Título e descrição da listagem; os atalhos do menu (Propostas, Avaliações) trocam o padrão. */
   heading?: { title: string; description: string }
   filter?: { value?: OrderStatusDto; onChange: (value?: OrderStatusDto) => void }
@@ -144,7 +146,7 @@ function OrderDetails({ order }: { order: Order }) {
   )
 }
 
-export function MyOrders({ orders, customerId, orderId, search, loading, error, requiresLogin, onRetry, view, proposalId, token, heading: listHeading, filter, pager }: Props) {
+export function MyOrders({ orders, customerId, orderId, search, loading, error, requiresLogin, onRetry, view, proposalId, token, onProposalAccepted, heading: listHeading, filter, pager }: Props) {
   const location = useLocation()
   const heading = useRef<HTMLHeadingElement>(null)
   useEffect(() => { heading.current?.focus() }, [orderId])
@@ -184,7 +186,7 @@ export function MyOrders({ orders, customerId, orderId, search, loading, error, 
     )
     if (orderId !== undefined) return selected ? (<>
       <OrderTabs order={selected} view={view} />
-      {view === 'propostas' ? <ProposalsPanel key={selected.id} order={selected} token={token} proposalId={proposalId} />
+      {view === 'propostas' ? <ProposalsPanel key={selected.id} order={selected} token={token} proposalId={proposalId} onAccepted={onProposalAccepted} />
         : view === 'acompanhar' ? <Tracking order={selected} />
         : <OrderDetails order={selected} />}
     </>) : (

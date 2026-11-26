@@ -4,12 +4,13 @@ import type { Order } from '../types/orders'
 import { orderMoney } from '../services/orders'
 import { bestIds, maxCompared, minCompared, proposalSorts, ratingLabel, type ProposalDto, type ProposalSort } from '../services/proposalsApi'
 import { useOrderProposals } from '../services/useOrderProposals'
+import { ProposalDetail } from './ProposalDetail'
 import './ProposalsPanel.css'
 
 const statusLabels = { Sent: 'Recebida', Viewed: 'Visualizada', Chosen: 'Escolhida', NotChosen: 'Não escolhida' }
 const orderNumber = (order: Order) => order.id.slice(0, 8).toUpperCase()
 
-type Props = { order: Order; token?: string | null; proposalId?: string }
+type Props = { order: Order; token?: string | null; proposalId?: string; onAccepted?: () => void }
 type Best = { price: Set<string>; deadline: Set<string> }
 
 function Badges({ proposal, best }: { proposal: ProposalDto; best?: Best }) {
@@ -68,34 +69,15 @@ function Comparison({ order, proposals, onClose }: { order: Order; proposals: Pr
   )
 }
 
-function Detail({ order, proposal }: { order: Order; proposal?: ProposalDto }) {
-  return (
-    <article className="panel order-summary">
-      <Link className="button button-secondary" to={`/pedidos/${order.id}/propostas`}>Voltar às propostas</Link>
-      {proposal ? (
-        <>
-          <h2>Proposta de {proposal.providerName}</h2>
-          <Badges proposal={proposal} />
-          <dl>
-            <div><dt>Valor</dt><dd>{orderMoney(proposal.value)}</dd></div>
-            <div><dt>Prazo</dt><dd>{proposal.deadline ?? 'Não informado'}</dd></div>
-            <div><dt>Garantia</dt><dd>{proposal.warranty ?? 'Não informada'}</dd></div>
-            <div><dt>Avaliação</dt><dd>{ratingLabel(proposal.providerRating)}</dd></div>
-          </dl>
-          <h3>Descrição</h3>
-          <p>{proposal.description ?? 'O prestador não incluiu uma descrição.'}</p>
-        </>
-      ) : <p role="status">Esta proposta não está disponível para o seu pedido.</p>}
-    </article>
-  )
-}
-
 /** Propostas recebidas do pedido (#86) e comparação lado a lado (#87). Dados vêm de GET /orders/{id}/proposals. */
-export function ProposalsPanel({ order, token, proposalId }: Props) {
+export function ProposalsPanel({ order, token, proposalId, onAccepted }: Props) {
   const [sort, setSort] = useState<ProposalSort>('rating')
   const [selected, setSelected] = useState<string[]>([])
   const [comparing, setComparing] = useState(false)
-  const { data, error, loading, retry } = useOrderProposals(order.id, token, sort)
+  // Com uma proposta aberta, a lista não é necessária: o detalhe tem a própria consulta.
+  const { data, error, loading, retry } = useOrderProposals(proposalId ? undefined : order.id, token, sort)
+
+  if (proposalId) return <ProposalDetail key={proposalId} order={order} proposalId={proposalId} token={token} onAccepted={onAccepted} />
 
   if (!token) return <article className="panel order-summary" role="alert"><p>Entre na sua conta para consultar as propostas.</p></article>
   if (!data && loading) return <article className="panel order-summary"><p role="status">Carregando propostas…</p></article>
@@ -105,8 +87,6 @@ export function ProposalsPanel({ order, token, proposalId }: Props) {
       <button type="button" className="button button-secondary" onClick={retry}>Tentar novamente</button>
     </article>
   )
-  if (proposalId) return <Detail order={order} proposal={data.find((proposal) => proposal.id.toLowerCase() === proposalId.toLowerCase())} />
-
   const chosen = data.filter((proposal) => selected.includes(proposal.id))
   if (comparing && chosen.length >= minCompared) return <Comparison order={order} proposals={chosen} onClose={() => setComparing(false)} />
 

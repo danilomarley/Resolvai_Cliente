@@ -182,6 +182,7 @@ export function Dashboard() {
                 : ordersList.data?.items.map((dto) => toOrder(dto, session.customerId!)) ?? []}
               customerId={session.customerId} search={search} orderId={orderId} view={orderView}
               token={session.accessToken} proposalId={proposalMatch?.params.proposalId}
+              onProposalAccepted={() => { detail.retry(); ordersList.retry(); dashboard.retry(); setNotice('Proposta aceita com sucesso.') }}
               loading={orderId ? detail.loading : ordersList.loading}
               error={orderId ? (detail.error?.status === 404 ? undefined : detail.error?.message) : ordersList.error?.message}
               requiresLogin={(orderId ? detail.error : ordersList.error)?.status === 401}

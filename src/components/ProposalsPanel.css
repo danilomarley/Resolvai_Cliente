@@ -12,3 +12,9 @@
 .proposal-compare td .proposal-highlight { display: block; margin-top: var(--spacing-xs); padding: 0; background: transparent; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (max-width: 560px) { .proposal-compare th, .proposal-compare td { padding: var(--spacing-sm); } .proposal-compare tbody th { width: 84px; } }
+.proposal-accepted { padding: var(--spacing-md); border-radius: var(--radius-sm); background: var(--color-success-soft); color: var(--color-success); }
+.proposal-accepted h3, .proposal-accepted p { margin: 0; }
+.proposal-accepted p { margin-top: var(--spacing-xs); }
+.proposal-accept { display: grid; gap: var(--spacing-sm); justify-items: start; }
+.proposal-accept p { margin: 0; color: var(--color-muted); }
+.accept-notes { margin: 0; padding-left: var(--spacing-md); color: var(--color-muted); }
