@@ -457,3 +457,19 @@ test('editing and cancelling call the order routes and show the API explanation'
   await assert.rejects(updateOrder('t', 'abc', { title: '', category: '', description: '', location: '', scope: { details: '', urgency: '', specifications: '' } }, []), (error) => error.status === 404)
   await assert.rejects(cancelOrder('t', 'abc', ''), (error) => error.status === 404)
 })
+
+test('the order form switches to edit mode with the saved photos and a save button', () => {
+  const initial = { title: 'Trocar chuveiro', category: 'Elétrica', description: 'Chuveiro queimou', location: 'Meireles',
+    scope: { details: 'Banheiro', urgency: 'Urgente', specifications: 'Trocar o chuveiro' } }
+  const html = renderToStaticMarkup(React.createElement(OrderForm, { onCancel() {}, onCreate: async () => {}, submitting: false, submitError: '',
+    initial, savedPhotos: ['https://exemplo.com/a.jpg'] }))
+  assert.match(html, /<h3 id="order-form-title">Editar pedido<\/h3>/)
+  assert.match(html, /value="Trocar chuveiro"/)
+  assert.match(html, /Salvar alterações/)
+  assert.doesNotMatch(html, /Publicar pedido/)
+  assert.match(html, /src="https:\/\/exemplo\.com\/a\.jpg"/)
+  assert.match(html, /aria-label="Remover foto salva 1"/)
+  const created = renderToStaticMarkup(React.createElement(OrderForm, { onCancel() {}, onCreate: async () => {}, submitting: false, submitError: '' }))
+  assert.match(created, /Publicar pedido/)
+  assert.doesNotMatch(created, /Fotos já salvas/)
+})
