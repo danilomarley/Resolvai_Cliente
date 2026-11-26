@@ -45,4 +45,6 @@ export type Order = {
   chosenProposalValue?: number
   proposalList?: OrderProposal[]
   photoUrls?: string[]
+  /** Motivo informado pelo contratante ao cancelar o pedido (#88). */
+  cancellationReason?: string
 }

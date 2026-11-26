@@ -7,6 +7,7 @@ export type ProposalDto = Omit<OrderProposal, 'providerName'> & { providerId: st
 export type OrderDto = {
   id: string; title: string; status: OrderStatusDto; createdAt: string; updatedAt?: string; description?: string
   category?: string; location?: string; proposalsCount?: number; chosenProposalValue?: number
+  cancellationReason?: string
   scope?: Record<string, unknown>; photos?: { id: string; url: string; description?: string }[]; proposals?: ProposalDto[]
 }
 export type OrdersPage = { items: OrderDto[]; page: number; pageSize: number; totalItems: number; totalPages: number }
@@ -99,20 +100,31 @@ export function toOrder(dto: OrderDto, customerId: string): Order {
     updatedAt: dto.updatedAt, description: dto.description ?? 'Abra os detalhes para consultar a descrição.',
     category: dto.category ?? 'Pedido', location: dto.location ?? 'Localização não informada',
     proposals: dto.proposalsCount ?? dto.proposals?.length ?? 0, chosenProposalValue: dto.chosenProposalValue,
-    proposalList: dto.proposals, photoUrls: dto.photos?.map((photo) => photo.url),
+    proposalList: dto.proposals, photoUrls: dto.photos?.map((photo) => photo.url), cancellationReason: dto.cancellationReason,
     scope: dto.scope && { details: text('detalhes'), urgency: text('urgencia'), specifications: text('especificacoes') },
     icon: 'bag' }
 }
 
+const orderBody = (order: NewOrder, photoUrls: string[]) => ({
+  titulo: order.title, categoria: order.category, descricao: order.description, localizacao: order.location,
+  detalhes: order.scope.details, urgencia: order.scope.urgency, especificacoes: order.scope.specifications,
+  fotos: photoUrls.map((url) => ({ url })),
+})
+
 export const createOrder = async (token: string, order: NewOrder, photoUrls: string[], signal?: AbortSignal) =>
-  parseDetail(await apiRequest('/api/v1/orders', {
-    method: 'POST', token, signal,
-    body: {
-      titulo: order.title, categoria: order.category, descricao: order.description, localizacao: order.location,
-      detalhes: order.scope.details, urgencia: order.scope.urgency, especificacoes: order.scope.specifications,
-      fotos: photoUrls.map((url) => ({ url })),
-    },
-  }))
+  parseDetail(await apiRequest('/api/v1/orders', { method: 'POST', token, signal, body: orderBody(order, photoUrls) }))
+
+// Edição e cancelamento (#88): a API troca o pedido inteiro, então `photoUrls` traz as fotos mantidas e as novas.
+export async function updateOrder(token: string, id: string, order: NewOrder, photoUrls: string[], signal?: AbortSignal) {
+  if (!isUuid(id)) throw new ApiError(404, 'Pedido não encontrado ou indisponível para sua conta.')
+  return parseDetail(await apiRequest(`/api/v1/orders/${id}`, { method: 'PATCH', token, signal, body: orderBody(order, photoUrls) }))
+}
+
+export async function cancelOrder(token: string, id: string, reason: string, signal?: AbortSignal) {
+  if (!isUuid(id)) throw new ApiError(404, 'Pedido não encontrado ou indisponível para sua conta.')
+  const text = reason.trim()
+  return parseDetail(await apiRequest(`/api/v1/orders/${id}/cancel`, { method: 'POST', token, signal, body: text ? { reason: text } : {} }))
+}
 
 // Fotos do pedido (#67): cada foto é enviada à API antes da criação do pedido; a URL devolvida vai em fotos[].
 export const photoTypes = ['image/jpeg', 'image/png', 'image/webp']

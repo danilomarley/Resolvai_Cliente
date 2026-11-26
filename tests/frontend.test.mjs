@@ -32,8 +32,8 @@ registerHooks({
   },
 })
 
-const { customerOrders, customerOrder, orderMoney, orderDate } = await import('../src/services/orders.ts')
-const { parseSummary, parsePage, parseDetail, parseUser, parseLogin, parseAssistantReply, isUuid } = await import('../src/services/dashboardApi.ts')
+const { customerOrders, customerOrder, orderMoney, orderDate, canChangeOrder, orderToForm } = await import('../src/services/orders.ts')
+const { parseSummary, parsePage, parseDetail, parseUser, parseLogin, parseAssistantReply, isUuid, updateOrder, cancelOrder, toOrder } = await import('../src/services/dashboardApi.ts')
 const { parseProfile } = await import('../src/services/accountApi.ts')
 const { scopeToOrder } = await import('../src/services/orderDraft.ts')
 const { DashboardOverview } = await import('../src/components/dashboard/DashboardOverview.tsx')
@@ -416,4 +416,44 @@ test('the proposals tab asks for login without a session and loads from the API 
   const order = { id, customerId, title: 'Serviço', category: 'Pedido', location: '', description: '', status: 'waiting', icon: 'bag', proposals: 2 }
   assert.match(renderOrders({ orders: [order], customerId, orderId: id, view: 'propostas' }), /Entre na sua conta para consultar as propostas/)
   assert.match(renderOrders({ orders: [order], customerId, orderId: id, view: 'propostas', token: 'abc' }), /Carregando propostas/)
+})
+
+test('only open orders without an accepted proposal can be edited or cancelled', () => {
+  const base = { id: randomUUID(), customerId: randomUUID(), title: 'Serviço', category: 'Pedido', location: '', description: '', icon: 'bag', proposals: 0 }
+  assert.equal(canChangeOrder({ ...base, status: 'waiting' }), true)
+  assert.equal(canChangeOrder({ ...base, status: 'waiting', proposalList: [proposal({ status: 'Sent' }), proposal({ status: 'NotChosen' })] }), true)
+  assert.equal(canChangeOrder({ ...base, status: 'waiting', proposalList: [proposal({ status: 'Chosen' })] }), false)
+  for (const status of ['progress', 'completed', 'cancelled']) assert.equal(canChangeOrder({ ...base, status }), false)
+})
+
+test('the edit form starts from the order data without placeholder texts', () => {
+  const order = { id: randomUUID(), customerId: randomUUID(), title: 'Trocar chuveiro', category: 'Pedido', location: 'Localização não informada',
+    description: 'Abra os detalhes para consultar a descrição.', status: 'waiting', icon: 'bag', proposals: 0 }
+  assert.deepEqual(orderToForm(order), { title: 'Trocar chuveiro', category: '', description: '', location: '', scope: { details: '', urgency: '', specifications: '' } })
+  const full = { ...order, category: 'Elétrica', location: 'Meireles', description: 'Chuveiro queimou', scope: { details: 'Banheiro', urgency: 'Urgente', specifications: 'Trocar o chuveiro' } }
+  assert.deepEqual(orderToForm(full), { title: 'Trocar chuveiro', category: 'Elétrica', description: 'Chuveiro queimou', location: 'Meireles',
+    scope: { details: 'Banheiro', urgency: 'Urgente', specifications: 'Trocar o chuveiro' } })
+})
+
+test('editing and cancelling call the order routes and show the API explanation', async () => {
+  const id = randomUUID()
+  const detail = { id, title: 'Serviço', description: 'Descrição longa', status: 'Cancelled', createdAt: new Date().toISOString(), cancellationReason: 'Desisti' }
+  const calls = []
+  const client = (status, body) => createApiClient('', async (url, init) => {
+    calls.push([init.method, url, init.body]); return new Response(JSON.stringify(body), { status })
+  })
+  assert.equal(toOrder(parseDetail(detail), randomUUID()).cancellationReason, 'Desisti')
+
+  const ok = client(200, detail)
+  assert.equal((await ok(`/api/v1/orders/${id}/cancel`, { method: 'POST', token: 't', body: { reason: 'Desisti' } })).id, id)
+  assert.deepEqual(calls[0], ['POST', `/api/v1/orders/${id}/cancel`, JSON.stringify({ reason: 'Desisti' })])
+
+  for (const [method, path] of [['PATCH', `/api/v1/orders/${id}`], ['POST', `/api/v1/orders/${id}/cancel`]]) {
+    await assert.rejects(client(409, { detail: 'Este pedido não pode mais ser cancelado: uma proposta já foi aceita.' })(path, { method, token: 't', body: {} }),
+      (error) => error.status === 409 && /proposta já foi aceita/.test(error.message))
+    await assert.rejects(client(409, {})(path, { method, token: 't', body: {} }), (error) => /não pode mais ser alterado/.test(error.message))
+    await assert.rejects(client(404, {})(path, { method, token: 't', body: {} }), (error) => error.status === 404 && /Pedido não encontrado/.test(error.message))
+  }
+  await assert.rejects(updateOrder('t', 'abc', { title: '', category: '', description: '', location: '', scope: { details: '', urgency: '', specifications: '' } }, []), (error) => error.status === 404)
+  await assert.rejects(cancelOrder('t', 'abc', ''), (error) => error.status === 404)
 })
