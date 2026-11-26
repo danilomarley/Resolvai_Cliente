@@ -49,6 +49,7 @@ const { EditOrderModal } = await import('../src/components/EditOrderModal.tsx')
 const { AcceptProposalModal } = await import('../src/components/AcceptProposalModal.tsx')
 const { CancelOrderModal } = await import('../src/components/CancelOrderModal.tsx')
 const { parseProposals, bestIds, ratingLabel, getOrderProposals, parseProposalDetail, getProposalDetail, acceptProposal, acceptBlock } = await import('../src/services/proposalsApi.ts')
+const { parseAlerts, getProposalAlerts } = await import('../src/services/alertsApi.ts')
 const { safeReturnPath } = await import('../src/services/returnPath.ts')
 const { NotFound } = await import('../src/pages/NotFound/index.tsx')
 const { readModal, readNext, readOrder, searchWithModal, modalLink } = await import('../src/services/modalRoute.ts')
@@ -574,4 +575,27 @@ test('opening a proposal asks for login without a session and loads the detail f
   assert.match(render({}), /Entre na sua conta para consultar a proposta/)
   assert.match(render({ token: 'abc' }), /Carregando proposta/)
   assert.match(render({}), new RegExp(`href="/pedidos/${id}/propostas"[^>]*>Voltar às propostas`))
+})
+
+const alertItem = (overrides = {}) => ({ id: randomUUID(), orderId: randomUUID(), orderTitle: 'Trocar chuveiro', providerName: 'Ana Eletricista',
+  value: 300, createdAt: new Date().toISOString(), ...overrides })
+
+test('proposal alerts from the API are validated', () => {
+  assert.deepEqual(parseAlerts({ total: 0, items: [] }), { total: 0, items: [] })
+  assert.equal(parseAlerts({ total: 7, items: [alertItem(), alertItem()] }).items.length, 2)
+  for (const bad of [null, {}, { total: -1, items: [] }, { total: 1.5, items: [] }, { total: 1 }, { total: 0, items: [alertItem()] },
+    { total: 1, items: [alertItem({ id: 'abc' })] }, { total: 1, items: [alertItem({ orderId: 'abc' })] },
+    { total: 1, items: [alertItem({ value: 'caro' })] }, { total: 1, items: [alertItem({ createdAt: 'ontem' })] }]) {
+    assert.throws(() => parseAlerts(bad), ApiError)
+  }
+})
+
+test('proposal alerts are requested with a limit and the session token', async () => {
+  const calls = []
+  const client = createApiClient('', async (url, init) => {
+    calls.push([url, init.headers.Authorization]); return new Response(JSON.stringify({ total: 1, items: [alertItem()] }), { status: 200 })
+  })
+  assert.equal((await client('/api/v1/proposals/unviewed?limit=5', { token: 't' })).total, 1)
+  assert.deepEqual(calls, [['/api/v1/proposals/unviewed?limit=5', 'Bearer t']])
+  assert.equal(typeof getProposalAlerts, 'function')
 })
