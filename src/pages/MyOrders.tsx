@@ -5,6 +5,7 @@ import type { Order } from '../types/orders'
 import { ProposalsPanel } from '../components/ProposalsPanel'
 import type { OrderStatusDto } from '../services/dashboardApi'
 import {
+  canChangeOrder,
   customerOrders,
   customerOrder,
   orderDate,
@@ -106,12 +107,24 @@ function OrderDetails({ order }: { order: Order }) {
       <h2>Pedido #{orderNumber(order)} · {order.title}</h2>
       <OrderStatus order={order} />
       {order.status === 'completed' && <Link className="button button-primary" {...modalLink(location.pathname, location.search, 'avaliar', order.id)}>Avaliar serviço</Link>}
+      {canChangeOrder(order) && (
+        <div className="order-actions">
+          <Link className="button button-secondary" {...modalLink(location.pathname, location.search, 'editar-pedido', order.id)}>Editar pedido</Link>
+          <Link className="button button-secondary" {...modalLink(location.pathname, location.search, 'cancelar-pedido', order.id)}>Cancelar pedido</Link>
+        </div>
+      )}
       <dl>
         <div><dt>Data de realização</dt><dd>{orderDate(order.createdAt)}</dd></div>
         {order.updatedAt && <div><dt>Última atualização</dt><dd>{orderDate(order.updatedAt)}</dd></div>}
         {order.category !== 'Pedido' && <div><dt>Categoria</dt><dd>{order.category}</dd></div>}
         {order.location !== 'Localização não informada' && <div><dt>Localização</dt><dd>{order.location}</dd></div>}
       </dl>
+      {order.status === 'cancelled' && order.cancellationReason && (
+        <>
+          <h3>Motivo do cancelamento</h3>
+          <p>{order.cancellationReason}</p>
+        </>
+      )}
       <h3>Descrição</h3>
       <p>{order.description}</p>
       {order.scope && (

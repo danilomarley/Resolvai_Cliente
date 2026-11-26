@@ -4,12 +4,15 @@ import { MyOrders } from '../MyOrders'
 import { useCustomerSession } from '../../services/useCustomerSession'
 import { useDashboardData, useOrderDetail, useOrdersList } from '../../services/useDashboardData'
 import { toOrder, type OrderStatusDto } from '../../services/dashboardApi'
+import { canChangeOrder } from '../../services/orders'
 import { Icon } from '../../components/Icon'
 import { Modal } from '../../components/Modal'
 import { AccountSettings } from '../../components/AccountSettings'
 import { CompleteRegistrationModal } from '../../components/CompleteRegistrationModal'
 import { CreateOrderModal } from '../../components/CreateOrderModal'
 import { OrderReview } from '../../components/OrderReview'
+import { EditOrderModal } from '../../components/EditOrderModal'
+import { CancelOrderModal } from '../../components/CancelOrderModal'
 import { useReviewSummary } from '../../services/useReviewSummary'
 import { useModalRoute } from '../../services/modalRoute'
 import { Sidebar } from '../../components/dashboard/Sidebar'
@@ -56,10 +59,11 @@ export function Dashboard() {
       return next
     })
   }
-  // Perfil, ajuda, cadastro, criação de pedido e avaliação vivem na URL (?modal=...): recarregar reabre e "voltar" fecha.
-  const urlModal = useModalRoute(['perfil', 'ajuda', 'finalizar-cadastro', 'criar-pedido', 'avaliar'] as const)
-  // O modal de avaliação usa o pedido da URL (?pedido=) ou, no detalhe, o pedido aberto.
-  const reviewId = urlModal.current === 'avaliar' ? urlModal.order ?? orderId : undefined
+  // Perfil, ajuda, cadastro, criação de pedido, avaliação, edição e cancelamento vivem na URL (?modal=...): recarregar reabre e "voltar" fecha.
+  const urlModal = useModalRoute(['perfil', 'ajuda', 'finalizar-cadastro', 'criar-pedido', 'avaliar', 'editar-pedido', 'cancelar-pedido'] as const)
+  // Os modais de um pedido (avaliar, editar, cancelar) usam o pedido da URL (?pedido=) ou, no detalhe, o pedido aberto.
+  const orderModal = urlModal.current === 'avaliar' || urlModal.current === 'editar-pedido' || urlModal.current === 'cancelar-pedido'
+  const reviewId = orderModal ? urlModal.order ?? orderId : undefined
   const ownDetail = useOrderDetail(reviewId && reviewId !== orderId ? reviewId : undefined, session.accessToken)
   const reviewOrder = reviewId && reviewId === orderId ? detail : ownDetail
   const ordersList = useOrdersList(session.accessToken, viewingOrders && !orderId, statusFilter, page)
@@ -108,6 +112,14 @@ export function Dashboard() {
     if (needsRegistration) urlModal.swap('finalizar-cadastro', 'criar-pedido')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [needsRegistration])
+  // Pedido editado ou cancelado: recarrega o detalhe, a lista e os cards da Home e avisa o resultado.
+  function orderChanged(message: string) {
+    reviewOrder.retry()
+    ordersList.retry()
+    dashboard.retry()
+    urlModal.close()
+    setNotice(message)
+  }
   function orderCreated(orderId: string) {
     dashboard.retry()
     // Troca a entrada do modal pelo pedido novo: "voltar" retorna à tela de onde a pessoa partiu.
@@ -198,11 +210,23 @@ export function Dashboard() {
       {!session.loading && urlModal.current === 'avaliar' && session.accessToken && reviewOrder.data
         && <OrderReview key={`${session.accessToken}:${reviewOrder.data.id}`} order={toOrder(reviewOrder.data, session.customerId!)}
           token={session.accessToken} onClose={urlModal.close} onSaved={() => setReviewRevision((value) => value + 1)} />}
-      {!session.loading && urlModal.current === 'avaliar' && reviewOrder.error && !reviewOrder.data
-        && <Modal size="sm" title="Avaliar serviço" onClose={urlModal.close}
+      {!session.loading && orderModal && reviewOrder.error && !reviewOrder.data
+        && <Modal size="sm" title={urlModal.current === 'avaliar' ? 'Avaliar serviço' : urlModal.current === 'editar-pedido' ? 'Editar pedido' : 'Cancelar pedido'}
+          onClose={urlModal.close}
           footer={<button type="button" className="button button-secondary" onClick={urlModal.close}>Fechar</button>}>
           <p role="alert">{reviewOrder.error.status === 404 ? 'Este pedido não está disponível para sua conta.' : reviewOrder.error.message}</p>
         </Modal>}
+      {!session.loading && (urlModal.current === 'editar-pedido' || urlModal.current === 'cancelar-pedido') && session.accessToken && reviewOrder.data
+        && (canChangeOrder(toOrder(reviewOrder.data, session.customerId!))
+          ? urlModal.current === 'editar-pedido'
+            ? <EditOrderModal key={`${session.accessToken}:${reviewOrder.data.id}`} order={toOrder(reviewOrder.data, session.customerId!)}
+              token={session.accessToken} onClose={urlModal.close} onSaved={() => orderChanged('Pedido atualizado.')} />
+            : <CancelOrderModal key={`${session.accessToken}:${reviewOrder.data.id}`} order={toOrder(reviewOrder.data, session.customerId!)}
+              token={session.accessToken} onClose={urlModal.close} onCancelled={() => orderChanged('Pedido cancelado.')} />
+          : <Modal size="sm" title={urlModal.current === 'editar-pedido' ? 'Editar pedido' : 'Cancelar pedido'} onClose={urlModal.close}
+            footer={<button type="button" className="button button-secondary" onClick={urlModal.close}>Fechar</button>}>
+            <p role="alert">Este pedido não pode mais ser alterado: ele já foi cancelado, concluído, está em andamento ou teve uma proposta aceita.</p>
+          </Modal>)}
       {!session.loading && (urlModal.current === 'perfil' || urlModal.current === 'ajuda') && <Modal size="lg" onClose={urlModal.close}
         title={urlModal.current === 'perfil' ? 'Configurações da conta' : 'Central de ajuda'}>
         {urlModal.current === 'perfil' ? <AccountSettings key={`${session.customerId}:${session.accessToken}`}

@@ -45,6 +45,8 @@ const { ReviewForm } = await import('../src/components/OrderReview.tsx')
 const { Modal } = await import('../src/components/Modal.tsx')
 const { Sidebar } = await import('../src/components/dashboard/Sidebar.tsx')
 const { CreateOrderModal } = await import('../src/components/CreateOrderModal.tsx')
+const { EditOrderModal } = await import('../src/components/EditOrderModal.tsx')
+const { CancelOrderModal } = await import('../src/components/CancelOrderModal.tsx')
 const { parseProposals, bestIds, ratingLabel, getOrderProposals } = await import('../src/services/proposalsApi.ts')
 const { safeReturnPath } = await import('../src/services/returnPath.ts')
 const { NotFound } = await import('../src/pages/NotFound/index.tsx')
@@ -356,7 +358,8 @@ test('order details show section tabs instead of per-page back buttons', () => {
 test('login only returns to known app screens with known parameters', () => {
   const id = randomUUID()
   for (const ok of ['/', '/pedidos', `/pedidos/${id}`, `/pedidos/${id}/propostas`, `/pedidos/${id}/propostas/${randomUUID()}`, `/pedidos/${id}/acompanhar`, '/pedidos?status=Completed&page=2',
-    `/pedidos/${id}?modal=avaliar&pedido=${id}`, '/?modal=finalizar-cadastro&next=criar-pedido']) assert.equal(safeReturnPath(ok), ok)
+    `/pedidos/${id}?modal=avaliar&pedido=${id}`, `/pedidos/${id}?modal=editar-pedido&pedido=${id}`, `/pedidos/${id}?modal=cancelar-pedido&pedido=${id}`,
+    '/?modal=finalizar-cadastro&next=criar-pedido']) assert.equal(safeReturnPath(ok), ok)
   for (const bad of [undefined, null, 42, 'https://evil.example', '//evil.example', '/login', '/pedidos/../x', '/pedidos/abc/propostas', `/pedidos/${id}/outra`,
     '/pedidos?status=Hacked', '/pedidos?redirect=https://evil.example', '/pedidos?status=Pending#x', '/pedidos?a=1?b=2', '/?modal=desconhecido', '/?pedido=1']) assert.equal(safeReturnPath(bad), '/')
 })
@@ -472,4 +475,38 @@ test('the order form switches to edit mode with the saved photos and a save butt
   const created = renderToStaticMarkup(React.createElement(OrderForm, { onCancel() {}, onCreate: async () => {}, submitting: false, submitError: '' }))
   assert.match(created, /Publicar pedido/)
   assert.doesNotMatch(created, /Fotos já salvas/)
+})
+
+test('order details offer edit and cancel only while nothing was accepted and show the cancellation reason', () => {
+  const id = randomUUID(), customerId = randomUUID()
+  const order = (extra) => ({ id, customerId, title: 'Serviço', category: 'Pedido', location: '', description: 'Descrição do pedido', status: 'waiting', icon: 'bag', proposals: 1, ...extra })
+  const open = renderOrders({ orders: [order()], customerId, orderId: id })
+  assert.match(open, />Editar pedido<\/a>/)
+  assert.match(open, />Cancelar pedido<\/a>/)
+  assert.match(open, new RegExp(`modal=editar-pedido&amp;pedido=${id}`))
+  assert.match(open, new RegExp(`modal=cancelar-pedido&amp;pedido=${id}`))
+  for (const closed of [order({ proposalList: [proposal({ status: 'Chosen' })] }), order({ status: 'progress' }), order({ status: 'completed' })]) {
+    const html = renderOrders({ orders: [closed], customerId, orderId: id })
+    assert.doesNotMatch(html, /Editar pedido|Cancelar pedido/)
+  }
+  const cancelled = renderOrders({ orders: [order({ status: 'cancelled', cancellationReason: 'Resolvi por conta própria' })], customerId, orderId: id })
+  assert.match(cancelled, /Motivo do cancelamento/)
+  assert.match(cancelled, /Resolvi por conta própria/)
+  assert.doesNotMatch(cancelled, />Editar pedido</)
+})
+
+test('the cancel modal asks for confirmation with an optional reason and the edit modal opens on the order data', () => {
+  const id = randomUUID()
+  const order = { id, customerId: randomUUID(), title: 'Trocar chuveiro', category: 'Elétrica', location: 'Meireles', description: 'Chuveiro queimou',
+    status: 'waiting', icon: 'bag', proposals: 0, scope: { details: 'Banheiro', urgency: 'Urgente', specifications: 'Trocar o chuveiro' }, photoUrls: ['https://exemplo.com/a.jpg'] }
+  const cancel = renderToStaticMarkup(React.createElement(CancelOrderModal, { order, token: 't', onClose() {}, onCancelled() {} }))
+  assert.match(cancel, /Cancelar pedido/)
+  assert.match(cancel, /Motivo do cancelamento/)
+  assert.match(cancel, /maxLength="500"/)
+  assert.match(cancel, /Manter pedido/)
+  const edit = renderToStaticMarkup(React.createElement(EditOrderModal, { order, token: 't', onClose() {}, onSaved() {} }))
+  assert.match(edit, /Editar pedido/)
+  assert.match(edit, /value="Trocar chuveiro"/)
+  assert.match(edit, /Salvar alterações/)
+  assert.match(edit, /Remover foto salva 1/)
 })
