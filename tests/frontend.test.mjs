@@ -50,6 +50,7 @@ const { AcceptProposalModal } = await import('../src/components/AcceptProposalMo
 const { CancelOrderModal } = await import('../src/components/CancelOrderModal.tsx')
 const { parseProposals, bestIds, ratingLabel, getOrderProposals, parseProposalDetail, getProposalDetail, acceptProposal, acceptBlock } = await import('../src/services/proposalsApi.ts')
 const { parseAlerts, getProposalAlerts } = await import('../src/services/alertsApi.ts')
+const { parseContract, getContract, signContract } = await import('../src/services/contractApi.ts')
 const { AlertsBell, AlertsList } = await import('../src/components/AlertsBell.tsx')
 const { safeReturnPath } = await import('../src/services/returnPath.ts')
 const { NotFound } = await import('../src/pages/NotFound/index.tsx')
@@ -635,4 +636,40 @@ test('the alerts list explains loading, failure and the empty state', () => {
   assert.match(renderAt(React.createElement(AlertsList, {})), /Não foi possível carregar os alertas/)
   assert.match(renderAt(React.createElement(AlertsList, { alerts: { total: 0, items: [] } })), /Nenhuma proposta nova/)
   assert.match(renderAt(React.createElement(AlertsList, { alerts: { total: 1, items: [alertItem()] }, failed: true })), /mostrando o último resultado/)
+})
+
+const hash = 'a'.repeat(64)
+const contractDto = (overrides = {}) => ({ id: randomUUID(), orderId: randomUUID(), proposalId: randomUUID(), status: 'Pending', templateVersion: '2026-11-v1',
+  text: 'CONTRATO DE PRESTAÇÃO DE SERVIÇOS\n\nCLÁUSULA 1', textHash: hash, value: 800, customerName: 'Maria Contratante', providerName: 'Ana Eletricista',
+  createdAt: new Date().toISOString(), ...overrides })
+
+test('the contract from the API is validated, and Signed needs both signatures', () => {
+  assert.equal(parseContract(contractDto()).status, 'Pending')
+  const signedAt = new Date().toISOString()
+  assert.equal(parseContract(contractDto({ customerSignedAt: signedAt })).providerSignedAt, undefined)
+  assert.equal(parseContract(contractDto({ status: 'Signed', customerSignedAt: signedAt, providerSignedAt: signedAt })).status, 'Signed')
+  for (const bad of [null, {}, contractDto({ status: 'Outro' }), contractDto({ text: '  ' }), contractDto({ textHash: 'abc' }), contractDto({ value: 'caro' }),
+    contractDto({ id: 'abc' }), contractDto({ customerSignedAt: 'ontem' }), contractDto({ status: 'Signed' }),
+    contractDto({ status: 'Signed', customerSignedAt: signedAt }), contractDto({ status: 'Pending', customerSignedAt: signedAt, providerSignedAt: signedAt })]) {
+    assert.throws(() => parseContract(bad), ApiError)
+  }
+})
+
+test('the contract is read and signed through the order routes, sending the hash that was read', async () => {
+  const orderId = randomUUID()
+  const calls = []
+  const client = (status, body) => createApiClient('', async (url, init) => {
+    calls.push([init.method, url, init.body]); return new Response(JSON.stringify(body), { status })
+  })
+  await assert.rejects(getContract('abc', 't'), (error) => error.status === 404)
+  await assert.rejects(signContract('abc', hash, 't'), (error) => error.status === 404)
+  const ok = client(200, contractDto({ orderId }))
+  assert.equal(parseContract(await ok(`/api/v1/orders/${orderId}/contract/sign`, { method: 'POST', token: 't', body: { textHash: hash } })).orderId, orderId)
+  assert.deepEqual(calls[0], ['POST', `/api/v1/orders/${orderId}/contract/sign`, JSON.stringify({ textHash: hash })])
+  for (const detail of ['Você já assinou este contrato.', 'O texto do contrato não é mais o que você leu. Recarregue a página e leia de novo antes de assinar.']) {
+    await assert.rejects(client(409, { detail })(`/api/v1/orders/${orderId}/contract/sign`, { method: 'POST', token: 't', body: { textHash: hash } }),
+      (error) => error.status === 409 && error.message === detail)
+  }
+  await assert.rejects(client(409, {})(`/api/v1/orders/${orderId}/contract/sign`, { method: 'POST', token: 't', body: { textHash: hash } }),
+    (error) => /não pode mais ser alterado/.test(error.message))
 })
