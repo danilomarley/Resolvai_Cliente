@@ -42,7 +42,7 @@ export function parseSummary(value: unknown): HomeSummary {
   return value as HomeSummary
 }
 const isProposal = (value: unknown) => object(value) && typeof value.id === 'string' && typeof value.providerName === 'string'
-  && ['Sent', 'Viewed', 'Chosen'].includes(String(value.status)) && typeof value.value === 'number'
+  && ['Sent', 'Viewed', 'Chosen', 'NotChosen'].includes(String(value.status)) && typeof value.value === 'number'
 export function parsePage(value: unknown): OrdersPage {
   if (!object(value) || !Array.isArray(value.items) || !value.items.every(isOrder)
     || !['page', 'pageSize', 'totalItems', 'totalPages'].every((key) => Number.isSafeInteger(value[key]) && Number(value[key]) >= 0)) throw invalid()

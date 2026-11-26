@@ -17,11 +17,16 @@ export type NewOrder = {
 export type OrderProposal = {
   id: string
   providerName: string
-  status: 'Sent' | 'Viewed' | 'Chosen'
+  status: 'Sent' | 'Viewed' | 'Chosen' | 'NotChosen'
   value: number
   deadline?: string
+  /** Prazo em dias; base da ordenação por prazo e do destaque "menor prazo". */
+  deadlineDays?: number
   description?: string
   warranty?: string
+  createdAt?: string
+  /** Média das avaliações do prestador (null quando ainda não foi avaliado). */
+  providerRating?: { average: number | null; count: number }
 }
 
 export type Order = {
