@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { ApiError } from '../services/api'
-import { Modal } from './Modal'
 import { getReview, submitReview, validRating, type Review } from '../services/reviews'
 import type { Order } from '../types/orders'
 import './OrderReview.css'
@@ -29,7 +29,8 @@ export function ReviewForm({ sending, error, onSubmit }: {
   </form>
 }
 
-export function OrderReview({ order, token, onSaved, onClose }: { order: Order; token: string; onSaved: () => void; onClose: () => void }) {
+/** Conteúdo da página de avaliação: a avaliação já feita, o formulário ou o motivo de ainda não ser possível avaliar. */
+export function OrderReview({ order, token, onSaved }: { order: Order; token: string; onSaved: () => void }) {
   const [review, setReview] = useState<Review | null>()
   const [error, setError] = useState('')
   const [sending, setSending] = useState(false)
@@ -59,8 +60,9 @@ export function OrderReview({ order, token, onSaved, onClose }: { order: Order; 
     } finally { sendingRef.current = false; setSending(false) }
   }
 
-  return <Modal title="Avaliar serviço" description={order.title} onClose={onClose} dismissible={!sending}
-    footer={review ? <button type="button" className="button button-secondary" onClick={onClose}>Fechar</button> : undefined}>
+  return <article className="panel order-summary review-page">
+    <h1>Avaliar serviço</h1>
+    <p>{order.title}</p>
     {loadError ? <div role="alert"><p>{loadError}</p><button className="button button-secondary" onClick={() => setAttempt((n) => n + 1)}>Tentar novamente</button></div>
       : review === undefined ? <p role="status">Carregando avaliação…</p>
       : review ? <div><p role="status">{saved ? 'Avaliação enviada com sucesso.' : 'Este pedido já foi avaliado.'}</p>
@@ -68,5 +70,6 @@ export function OrderReview({ order, token, onSaved, onClose }: { order: Order; 
         {review.comment && <p>{review.comment}</p>}</div>
       : order.status !== 'completed' ? <p>Somente pedidos concluídos podem ser avaliados.</p>
       : <ReviewForm sending={sending} error={error} onSubmit={send} />}
-  </Modal>
+    <Link className="button button-secondary" to={`/pedidos/${order.id}`}>Voltar para o pedido</Link>
+  </article>
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, Navigate, useLocation, useMatch, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { MyOrders } from '../MyOrders'
 import { useCustomerSession } from '../../services/useCustomerSession'
@@ -7,17 +7,18 @@ import { toOrder, type OrderStatusDto } from '../../services/dashboardApi'
 import { canChangeOrder } from '../../services/orders'
 import { Icon } from '../../components/Icon'
 import { Modal } from '../../components/Modal'
-import { AccountSettings } from '../../components/AccountSettings'
-import { CompleteRegistrationModal } from '../../components/CompleteRegistrationModal'
-import { CreateOrderModal } from '../../components/CreateOrderModal'
-import { OrderReview } from '../../components/OrderReview'
-import { EditOrderModal } from '../../components/EditOrderModal'
+import { NewOrderPage } from '../NewOrder'
+import { EditOrderPage } from '../EditOrder'
+import { ReviewOrderPage } from '../ReviewOrder'
+import { HelpPage } from '../Help'
+import { AccountPage } from '../Account'
 import { CancelOrderModal } from '../../components/CancelOrderModal'
 import { CompleteOrderModal } from '../../components/CompleteOrderModal'
 import { AlertsBell } from '../../components/AlertsBell'
 import { useProposalAlerts } from '../../services/useProposalAlerts'
 import { useReviewSummary } from '../../services/useReviewSummary'
 import { useModalRoute } from '../../services/modalRoute'
+import { legacyModalTarget } from '../../services/legacyModals'
 import { Sidebar } from '../../components/dashboard/Sidebar'
 import { DashboardOverview } from '../../components/dashboard/DashboardOverview'
 import type { Order } from '../../types/orders'
@@ -40,7 +41,12 @@ export function Dashboard() {
   const routerNavigate = useNavigate()
   const location = useLocation()
   const { orderId } = useParams()
-  const viewingOrders = !!useMatch('/pedidos/*')
+  const newOrderRoute = !!useMatch('/pedidos/novo')
+  const editRoute = !!useMatch('/pedidos/:orderId/editar')
+  const reviewRoute = !!useMatch('/pedidos/:orderId/avaliar')
+  const helpRoute = !!useMatch('/ajuda')
+  const accountRoute = !!useMatch('/conta')
+  const viewingOrders = !!useMatch('/pedidos/*') && !newOrderRoute && !editRoute && !reviewRoute
   const proposalsRoute = !!useMatch('/pedidos/:orderId/propostas')
   const proposalMatch = useMatch('/pedidos/:orderId/propostas/:proposalId')
   const trackingRoute = !!useMatch('/pedidos/:orderId/acompanhar')
@@ -67,9 +73,9 @@ export function Dashboard() {
     })
   }
   // Perfil, ajuda, cadastro, criação de pedido, avaliação, edição e cancelamento vivem na URL (?modal=...): recarregar reabre e "voltar" fecha.
-  const urlModal = useModalRoute(['perfil', 'ajuda', 'finalizar-cadastro', 'criar-pedido', 'avaliar', 'editar-pedido', 'cancelar-pedido', 'concluir-pedido'] as const)
+  const urlModal = useModalRoute(['cancelar-pedido', 'concluir-pedido'] as const)
   // Os modais de um pedido (avaliar, editar, cancelar) usam o pedido da URL (?pedido=) ou, no detalhe, o pedido aberto.
-  const orderModal = urlModal.current === 'avaliar' || urlModal.current === 'editar-pedido' || urlModal.current === 'cancelar-pedido' || urlModal.current === 'concluir-pedido'
+  const orderModal = urlModal.current === 'cancelar-pedido' || urlModal.current === 'concluir-pedido'
   const reviewId = orderModal ? urlModal.order ?? orderId : undefined
   const ownDetail = useOrderDetail(reviewId && reviewId !== orderId ? reviewId : undefined, session.accessToken)
   const reviewOrder = reviewId && reviewId === orderId ? detail : ownDetail
@@ -77,48 +83,31 @@ export function Dashboard() {
   const orderView = proposalsRoute || proposalMatch ? 'propostas' : contractRoute ? 'contrato' : paymentRoute ? 'pagamento' : trackingRoute ? 'acompanhar' : undefined
   const [tab, setTab] = useState<Tab>('all')
   const [search, setSearch] = useState('')
-  const registrationHandled = useRef(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [notice, setNotice] = useState('')
-  const completedList = useOrdersList(session.accessToken, !viewingOrders && !!dashboard.data, 'Completed', 1, 3)
+  const completedList = useOrdersList(session.accessToken, location.pathname === '/' && !!dashboard.data, 'Completed', 1, 3)
   const orders = dashboard.data?.summary.recentOrders.map((dto) => toOrder(dto, session.customerId!)) ?? []
   const profile = { name: dashboard.data?.user.name ?? 'Minha conta', location: 'Localização não informada' }
-  // O modal "Criar pedido" abre sobre a tela atual, que continua sendo o item ativo do menu.
-  const activeNav: NavKey = !viewingOrders ? 'Visão geral'
+  const activeNav: NavKey | null = newOrderRoute ? 'Criar pedido' : editRoute ? 'Meus pedidos' : reviewRoute ? 'Avaliações' : helpRoute || accountRoute ? null : !viewingOrders ? 'Visão geral'
     : orderId ? 'Meus pedidos'
     : statusFilter === 'Pending' ? 'Propostas'
     : statusFilter === 'Completed' ? 'Avaliações' : 'Meus pedidos'
 
   function openDialog(value: Dialog) {
     setMobileOpen(false)
-    if (value === 'profile') urlModal.open('perfil')
-    else if (value === 'help') urlModal.open('ajuda')
-    else if (value === 'create' && dashboard.data && !dashboard.data.user.cpf) urlModal.open('finalizar-cadastro', 'criar-pedido')
-    else if (value === 'create') urlModal.open('criar-pedido')
+    if (value === 'profile') routerNavigate('/conta')
+    else if (value === 'help') routerNavigate('/ajuda')
+    else if (value === 'create' && dashboard.data && !dashboard.data.user.cpf) routerNavigate('/cadastro/finalizar?next=%2Fpedidos%2Fnovo')
+    else if (value === 'create') routerNavigate('/pedidos/novo')
   }
-  function registrationCompleted() {
-    registrationHandled.current = true
-    dashboard.retry()
-    if (urlModal.next === 'criar-pedido') urlModal.swap('criar-pedido')
-    else { urlModal.close(); setNotice('Cadastro finalizado com sucesso.') }
-  }
-  // Link direto (?modal=finalizar-cadastro) de quem já finalizou: não há o que preencher.
-  const alreadyRegistered = urlModal.current === 'finalizar-cadastro' && !!dashboard.data?.user.cpf
+  // Telas que terminam em outra página (ex.: finalizar cadastro) avisam o resultado pelo estado da navegação.
+  const stateNotice = (location.state as { notice?: string } | null)?.notice
   useEffect(() => {
-    if (urlModal.current !== 'finalizar-cadastro') registrationHandled.current = false
-    else if (alreadyRegistered && !registrationHandled.current) {
-      registrationHandled.current = true
-      if (urlModal.next === 'criar-pedido') urlModal.swap('criar-pedido')
-      else urlModal.close()
-    }
+    if (!stateNotice) return
+    setNotice(stateNotice)
+    routerNavigate(location.pathname + location.search, { replace: true, state: null })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [urlModal.current, alreadyRegistered])
-  // Link direto para criar pedido sem cadastro finalizado: pede o cadastro primeiro.
-  const needsRegistration = urlModal.current === 'criar-pedido' && !!dashboard.data && !dashboard.data.user.cpf
-  useEffect(() => {
-    if (needsRegistration) urlModal.swap('finalizar-cadastro', 'criar-pedido')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [needsRegistration])
+  }, [stateNotice])
   // Pedido editado ou cancelado: recarrega o detalhe, a lista e os cards da Home e avisa o resultado.
   function orderChanged(message: string) {
     reviewOrder.retry()
@@ -127,9 +116,17 @@ export function Dashboard() {
     urlModal.close()
     setNotice(message)
   }
+  function orderEdited(id: string) {
+    detail.retry()
+    ordersList.retry()
+    dashboard.retry()
+    setNotice('Pedido atualizado.')
+    // Troca a entrada da edição pelo detalhe: "voltar" não reabre o formulário já salvo.
+    routerNavigate(`/pedidos/${id}`, { replace: true })
+  }
   function orderCreated(orderId: string) {
     dashboard.retry()
-    // Troca a entrada do modal pelo pedido novo: "voltar" retorna à tela de onde a pessoa partiu.
+    // Troca a entrada de /pedidos/novo pelo pedido novo: "voltar" não reabre o formulário já publicado.
     routerNavigate(`/pedidos/${orderId}`, { replace: true })
   }
   function navigate(item: NavKey) {
@@ -147,6 +144,9 @@ export function Dashboard() {
   // A busca só filtra o painel da Visão geral e a lista de pedidos; no detalhe não teria efeito.
   const searchable = !orderId && (viewingOrders || location.pathname === '/')
   const failure = session.error || dashboard.error?.message
+  // Links antigos de modal que hoje são páginas.
+  const legacyTarget = legacyModalTarget(location.pathname, location.search)
+  if (legacyTarget) return <Navigate to={legacyTarget} replace />
   if (!session.loading && !session.error && !session.customerId) {
     return <Navigate to="/login" replace state={{ from: returnTo }} />
   }
@@ -163,7 +163,7 @@ export function Dashboard() {
             <button className="icon-button mobile-menu" aria-label="Abrir menu"
               aria-expanded={mobileOpen} onClick={() => setMobileOpen(true)}><Icon name="menu" /></button>
             <span>Meu espaço</span><Icon name="chevron" size={13} />
-            <strong>{activeNav}</strong>
+            <strong>{activeNav ?? (accountRoute ? 'Minha conta' : 'Central de ajuda')}</strong>
           </div>
           <div className="topbar-actions">
             {searchable && <label className="search-box">
@@ -184,6 +184,17 @@ export function Dashboard() {
               <button className="button button-secondary" onClick={session.error ? session.retry : dashboard.retry}>Tentar novamente</button>
               {dashboard.error?.status === 401 && <Link to="/login" state={{ from: returnTo }}>Entrar novamente</Link>}
             </section>
+            : newOrderRoute ? (dashboard.data && !dashboard.data.user.cpf
+              ? <Navigate to="/cadastro/finalizar?next=%2Fpedidos%2Fnovo" replace />
+              : session.accessToken && session.customerId && <NewOrderPage token={session.accessToken} customerId={session.customerId} onCreated={orderCreated} />)
+            : helpRoute ? <HelpPage />
+            : accountRoute ? <AccountPage token={session.accessToken} customerId={session.customerId} onUpdated={dashboard.retry} />
+            : reviewRoute && orderId && session.accessToken ? <ReviewOrderPage orderId={orderId} token={session.accessToken}
+              order={detail.data ? toOrder(detail.data, session.customerId!) : undefined} loading={detail.loading} error={detail.error}
+              onSaved={() => setReviewRevision((value) => value + 1)} onRetry={detail.retry} />
+            : editRoute && orderId && session.accessToken ? <EditOrderPage orderId={orderId} token={session.accessToken}
+              order={detail.data ? toOrder(detail.data, session.customerId!) : undefined} loading={detail.loading} error={detail.error}
+              onSaved={() => orderEdited(orderId)} onRetry={detail.retry} />
             : viewingOrders ? <MyOrders
               orders={orderId
                 ? (detail.data ? [toOrder(detail.data, session.customerId!)] : [])
@@ -203,7 +214,7 @@ export function Dashboard() {
               error={orderId ? (detail.error?.status === 404 ? undefined : detail.error?.message) : ordersList.error?.message}
               requiresLogin={(orderId ? detail.error : ordersList.error)?.status === 401}
               onRetry={orderId ? detail.retry : ordersList.retry}
-              heading={listHeadings[activeNav]}
+              heading={activeNav ? listHeadings[activeNav] : undefined}
               filter={orderId ? undefined : { value: statusFilter, onChange: (value) => updateList({ status: value ?? null }) }}
               pager={orderId || !ordersList.data ? undefined : { page, totalPages: ordersList.data.totalPages, onPage: (value) => updateList({ page: value }) }} />
             : dashboard.data && <DashboardOverview orders={orders} summary={dashboard.data.summary}
@@ -218,29 +229,17 @@ export function Dashboard() {
       {notice && <div className="toast" role="status"><span>{notice}</span>
         <button className="icon-button" onClick={() => setNotice('')} aria-label="Dispensar aviso"><Icon name="close" size={17} /></button>
       </div>}
-      {!session.loading && urlModal.current === 'finalizar-cadastro' && dashboard.data && !alreadyRegistered
-        && <CompleteRegistrationModal token={session.accessToken} customerId={session.customerId}
-          defaultName={dashboard.data.user.name} onClose={urlModal.close} onCompleted={registrationCompleted}
-          reason={urlModal.next === 'criar-pedido' ? 'Para criar um pedido, precisamos concluir seu cadastro. Leva menos de um minuto.' : undefined} />}
-      {!session.loading && urlModal.current === 'criar-pedido' && session.accessToken && dashboard.data && !needsRegistration
-        && <CreateOrderModal token={session.accessToken} onClose={urlModal.close} onCreated={orderCreated} />}
-      {!session.loading && urlModal.current === 'avaliar' && session.accessToken && reviewOrder.data
-        && <OrderReview key={`${session.accessToken}:${reviewOrder.data.id}`} order={toOrder(reviewOrder.data, session.customerId!)}
-          token={session.accessToken} onClose={urlModal.close} onSaved={() => setReviewRevision((value) => value + 1)} />}
       {!session.loading && orderModal && reviewOrder.error && !reviewOrder.data
-        && <Modal size="sm" title={urlModal.current === 'avaliar' ? 'Avaliar serviço' : urlModal.current === 'editar-pedido' ? 'Editar pedido' : urlModal.current === 'concluir-pedido' ? 'Confirmar conclusão' : 'Cancelar pedido'}
+        && <Modal size="sm" title={urlModal.current === 'concluir-pedido' ? 'Confirmar conclusão' : 'Cancelar pedido'}
           onClose={urlModal.close}
           footer={<button type="button" className="button button-secondary" onClick={urlModal.close}>Fechar</button>}>
           <p role="alert">{reviewOrder.error.status === 404 ? 'Este pedido não está disponível para sua conta.' : reviewOrder.error.message}</p>
         </Modal>}
-      {!session.loading && (urlModal.current === 'editar-pedido' || urlModal.current === 'cancelar-pedido') && session.accessToken && reviewOrder.data
+      {!session.loading && urlModal.current === 'cancelar-pedido' && session.accessToken && reviewOrder.data
         && (canChangeOrder(toOrder(reviewOrder.data, session.customerId!))
-          ? urlModal.current === 'editar-pedido'
-            ? <EditOrderModal key={`${session.accessToken}:${reviewOrder.data.id}`} order={toOrder(reviewOrder.data, session.customerId!)}
-              token={session.accessToken} onClose={urlModal.close} onSaved={() => orderChanged('Pedido atualizado.')} />
-            : <CancelOrderModal key={`${session.accessToken}:${reviewOrder.data.id}`} order={toOrder(reviewOrder.data, session.customerId!)}
-              token={session.accessToken} onClose={urlModal.close} onCancelled={() => orderChanged('Pedido cancelado.')} />
-          : <Modal size="sm" title={urlModal.current === 'editar-pedido' ? 'Editar pedido' : 'Cancelar pedido'} onClose={urlModal.close}
+          ? <CancelOrderModal key={`${session.accessToken}:${reviewOrder.data.id}`} order={toOrder(reviewOrder.data, session.customerId!)}
+            token={session.accessToken} onClose={urlModal.close} onCancelled={() => orderChanged('Pedido cancelado.')} />
+          : <Modal size="sm" title="Cancelar pedido" onClose={urlModal.close}
             footer={<button type="button" className="button button-secondary" onClick={urlModal.close}>Fechar</button>}>
             <p role="alert">Este pedido não pode mais ser alterado: ele já foi cancelado, concluído, está em andamento ou teve uma proposta aceita.</p>
           </Modal>)}
@@ -252,12 +251,6 @@ export function Dashboard() {
             footer={<button type="button" className="button button-secondary" onClick={urlModal.close}>Fechar</button>}>
             <p role="alert">Só é possível confirmar a conclusão de um pedido em andamento, com o pagamento confirmado.</p>
           </Modal>)}
-      {!session.loading && (urlModal.current === 'perfil' || urlModal.current === 'ajuda') && <Modal size="lg" onClose={urlModal.close}
-        title={urlModal.current === 'perfil' ? 'Configurações da conta' : 'Central de ajuda'}>
-        {urlModal.current === 'perfil' ? <AccountSettings key={`${session.customerId}:${session.accessToken}`}
-          token={session.accessToken} customerId={session.customerId} onCompleted={dashboard.retry} />
-          : <p>Consulte o resumo da conta, finalize seu cadastro nas configurações e crie pedidos. Em Meus pedidos, filtre por status e consulte detalhes, propostas e acompanhamento.</p>}
-      </Modal>}
     </div>
   )
 }

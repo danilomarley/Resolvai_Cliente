@@ -17,6 +17,11 @@ export type CompleteRegistration = {
   contato: { tipo: 'telefone' | 'whatsapp' | 'email_alt'; valor: string }
 }
 
+/** Troca a senha da conta logada (POST /auth/change-password): a API só precisa da nova senha. */
+export async function changePassword(newPassword: string, token: string, signal?: AbortSignal) {
+  await apiRequest('/api/v1/auth/change-password', { method: 'POST', body: { newPassword }, token, signal })
+}
+
 export async function completeRegistration(body: CompleteRegistration, token: string, customerId: string, signal?: AbortSignal) {
   let response: unknown
   try {

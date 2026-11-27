@@ -2,12 +2,11 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ApiError } from '../services/api'
 import {
-  getProfile, updateProfile,
+  changePassword, getProfile, updateProfile,
   type CompleteRegistration, type Profile, type ProfileContact,
 } from '../services/accountApi'
-import { CompleteRegistrationForm } from './CompleteRegistrationForm'
+import { ChangePasswordForm } from './ChangePasswordForm'
 import { states } from '../services/registrationForm'
-import { useFinalizeRegistration } from '../services/useFinalizeRegistration'
 import { orderDate } from '../services/orders'
 import { customerSession } from '../services/session'
 import './AccountSettings.css'
@@ -75,11 +74,10 @@ export function AccountSettings({ token, customerId, onCompleted }: Props) {
   const [contactType, setContactType] = useState<ProfileContact['tipo']>('telefone')
   const submission = useRef<AbortController>()
   const user = profile?.user
-  const finalizing = useFinalizeRegistration(token, customerId, () => {
-    setSuccess('Cadastro finalizado com sucesso.')
-    setAttempt((value) => value + 1)
-    onCompleted()
-  })
+  const [passwordSaving, setPasswordSaving] = useState(false)
+  const [passwordError, setPasswordError] = useState('')
+  const [passwordSuccess, setPasswordSuccess] = useState('')
+  const [passwordRound, setPasswordRound] = useState(0)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -138,6 +136,23 @@ export function AccountSettings({ token, customerId, onCompleted }: Props) {
     })
   }
 
+  async function savePassword(newPassword: string) {
+    if (!token || passwordSaving) return
+    setPasswordSaving(true)
+    setPasswordError('')
+    setPasswordSuccess('')
+    try {
+      await changePassword(newPassword, token)
+      setPasswordSuccess('Senha alterada com sucesso.')
+      // Limpa os campos da senha digitada.
+      setPasswordRound((value) => value + 1)
+    } catch (error) {
+      setPasswordError(error instanceof ApiError ? error.message : 'Não foi possível alterar a senha. Tente novamente.')
+    } finally {
+      setPasswordSaving(false)
+    }
+  }
+
   function logout() {
     submission.current?.abort()
     customerSession.clear()
@@ -156,7 +171,7 @@ export function AccountSettings({ token, customerId, onCompleted }: Props) {
 
   return <div className="account-settings dialog-stack">
     <section aria-labelledby="account-data-title">
-      <h3 id="account-data-title">Dados da conta</h3>
+      <h2 id="account-data-title">Dados da conta</h2>
       <dl className="account-data">
         <div><dt>E-mail de acesso</dt><dd>{user.email}</dd></div>
         <div><dt>Tipo de conta</dt><dd>{user.role === 'Cliente' ? 'Contratante' : user.role === 'Admin' ? 'Administrador' : user.role}</dd></div>
@@ -168,7 +183,7 @@ export function AccountSettings({ token, customerId, onCompleted }: Props) {
     {success && <p role="status" className="account-success">{success}</p>}
     {user.cpf
       ? <form className="form-stack" onSubmit={saveChanges} key={`editar-${attempt}`}>
-        <h3>Editar dados</h3>
+        <h2>Editar dados</h2>
         <p>Atualize seu nome, endereço principal e contato. O CPF não pode ser alterado.</p>
         <fieldset disabled={saving} className="account-fields">
           <legend>Identificação</legend>
@@ -179,15 +194,12 @@ export function AccountSettings({ token, customerId, onCompleted }: Props) {
         {saveError && <div role="alert"><p>{saveError.message}</p>{saveError.status === 401 && <Link to="/login">Entrar novamente</Link>}</div>}
         <button className="button button-primary" type="submit" disabled={saving}>{saving ? 'Salvando…' : 'Salvar alterações'}</button>
       </form>
-      : <div className="form-stack">
-        <h3>Finalizar cadastro</h3>
-        <p>Informe seu CPF, endereço principal e contato.</p>
-        <CompleteRegistrationForm id="conta-finalizar-cadastro" defaultName={user.name} disabled={finalizing.saving}
-          error={finalizing.error} onSubmit={finalizing.submit} />
-        <button className="button button-primary" type="submit" form="conta-finalizar-cadastro" disabled={finalizing.saving}>
-          {finalizing.saving ? 'Finalizando cadastro…' : 'Finalizar cadastro'}
-        </button>
+      : <div className="form-stack" role="status">
+        <h2>Finalizar cadastro</h2>
+        <p>Informe seu CPF, endereço principal e contato para poder criar pedidos.</p>
+        <Link className="button button-primary" to="/cadastro/finalizar">Finalizar cadastro</Link>
       </div>}
+    <ChangePasswordForm key={`senha-${passwordRound}`} saving={passwordSaving} error={passwordError} success={passwordSuccess} onSubmit={savePassword} />
     <button className="button button-secondary" disabled={saving} onClick={() => { setSaveError(undefined); setSuccess(''); setAttempt((value) => value + 1) }}>Atualizar dados da conta</button>
     {logoutButton}
   </div>

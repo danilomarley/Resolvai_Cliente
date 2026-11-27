@@ -6,7 +6,8 @@ import type { Dialog, NavKey, Profile } from '../../types/dashboard'
 type SidebarProps = {
   mobileOpen: boolean
   setMobileOpen: Dispatch<SetStateAction<boolean>>
-  activeNav: NavKey
+  /** Nenhum item fica ativo em páginas que não são do menu (ex.: Central de ajuda). */
+  activeNav: NavKey | null
   navigate: (item: NavKey) => void
   openDialog: (dialog: Dialog) => void
   profile: Profile

@@ -146,10 +146,10 @@ function OrderDetails({ order }: { order: Order }) {
       <h2>Pedido #{orderNumber(order)} · {order.title}</h2>
       <OrderStatus order={order} />
       <NextStepCard order={order} />
-      {order.status === 'completed' && <Link className="button button-primary" {...modalLink(location.pathname, location.search, 'avaliar', order.id)}>Avaliar serviço</Link>}
+      {order.status === 'completed' && <Link className="button button-primary" to={`/pedidos/${order.id}/avaliar`}>Avaliar serviço</Link>}
       {canChangeOrder(order) && (
         <div className="order-actions">
-          <Link className="button button-secondary" {...modalLink(location.pathname, location.search, 'editar-pedido', order.id)}>Editar pedido</Link>
+          <Link className="button button-secondary" to={`/pedidos/${order.id}/editar`}>Editar pedido</Link>
           <Link className="button button-secondary" {...modalLink(location.pathname, location.search, 'cancelar-pedido', order.id)}>Cancelar pedido</Link>
         </div>
       )}
@@ -267,7 +267,7 @@ export function MyOrders({ orders, customerId, orderId, search, loading, error, 
                   Ver propostas ({order.proposals})
                 </Link>
               )}
-              {order.status === 'completed' && <Link className="button button-secondary" {...modalLink(location.pathname, location.search, 'avaliar', order.id)}>Avaliar serviço</Link>}
+              {order.status === 'completed' && <Link className="button button-secondary" to={`/pedidos/${order.id}/avaliar`}>Avaliar serviço</Link>}
             </div>
           </article>
         ))}
