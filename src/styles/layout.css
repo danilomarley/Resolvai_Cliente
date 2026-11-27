@@ -488,3 +488,15 @@ main {
     padding-bottom: max(12px, env(safe-area-inset-bottom));
   }
 }
+
+.breadcrumb-nav { min-width: 0; }
+.breadcrumb-trail { display: flex; min-width: 0; flex-wrap: wrap; gap: 6px 13px; align-items: center; margin: 0; padding: 0; list-style: none; }
+.breadcrumb-trail li { display: flex; min-width: 0; align-items: center; gap: 13px; }
+.breadcrumb-trail a { color: var(--color-muted); text-decoration: none; }
+.breadcrumb-trail a:hover { color: var(--color-text); text-decoration: underline; }
+.breadcrumb-trail a:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; border-radius: 2px; }
+@media (max-width: 640px) {
+  /* No celular só cabe a tela atual; o botão "Voltar" e o menu levam de volta. */
+  .breadcrumb-trail li:not(:last-child) { display: none; }
+  .breadcrumb-trail li:last-child > svg { display: none; }
+}
