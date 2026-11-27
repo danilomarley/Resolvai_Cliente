@@ -82,6 +82,8 @@
   display: flex;
   padding: 0 4px;
   line-height: 1;
+  color: #fff;
+  text-decoration: none;
 }
 
 .brand-wordmark {

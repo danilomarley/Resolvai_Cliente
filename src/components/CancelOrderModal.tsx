@@ -34,7 +34,7 @@ export function CancelOrderModal({ order, token, onClose, onCancelled }: {
       description={`O pedido "${order.title}" deixa de receber propostas e as propostas já enviadas são encerradas. Esta ação não pode ser desfeita.`}
       footer={<>
         <button type="button" className="button button-secondary" disabled={submitting} onClick={onClose}>Manter pedido</button>
-        <button type="button" className="button button-primary" disabled={submitting} onClick={confirm}>
+        <button type="button" className="button button-danger" disabled={submitting} onClick={confirm}>
           {submitting ? 'Cancelando…' : 'Cancelar pedido'}
         </button>
       </>}>

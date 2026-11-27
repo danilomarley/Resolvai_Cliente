@@ -23,23 +23,24 @@ export function ChangePasswordForm({ saving, error, success, onSubmit }: {
   }
 
   return (
-    <form className="form-stack" onSubmit={submit} aria-labelledby="password-title">
+    <form className="form-stack account-section" onSubmit={submit} aria-labelledby="password-title">
       <h2 id="password-title">Alterar senha</h2>
       <p>Escolha uma senha nova com {passwordLimits.min} a {passwordLimits.max} caracteres.</p>
-      <fieldset disabled={saving} className="account-fields">
-        <legend>Nova senha</legend>
+      <div className="account-fields-plain">
         <label>Nova senha
-          <input type="password" name="new-password" required minLength={passwordLimits.min} maxLength={passwordLimits.max}
+          <input type="password" name="new-password" disabled={saving} required minLength={passwordLimits.min} maxLength={passwordLimits.max}
             autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} />
         </label>
         <label>Confirmar nova senha
-          <input type="password" name="confirm-password" required minLength={passwordLimits.min} maxLength={passwordLimits.max}
+          <input type="password" name="confirm-password" disabled={saving} required minLength={passwordLimits.min} maxLength={passwordLimits.max}
             autoComplete="new-password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} />
         </label>
-      </fieldset>
+      </div>
       {(problem || error) && <p role="alert">{problem || error}</p>}
       {success && !problem && !error && <p role="status" className="account-success">{success}</p>}
-      <button className="button button-primary" type="submit" disabled={saving}>{saving ? 'Alterando senha…' : 'Alterar senha'}</button>
+      <div className="form-actions">
+        <button className="button button-secondary" type="submit" disabled={saving}>{saving ? 'Alterando senha…' : 'Alterar senha'}</button>
+      </div>
     </form>
   )
 }

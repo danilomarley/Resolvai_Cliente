@@ -146,7 +146,7 @@ function OrderDetails({ order }: { order: Order }) {
       {canChangeOrder(order) && (
         <div className="order-actions">
           <Link className="button button-secondary" to={`/pedidos/${order.id}/editar`}>Editar pedido</Link>
-          <Link className="button button-secondary" {...modalLink(location.pathname, location.search, 'cancelar-pedido', order.id)}>Cancelar pedido</Link>
+          <Link className="button button-ghost button-ghost-danger" {...modalLink(location.pathname, location.search, 'cancelar-pedido', order.id)}>Cancelar pedido</Link>
         </div>
       )}
       <dl>

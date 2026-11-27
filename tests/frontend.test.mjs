@@ -1196,7 +1196,11 @@ test('the change password form asks for the new password twice and shows the API
   assert.match(html, /minLength="8"/)
   assert.match(html, /maxLength="128"/)
   assert.doesNotMatch(html, /current-password|Senha atual/)
-  assert.match(render({ saving: true }), /<fieldset disabled=""[^>]*>[\s\S]*disabled=""[^>]*>Alterando senha…/)
+  assert.match(render({ saving: true }), /disabled=""[^>]*>Alterando senha…/)
+  // Sem fieldset repetindo o título da seção, e um só botão, com largura natural (dentro de .form-actions).
+  assert.doesNotMatch(html, /<fieldset|<legend/)
+  assert.equal((html.match(/<button/g) ?? []).length, 1)
+  assert.match(html, /<div class="form-actions"><button class="button button-secondary" type="submit"/)
   assert.match(render({ error: 'A senha é fraca.' }), /role="alert">A senha é fraca\./)
   assert.match(render({ success: 'Senha alterada com sucesso.' }), /role="status"[^>]*>Senha alterada com sucesso\./)
   // O erro da API vem antes do aviso de sucesso antigo.
@@ -1315,4 +1319,20 @@ test('an account without orders can create the first one from the list, a filter
   const noMatch = renderOrders({ orders: [order], customerId, search: 'zzz' })
   assert.match(noMatch, /Nenhum pedido encontrado/)
   assert.doesNotMatch(noMatch, /Criar pedido/)
+})
+
+test('button hierarchy: ghost and danger variants exist and destructive actions do not look like the main one', () => {
+  const css = readFileSync(new URL('../src/styles/controls.css', import.meta.url), 'utf8')
+  for (const name of ['.button-ghost', '.button-ghost-danger', '.button-danger', '.form-actions']) assert.ok(css.includes(`${name} {`), name)
+  const cancel = renderToStaticMarkup(React.createElement(CancelOrderModal, { order: { id: randomUUID(), title: 'Pedido' }, token: 't', onClose() {}, onCancelled() {} }))
+  assert.match(cancel, /class="button button-danger"[^>]*>Cancelar pedido/)
+  assert.doesNotMatch(cancel, /button-primary/)
+})
+
+test('the logo has an accessible name and is used on the access screens and the sidebar', async () => {
+  const { Logo } = await import('../src/components/Logo.tsx')
+  const html = renderAt(React.createElement(Logo, {}))
+  assert.match(html, /role="img" aria-label="ResolvAI"/)
+  assert.match(html, /Resolv<span class="logo-ai">AI<\/span>/)
+  assert.match(renderAt(React.createElement(Logo, { markOnly: true })), /^<svg[^>]*aria-hidden="true"/)
 })

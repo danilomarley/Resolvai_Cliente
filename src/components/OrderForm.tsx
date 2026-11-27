@@ -139,7 +139,7 @@ export function OrderForm({ onCancel, onCreate, submitting, submitError, initial
         </fieldset>
         {(error || submitError) && <p role="alert">{error || submitError}</p>}
         <div className="order-form-actions">
-          <button className="button button-secondary" type="button" disabled={submitting} onClick={onCancel}>Cancelar</button>
+          <button className="button button-ghost" type="button" disabled={submitting} onClick={onCancel}>Cancelar</button>
           {onBackToAssistant && (
             <button className="button button-secondary" type="button" disabled={submitting} onClick={onBackToAssistant}>
               Voltar ao assistente
