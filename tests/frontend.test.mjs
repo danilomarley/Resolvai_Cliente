@@ -42,6 +42,8 @@ const { ApiError, createApiClient } = await import('../src/services/api.ts')
 const { MyOrders } = await import('../src/pages/MyOrders.tsx')
 const { OrderForm } = await import('../src/components/OrderForm.tsx')
 const { ReviewForm } = await import('../src/components/OrderReview.tsx')
+const { ReviewOrderPage } = await import('../src/pages/ReviewOrder/index.tsx')
+const { HelpPage } = await import('../src/pages/Help/index.tsx')
 const { Modal } = await import('../src/components/Modal.tsx')
 const { Sidebar } = await import('../src/components/dashboard/Sidebar.tsx')
 const { NewOrderPage } = await import('../src/pages/NewOrder/index.tsx')
@@ -190,7 +192,8 @@ test('review form has five named radio inputs, optional comment and prevents emp
 test('only completed order details offer the review route', () => {
   const id = randomUUID(), customerId = randomUUID()
   const order = { id, customerId, title: 'Serviço', category: 'Pedido', location: '', description: '', status: 'completed', icon: 'bag', proposals: 0 }
-  assert.match(renderOrders({ orders: [order], customerId, orderId: id }), new RegExp(`href="/pedidos\\?modal=avaliar&amp;pedido=${id}"`))
+  assert.match(renderOrders({ orders: [order], customerId, orderId: id }), new RegExp(`href="/pedidos/${id}/avaliar"[^>]*>Avaliar serviço<`))
+  assert.doesNotMatch(renderOrders({ orders: [order], customerId, orderId: id }), /modal=avaliar/)
   assert.doesNotMatch(renderOrders({ orders: [{ ...order, status: 'progress' }], customerId, orderId: id }), /Avaliar serviço/)
 })
 
@@ -1136,4 +1139,38 @@ test('the edit page explains when the order is loading, missing or can no longer
     assert.match(html, /não pode mais ser alterado/)
     assert.doesNotMatch(html, /Salvar alterações/)
   }
+})
+
+test('legacy review and help links are sent to their pages', () => {
+  const id = randomUUID()
+  assert.equal(legacyModalTarget('/pedidos', `?modal=avaliar&pedido=${id}`), `/pedidos/${id}/avaliar`)
+  assert.equal(legacyModalTarget(`/pedidos/${id}`, '?modal=avaliar'), `/pedidos/${id}/avaliar`)
+  assert.equal(legacyModalTarget('/', '?modal=avaliar'), '/pedidos')
+  assert.equal(legacyModalTarget('/pedidos', '?modal=ajuda'), '/ajuda')
+  assert.equal(legacyModalTarget('/', '?modal=criar-pedido'), '/pedidos/novo')
+})
+
+test('the review page loads the order and explains when it is missing or not completed yet', () => {
+  const id = randomUUID()
+  const done = { id, customerId: randomUUID(), title: 'Trocar chuveiro', category: 'Pedido', location: '', description: 'Descrição', status: 'completed', icon: 'bag', proposals: 0 }
+  const render = (props) => renderAt(React.createElement(ReviewOrderPage, { orderId: id, token: 't', loading: false, onSaved() {}, onRetry() {}, ...props }))
+  assert.match(render({ loading: true }), /Carregando pedido/)
+  assert.match(render({ error: new ApiError(404, 'x') }), /Este pedido não está disponível para sua conta/)
+  assert.match(render({ error: new ApiError(500, 'Falha') }), />Tentar novamente</)
+  const html = render({ order: done })
+  assert.doesNotMatch(html, /<dialog|class="modal/)
+  assert.match(html, /<h1>Avaliar serviço<\/h1>/)
+  assert.match(html, /Trocar chuveiro/)
+  assert.match(html, new RegExp(`href="/pedidos/${id}"[^>]*>Voltar para o pedido<`))
+})
+
+test('the help page answers the main questions of the order journey in plain pages, not a modal', () => {
+  const html = renderAt(React.createElement(HelpPage))
+  assert.doesNotMatch(html, /<dialog|class="modal/)
+  assert.match(html, /<h1>Central de ajuda<\/h1>/)
+  for (const question of ['Como crio um pedido', 'editar ou cancelar', 'Como funciona o contrato', 'Como pago', 'depois que o serviço termina', 'minha senha']) {
+    assert.match(html, new RegExp(`<summary>[^<]*${question}`, 'i'))
+  }
+  assert.match(html, /30 minutos/)
+  assert.match(html, /Confirmar conclusão/)
 })
