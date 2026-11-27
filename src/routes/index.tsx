@@ -21,6 +21,7 @@ export function AppRoutes() {
           <Route path="pedidos/:orderId/editar" element={null} />
           <Route path="pedidos/:orderId/avaliar" element={null} />
           <Route path="ajuda" element={null} />
+          <Route path="conta" element={null} />
           <Route path="pedidos/:orderId/propostas" element={null} />
           <Route path="pedidos/:orderId/propostas/:proposalId" element={null} />
           <Route path="pedidos/:orderId/contrato" element={null} />

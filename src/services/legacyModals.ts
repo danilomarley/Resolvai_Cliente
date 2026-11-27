@@ -11,6 +11,8 @@ export function legacyModalTarget(pathname: string, search: string): string | nu
   // O pedido vem de ?pedido= ou, no detalhe, da própria rota.
   const order = readOrder(search) ?? new RegExp(`^/pedidos/(${uuid})(?:/|$)`, 'i').exec(pathname)?.[1]?.toLowerCase()
   switch (params.get('modal')) {
+    case 'perfil':
+      return '/conta'
     case 'ajuda':
       return '/ajuda'
     case 'avaliar':
