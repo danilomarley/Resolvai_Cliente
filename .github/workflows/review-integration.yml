@@ -1,0 +1,45 @@
+name: Review integration PostgreSQL
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - id: versions
+        run: |
+          echo "backend=$(node -p 'require("./integration/reviews/versions.json").backend')" >> "$GITHUB_OUTPUT"
+          echo "services=$(node -p 'require("./integration/reviews/versions.json").services')" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          repository: danilomarley/Resolvai_Cliente
+          ref: ${{ steps.versions.outputs.services }}
+          path: .test-services
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: Diegofreitas-mend/Resolvai_Backend_Node
+          ref: ${{ steps.versions.outputs.backend }}
+          path: .test-services/.e2e-backend
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm ci && npm run build && npm run typecheck && npm test
+        working-directory: .test-services/.e2e-backend
+      - run: node integration/reviews/prepare.mjs
+      - run: npx playwright install --with-deps chromium
+      - run: node e2e/manage.mjs up
+        working-directory: .test-services
+      - name: PostgreSQL real e concorrência com conexões independentes
+        run: npm run test:postgres
+        working-directory: .test-services/.e2e-backend
+      - name: Estrelas, teclado, erros, duplicidade e Home reais
+        run: npx playwright test --config integration/reviews/playwright.config.mjs
+      - if: always()
+        run: node e2e/manage.mjs down
+        working-directory: .test-services

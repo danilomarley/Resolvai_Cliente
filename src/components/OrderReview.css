@@ -1,0 +1,7 @@
+.review-fields { border: 0; padding: 0; display: grid; gap: 1rem; }
+.review-fields textarea { width: 100%; box-sizing: border-box; padding: 1rem; border: 1px solid var(--border, #ccc); border-radius: .5rem; font: inherit; resize: vertical; }
+.review-stars { display: flex; gap: .75rem; flex-wrap: wrap; }
+.review-stars label { display: grid; justify-items: center; cursor: pointer; min-width: 44px; }
+.review-stars span { font-size: 2rem; color: #666; }
+.review-stars .selected { color: #8a5700; }
+.review-stars label:focus-within { outline: 2px solid currentColor; outline-offset: 3px; border-radius: .25rem; }

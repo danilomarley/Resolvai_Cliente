@@ -23,6 +23,7 @@ registerHooks({
   },
   load(url, context, nextLoad) {
     if (url.endsWith('.css')) return { format: 'module', source: '', shortCircuit: true }
+    if (url.endsWith('.svg')) return { format: 'module', source: 'export default "/logo.svg"', shortCircuit: true }
     if (/\.tsx?$/.test(url)) return { format: 'module', shortCircuit: true,
       source: ts.transpileModule(readFileSync(fileURLToPath(url), 'utf8'), {
         compilerOptions: { module: ts.ModuleKind.ESNext, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022 },
@@ -40,6 +41,16 @@ const { OrderAssistant } = await import('../src/components/OrderAssistant.tsx')
 const { ApiError, createApiClient } = await import('../src/services/api.ts')
 const { MyOrders } = await import('../src/pages/MyOrders.tsx')
 const { OrderForm } = await import('../src/components/OrderForm.tsx')
+const { ReviewForm } = await import('../src/components/OrderReview.tsx')
+const { Modal } = await import('../src/components/Modal.tsx')
+const { Sidebar } = await import('../src/components/dashboard/Sidebar.tsx')
+const { CreateOrderModal } = await import('../src/components/CreateOrderModal.tsx')
+const { safeReturnPath } = await import('../src/services/returnPath.ts')
+const { NotFound } = await import('../src/pages/NotFound/index.tsx')
+const { readModal, readNext, readOrder, searchWithModal, modalLink } = await import('../src/services/modalRoute.ts')
+const { buildRegistration, emptyRegistration, maskCpf, maskCep, maskPhone, isValidPhone } = await import('../src/services/registrationForm.ts')
+const { CompleteRegistrationForm } = await import('../src/components/CompleteRegistrationForm.tsx')
+const { parseReview, parseReviewSummary, validRating, submitReview } = await import('../src/services/reviews.ts')
 const renderOrders = (props = {}) => renderToStaticMarkup(React.createElement(StaticRouter, { location: '/pedidos' },
   React.createElement(MyOrders, { orders: [], customerId: null, search: '', ...props })))
 
@@ -127,9 +138,46 @@ test('home cards follow the approved layout with real data and no invented ratin
   assert.match(html, />03</)
   assert.match(html, /\+1 novo nesta semana/)
   assert.match(html, /2 propostas para conferir/)
-  assert.match(html, /Avaliações em breve/)
+  assert.match(html, /Avaliações indisponíveis/)
   assert.doesNotMatch(html, /4,8/)
   assert.match(html, /Nenhum serviço concluído ainda/)
+  const withReviews = renderToStaticMarkup(React.createElement(DashboardOverview, { ...props, reviews: { data: { count: 2, averageRating: 4.5 }, loading: false } }))
+  assert.match(withReviews, /4,5/)
+  assert.match(withReviews, /2 avaliações enviadas/)
+  const empty = renderToStaticMarkup(React.createElement(DashboardOverview, { ...props, reviews: { data: { count: 0, averageRating: null }, loading: false } }))
+  assert.match(empty, /Nenhuma avaliação enviada/)
+})
+
+test('review contracts reject invalid scores and inconsistent summaries', async () => {
+  const review = { orderId: randomUUID(), providerId: randomUUID(), rating: 5, createdAt: new Date().toISOString() }
+  assert.deepEqual(parseReview(review), review)
+  for (const rating of [0, 6, 1.5, '5', undefined]) {
+    assert.equal(validRating(rating), false)
+    assert.throws(() => parseReview({ ...review, rating }), ApiError)
+  }
+  for (const value of [{ count: 0, averageRating: 5 }, { count: 1, averageRating: null }, { count: -1, averageRating: null }]) assert.throws(() => parseReviewSummary(value), ApiError)
+  await assert.rejects(submitReview(review.orderId, 'test', 0, ''), ApiError)
+  await assert.rejects(submitReview(review.orderId, 'test', 5, 'x'.repeat(2001)), ApiError)
+})
+
+test('review form has five named radio inputs, optional comment and prevents empty submission', () => {
+  const html = renderToStaticMarkup(React.createElement(ReviewForm, { sending: false, error: '', onSubmit() {} }))
+  assert.equal((html.match(/type="radio"/g) ?? []).length, 5)
+  assert.match(html, /aria-label="1 estrela"/)
+  assert.match(html, /aria-label="5 estrelas"/)
+  assert.match(html, /Comentário \(opcional\)/)
+  assert.match(html, /maxLength="2000"/)
+  assert.match(html, /type="submit" disabled=""/)
+  const pending = renderToStaticMarkup(React.createElement(ReviewForm, { sending: true, error: 'Falha de envio', onSubmit() {} }))
+  assert.match(pending, /fieldset disabled/)
+  assert.match(pending, /role="alert"/)
+})
+
+test('only completed order details offer the review route', () => {
+  const id = randomUUID(), customerId = randomUUID()
+  const order = { id, customerId, title: 'Serviço', category: 'Pedido', location: '', description: '', status: 'completed', icon: 'bag', proposals: 0 }
+  assert.match(renderOrders({ orders: [order], customerId, orderId: id }), new RegExp(`href="/pedidos\\?modal=avaliar&amp;pedido=${id}"`))
+  assert.doesNotMatch(renderOrders({ orders: [{ ...order, status: 'progress' }], customerId, orderId: id }), /Avaliar serviço/)
 })
 
 test('assistant replies and suggested scope are validated and mapped to the order form', () => {
@@ -182,3 +230,149 @@ test('photo uploads are sent as multipart without a JSON content type', async ()
   assert.equal(sent.headers.Authorization, 'Bearer t')
 })
 
+
+test('modal state lives in the URL and ignores unknown names', () => {
+  const allowed = ['perfil', 'ajuda']
+  assert.equal(readModal('?modal=perfil', allowed), 'perfil')
+  assert.equal(readModal('?modal=outro', allowed), null)
+  assert.equal(readModal('', allowed), null)
+  assert.equal(searchWithModal('', 'ajuda'), '?modal=ajuda')
+  assert.equal(searchWithModal('?a=1', 'perfil'), '?a=1&modal=perfil')
+  assert.equal(searchWithModal('?a=1&modal=perfil', null), '?a=1')
+  assert.equal(searchWithModal('?modal=perfil', null), '')
+})
+
+test('modal renders size, description, scrollable body and footer; blocks closing when not dismissible', () => {
+  const render = (props) => renderToStaticMarkup(React.createElement(Modal, { title: 'Título', onClose() {}, ...props },
+    React.createElement('p', null, 'Conteúdo')))
+  const html = render({ size: 'lg', description: 'Apoio', footer: React.createElement('button', null, 'Salvar') })
+  assert.match(html, /class="modal modal-lg"/)
+  assert.match(html, /aria-labelledby="[^"]+"/)
+  assert.match(html, /aria-describedby="[^"]+"/)
+  assert.match(html, /class="modal-body"><p>Conteúdo<\/p>/)
+  assert.match(html, /class="modal-footer"><button>Salvar<\/button>/)
+  const plain = render({})
+  assert.match(plain, /class="modal modal-md"/)
+  assert.doesNotMatch(plain, /modal-footer|aria-describedby/)
+  assert.match(render({ dismissible: false }), /aria-label="Fechar janela"[^>]*disabled=""|disabled=""[^>]*aria-label="Fechar janela"/)
+})
+
+test('modal intent is only kept for known actions and leaves with the modal', () => {
+  assert.equal(readNext('?modal=finalizar-cadastro&next=criar-pedido'), 'criar-pedido')
+  assert.equal(readNext('?next=apagar-tudo'), null)
+  assert.equal(searchWithModal('', 'finalizar-cadastro', 'criar-pedido'), '?modal=finalizar-cadastro&next=criar-pedido')
+  assert.equal(searchWithModal('?modal=finalizar-cadastro&next=criar-pedido', null), '')
+  assert.equal(searchWithModal('?modal=perfil&next=criar-pedido', 'ajuda'), '?modal=ajuda')
+})
+
+test('registration masks and validation build the API payload', () => {
+  assert.equal(maskCpf('12345678901'), '123.456.789-01')
+  assert.equal(maskCep('60115000'), '60115-000')
+  assert.equal(maskPhone('85999998888'), '(85) 99999-8888')
+  assert.equal(isValidPhone('(85) 99999-8888'), true)
+  assert.equal(isValidPhone('(85) 89999-8888'), false)
+  const filled = { ...emptyRegistration('  Maria Souza '), cpf: '123.456.789-01', cep: '60115-000', logradouro: ' Rua A ', numero: '10',
+    bairro: 'Centro', cidade: 'Fortaleza', estado: 'ce', contactValue: '(85) 99999-8888' }
+  const ok = buildRegistration(filled)
+  assert.deepEqual(ok.payload, { name: 'Maria Souza', cpf: '12345678901',
+    endereco: { logradouro: 'Rua A', numero: '10', bairro: 'Centro', cidade: 'Fortaleza', estado: 'CE', cep: '60115000' },
+    contato: { tipo: 'whatsapp', valor: '85999998888' } })
+  assert.match(buildRegistration({ ...filled, cpf: '123' }).error, /CPF/)
+  assert.match(buildRegistration({ ...filled, cep: '6011' }).error, /CEP/)
+  assert.match(buildRegistration({ ...filled, estado: 'XX' }).error, /estado/)
+  assert.match(buildRegistration({ ...filled, contactValue: '123' }).error, /telefone/)
+  assert.match(buildRegistration({ ...filled, contactType: 'email_alt', contactValue: 'sem-arroba' }).error, /e-mail/)
+  assert.equal(buildRegistration({ ...filled, contactType: 'email_alt', contactValue: ' A@B.com ' }).payload.contato.valor, 'a@b.com')
+})
+
+test('registration form exposes labelled fields and disables them while saving', () => {
+  const render = (props) => renderToStaticMarkup(React.createElement(CompleteRegistrationForm, { id: 'f', disabled: false, onSubmit() {}, ...props }))
+  const html = render({ defaultName: 'Maria Souza' })
+  for (const label of ['Nome completo', 'CPF', 'CEP', 'Logradouro', 'Bairro', 'Cidade', 'Estado', 'Tipo de contato', 'Número de contato']) assert.match(html, new RegExp(label))
+  assert.match(html, /value="Maria Souza"/)
+  assert.match(html, /não pode ser alterado depois/)
+  assert.doesNotMatch(html, /role="alert"/)
+  assert.match(render({ disabled: true }), /<fieldset disabled=""/)
+  assert.match(render({ error: 'CPF já em uso' }), /role="alert"[^>]*>CPF já em uso/)
+})
+
+test('sidebar only offers working destinations and marks the active one', () => {
+  const render = (activeNav) => renderToStaticMarkup(React.createElement(Sidebar, {
+    mobileOpen: false, setMobileOpen() {}, activeNav, navigate() {}, openDialog() {}, profile: { name: 'Maria Souza', location: '' },
+  }))
+  const html = render('Propostas')
+  for (const label of ['Visão geral', 'Criar pedido', 'Meus pedidos', 'Propostas', 'Avaliações', 'Central de ajuda']) assert.match(html, new RegExp(`<span>${label}</span>`))
+  for (const removed of ['Mensagens', 'Contratos', 'Pagamentos']) assert.doesNotMatch(html, new RegExp(removed))
+  assert.equal((html.match(/aria-current="page"/g) ?? []).length, 1)
+  assert.match(html, /nav-item active"[^>]*aria-current="page"[^>]*><svg[\s\S]*?<span>Propostas<\/span>/)
+  assert.match(render('Criar pedido'), /aria-current="page"[^>]*>(?:(?!<\/button>)[\s\S])*<span>Criar pedido<\/span>/)
+})
+
+test('order list shortcuts can replace the page heading', () => {
+  const heading = { title: 'Propostas', description: 'Pedidos que estão recebendo propostas.' }
+  const html = renderOrders({ heading })
+  assert.match(html, />Propostas<\/h1>/)
+  assert.match(html, /Pedidos que estão recebendo propostas\./)
+  assert.match(renderOrders({}), />Meus pedidos<\/h1>/)
+})
+
+test('create order opens as a wide modal on the assistant, without a page heading or back button', () => {
+  const html = renderToStaticMarkup(React.createElement(CreateOrderModal, { token: 't', onClose() {}, onCreated() {} }))
+  assert.match(html, /class="modal modal-xl"/)
+  assert.match(html, /<h2[^>]*>Criar pedido<\/h2>/)
+  assert.match(html, /<h3 id="assistant-title">Vamos resolver, juntos\.<\/h3>/)
+  assert.doesNotMatch(html, /Voltar à visão geral/)
+  assert.doesNotMatch(html, /<h1/)
+  assert.doesNotMatch(html, /Descartar este pedido/)
+  assert.doesNotMatch(html, /hidden=""/)
+})
+
+test('review modal link keeps the current page and carries the order id in the URL', () => {
+  const id = randomUUID()
+  assert.equal(readOrder(`?modal=avaliar&pedido=${id.toUpperCase()}`), id)
+  assert.equal(readOrder('?pedido=../../etc'), null)
+  assert.equal(searchWithModal('?status=Completed', 'avaliar', undefined, id), `?status=Completed&modal=avaliar&pedido=${id}`)
+  assert.equal(searchWithModal(`?modal=avaliar&pedido=${id}&status=Completed`, null), '?status=Completed')
+  const link = modalLink('/pedidos', '?status=Completed', 'avaliar', id)
+  assert.deepEqual(link.to, { pathname: '/pedidos', search: `?status=Completed&modal=avaliar&pedido=${id}` })
+  assert.equal(link.state.modalOpened, true)
+})
+
+test('order details show section tabs instead of per-page back buttons', () => {
+  const id = randomUUID(), customerId = randomUUID()
+  const order = { id, customerId, title: 'Serviço', category: 'Pedido', location: '', description: '', status: 'waiting', icon: 'bag', proposals: 2, proposalList: [] }
+  for (const [view, active] of [[undefined, 'Detalhes'], ['propostas', 'Propostas \\(2\\)'], ['acompanhar', 'Acompanhamento']]) {
+    const html = renderOrders({ orders: [order], customerId, orderId: id, view })
+    assert.match(html, /aria-label="Seções do pedido"/)
+    assert.match(html, new RegExp(`class="order-tab active" aria-current="page"[^>]*>${active}<`))
+    assert.equal((html.match(/aria-current="page"/g) ?? []).length, 1)
+    assert.match(html, new RegExp(`href="/pedidos/${id}/propostas"`))
+    assert.match(html, new RegExp(`href="/pedidos/${id}/acompanhar"`))
+    assert.doesNotMatch(html, /Ver detalhes do pedido/)
+  }
+})
+
+test('login only returns to known app screens with known parameters', () => {
+  const id = randomUUID()
+  for (const ok of ['/', '/pedidos', `/pedidos/${id}`, `/pedidos/${id}/propostas`, `/pedidos/${id}/acompanhar`, '/pedidos?status=Completed&page=2',
+    `/pedidos/${id}?modal=avaliar&pedido=${id}`, '/?modal=finalizar-cadastro&next=criar-pedido']) assert.equal(safeReturnPath(ok), ok)
+  for (const bad of [undefined, null, 42, 'https://evil.example', '//evil.example', '/login', '/pedidos/../x', '/pedidos/abc/propostas', `/pedidos/${id}/outra`,
+    '/pedidos?status=Hacked', '/pedidos?redirect=https://evil.example', '/pedidos?status=Pending#x', '/pedidos?a=1?b=2', '/?modal=desconhecido', '/?pedido=1']) assert.equal(safeReturnPath(bad), '/')
+})
+
+test('unknown addresses show a not found page with a way home', () => {
+  const html = renderToStaticMarkup(React.createElement(StaticRouter, { location: '/qualquer' }, React.createElement(NotFound)))
+  assert.match(html, /<h1>Página não encontrada<\/h1>/)
+  assert.match(html, /href="\/"[^>]*>Ir para o início/)
+})
+
+test('order cards offer details, proposals and review without a duplicated tracking button', () => {
+  const id = randomUUID(), customerId = randomUUID()
+  const order = { id, customerId, title: 'Serviço', category: 'Pedido', location: '', description: '', status: 'completed', icon: 'bag', proposals: 3 }
+  const html = renderOrders({ orders: [order], customerId })
+  assert.match(html, /Ver detalhes<\/a>/)
+  assert.match(html, /Ver propostas \(3\)/)
+  assert.match(html, /Avaliar serviço/)
+  assert.doesNotMatch(html, /Acompanhar pedido/)
+  assert.equal((html.match(/class="button/g) ?? []).length, 3)
+})

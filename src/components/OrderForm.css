@@ -11,3 +11,12 @@
 .order-form textarea { resize: vertical; }
 .order-form [role='alert'] { color: var(--color-danger); }
 .order-form-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+
+/* Dentro do modal o formulário não precisa de cartão próprio; as ações ficam fixas ao rolar. */
+.modal .order-form { padding: 0; max-width: none; border: 0; box-shadow: none; background: none; overflow: visible; }
+.modal .order-form form { margin-top: 12px; }
+.modal .order-form-actions {
+  position: sticky; bottom: -2px; z-index: 1; background: white;
+  padding: 14px 0 2px; border-top: 1px solid var(--color-border);
+}
+.order-form h3 { font-size: 22px; line-height: 1.2; }

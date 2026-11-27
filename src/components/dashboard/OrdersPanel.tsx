@@ -1,6 +1,6 @@
 import { Icon } from '../Icon'
 import type { Order } from '../../types/orders'
-import type { Dialog, Tab } from '../../types/dashboard'
+import type { Dialog, OrderTarget, Tab } from '../../types/dashboard'
 import { orderDate, orderStatusLabel } from '../../services/orders'
 
 type OrdersPanelProps = {
@@ -10,7 +10,7 @@ type OrdersPanelProps = {
   search: string
   setSearch: (search: string) => void
   openDialog: (dialog: Dialog) => void
-  openOrder: (order: Order, target?: Dialog) => void
+  openOrder: (order: Order, target?: OrderTarget) => void
 }
 
 export function OrdersPanel({
@@ -150,8 +150,8 @@ export function OrdersPanel({
                     openOrder(
                       order,
                       order.status === 'waiting' && order.proposals
-                        ? 'proposals'
-                        : 'order',
+                        ? 'propostas'
+                        : 'detalhes',
                     )
                   }
                 >

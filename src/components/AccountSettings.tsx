@@ -2,14 +2,16 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ApiError } from '../services/api'
 import {
-  completeRegistration, getProfile, updateProfile,
+  getProfile, updateProfile,
   type CompleteRegistration, type Profile, type ProfileContact,
 } from '../services/accountApi'
+import { CompleteRegistrationForm } from './CompleteRegistrationForm'
+import { states } from '../services/registrationForm'
+import { useFinalizeRegistration } from '../services/useFinalizeRegistration'
 import { orderDate } from '../services/orders'
 import { customerSession } from '../services/session'
 import './AccountSettings.css'
 
-const states = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO']
 const asError = (error: unknown) => error instanceof ApiError ? error : new ApiError(0, 'Não foi possível consultar sua conta. Tente novamente.')
 const onlyDigits = (value: string) => value.replace(/\D/g, '')
 
@@ -73,6 +75,11 @@ export function AccountSettings({ token, customerId, onCompleted }: Props) {
   const [contactType, setContactType] = useState<ProfileContact['tipo']>('telefone')
   const submission = useRef<AbortController>()
   const user = profile?.user
+  const finalizing = useFinalizeRegistration(token, customerId, () => {
+    setSuccess('Cadastro finalizado com sucesso.')
+    setAttempt((value) => value + 1)
+    onCompleted()
+  })
 
   useEffect(() => {
     const controller = new AbortController()
@@ -114,23 +121,6 @@ export function AccountSettings({ token, customerId, onCompleted }: Props) {
     } finally {
       if (!controller.signal.aborted) { setSaving(false); submission.current = undefined }
     }
-  }
-
-  async function finalize(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (!user || user.cpf || !token || !customerId) return
-    const form = new FormData(event.currentTarget)
-    const field: FormField = (name) => String(form.get(name) ?? '').trim()
-    const body: CompleteRegistration = {
-      name: user.name, cpf: onlyDigits(field('cpf')), endereco: readAddress(field),
-      contato: { tipo: contactType, valor: field('contato') },
-    }
-    await run(async (signal) => {
-      await completeRegistration(body, token, customerId, signal)
-      setSuccess('Cadastro finalizado com sucesso.')
-      setAttempt((value) => value + 1)
-      onCompleted()
-    })
   }
 
   async function saveChanges(event: FormEvent<HTMLFormElement>) {
@@ -189,17 +179,15 @@ export function AccountSettings({ token, customerId, onCompleted }: Props) {
         {saveError && <div role="alert"><p>{saveError.message}</p>{saveError.status === 401 && <Link to="/login">Entrar novamente</Link>}</div>}
         <button className="button button-primary" type="submit" disabled={saving}>{saving ? 'Salvando…' : 'Salvar alterações'}</button>
       </form>
-      : <form className="form-stack" onSubmit={finalize}>
+      : <div className="form-stack">
         <h3>Finalizar cadastro</h3>
-        <p>Informe seu CPF, endereço principal e contato. Confira o CPF antes de enviar: ele não pode ser alterado depois.</p>
-        <fieldset disabled={saving} className="account-fields">
-          <legend>Documento</legend>
-          <label>CPF<input name="cpf" required maxLength={14} inputMode="numeric" autoComplete="off" pattern={'(\\d{11}|\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2})'} placeholder="000.000.000-00" /></label>
-        </fieldset>
-        <AddressAndContactFields disabled={saving} contactType={contactType} setContactType={setContactType} />
-        {saveError && <div role="alert"><p>{saveError.message}</p>{saveError.status === 401 && <Link to="/login">Entrar novamente</Link>}</div>}
-        <button className="button button-primary" type="submit" disabled={saving}>{saving ? 'Finalizando cadastro…' : 'Finalizar cadastro'}</button>
-      </form>}
+        <p>Informe seu CPF, endereço principal e contato.</p>
+        <CompleteRegistrationForm id="conta-finalizar-cadastro" defaultName={user.name} disabled={finalizing.saving}
+          error={finalizing.error} onSubmit={finalizing.submit} />
+        <button className="button button-primary" type="submit" form="conta-finalizar-cadastro" disabled={finalizing.saving}>
+          {finalizing.saving ? 'Finalizando cadastro…' : 'Finalizar cadastro'}
+        </button>
+      </div>}
     <button className="button button-secondary" disabled={saving} onClick={() => { setSaveError(undefined); setSuccess(''); setAttempt((value) => value + 1) }}>Atualizar dados da conta</button>
     {logoutButton}
   </div>

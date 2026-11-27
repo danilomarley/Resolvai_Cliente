@@ -17,11 +17,12 @@ const scopeFields: { key: keyof AssistantScope; label: string }[] = [
   { key: 'especificacoes', label: 'Serviço esperado' },
 ]
 
-export function OrderAssistant({ onAsk, onReview, onManual, onCancel }: {
+export function OrderAssistant({ onAsk, onReview, onManual, onDirtyChange }: {
   onAsk: (messages: AssistantMessage[]) => Promise<AssistantReply>
   onReview: (order: NewOrder) => void
   onManual: () => void
-  onCancel: () => void
+  /** Avisa quando há conversa em andamento, para o modal pedir confirmação antes de descartar. */
+  onDirtyChange?: (dirty: boolean) => void
 }) {
   const [messages, setMessages] = useState<AssistantMessage[]>([])
   const [scope, setScope] = useState<AssistantScope>({})
@@ -30,9 +31,9 @@ export function OrderAssistant({ onAsk, onReview, onManual, onCancel }: {
   const [waiting, setWaiting] = useState(false)
   const [error, setError] = useState('')
   const conversation = useRef<HTMLDivElement>(null)
-  const heading = useRef<HTMLHeadingElement>(null)
 
-  useEffect(() => { heading.current?.focus() }, [])
+  const dirty = messages.length > 0 || answer.trim().length > 0
+  useEffect(() => { onDirtyChange?.(dirty) }, [dirty, onDirtyChange])
   useEffect(() => {
     conversation.current?.scrollTo({ top: conversation.current.scrollHeight })
   }, [messages, waiting])
@@ -70,13 +71,10 @@ export function OrderAssistant({ onAsk, onReview, onManual, onCancel }: {
 
   return (
     <section className="order-assistant" aria-labelledby="assistant-title">
-      <button className="text-button assistant-back" onClick={onCancel}>
-        <Icon name="arrow" size={16} /> Voltar à visão geral
-      </button>
       <div className="assistant-page-heading">
         <div>
           <p className="eyebrow">NOVO PEDIDO</p>
-          <h1 id="assistant-title" ref={heading} tabIndex={-1}>Vamos resolver, juntos.</h1>
+          <h3 id="assistant-title">Vamos resolver, juntos.</h3>
           <p>Conte o que você precisa. O assistente ajuda a organizar o escopo.</p>
         </div>
         <span className="assistant-demo"><Icon name="sparkles" size={15} /> Assistente com IA</span>

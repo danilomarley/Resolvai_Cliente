@@ -15,11 +15,11 @@
   justify-content: space-between;
   gap: 20px;
 }
-.assistant-page-heading h1 {
+.assistant-page-heading h3 {
   font-size: 32px;
   overflow-wrap: anywhere;
 }
-.assistant-page-heading h1:focus {
+.assistant-page-heading h3:focus {
   outline: none;
 }
 .assistant-page-heading > div > p:last-child {
@@ -313,7 +313,7 @@
     flex-wrap: wrap;
     gap: 12px;
   }
-  .assistant-page-heading h1 {
+  .assistant-page-heading h3 {
     font-size: 27px;
   }
   .assistant-page-heading > div > p:last-child {

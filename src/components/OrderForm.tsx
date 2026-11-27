@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import type { NewOrder } from '../types/orders'
 import { maxPhotoBytes, maxPhotos, photoTypes } from '../services/dashboardApi'
 import { PhotoPreview } from './PhotoPreview'
@@ -11,7 +11,7 @@ const emptyOrder: NewOrder = {
   scope: { details: '', urgency: '', specifications: '' },
 }
 
-export function OrderForm({ onCancel, onCreate, submitting, submitError, initial, onBackToAssistant }: {
+export function OrderForm({ onCancel, onCreate, submitting, submitError, initial, onBackToAssistant, onDirtyChange }: {
   onCancel: () => void
   onCreate: (order: NewOrder, photos: File[]) => Promise<void>
   submitting: boolean
@@ -19,10 +19,16 @@ export function OrderForm({ onCancel, onCreate, submitting, submitError, initial
   /** Valores sugeridos pelo assistente (#69); o cliente revisa antes de publicar. */
   initial?: NewOrder
   onBackToAssistant?: () => void
+  /** Avisa quando há algo preenchido, para o modal pedir confirmação antes de descartar. */
+  onDirtyChange?: (dirty: boolean) => void
 }) {
   const [order, setOrder] = useState<NewOrder>(initial ?? emptyOrder)
   const [photos, setPhotos] = useState<File[]>([])
   const [error, setError] = useState('')
+
+  // O rascunho do assistente já conta como conteúdo a preservar, mesmo sem edição.
+  const dirty = !!initial || photos.length > 0 || JSON.stringify(order) !== JSON.stringify(emptyOrder)
+  useEffect(() => { onDirtyChange?.(dirty) }, [dirty, onDirtyChange])
 
   function addPhotos(files: File[]) {
     if (!files.length) return
@@ -56,7 +62,7 @@ export function OrderForm({ onCancel, onCreate, submitting, submitError, initial
 
   return (
     <section className="order-form panel" aria-labelledby="order-form-title">
-      <h1 id="order-form-title">{initial ? 'Revise seu pedido' : 'Criar pedido'}</h1>
+      <h3 id="order-form-title">{initial ? 'Revise seu pedido' : 'Criar pedido'}</h3>
       <p>{initial
         ? 'O assistente preencheu os campos com o que você contou. Confira, ajuste o que precisar e publique.'
         : 'Informe os detalhes do serviço para publicar seu pedido.'}</p>

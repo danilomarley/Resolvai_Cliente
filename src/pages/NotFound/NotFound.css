@@ -1,0 +1,13 @@
+.not-found {
+  min-height: 100dvh;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text);
+}
+.not-found h1 { font-size: 32px; }
+.not-found p { color: var(--color-muted); max-width: 42ch; }
+.not-found .eyebrow { color: var(--color-primary); font-weight: 700; letter-spacing: .08em; font-size: 13px; }
