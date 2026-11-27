@@ -5,7 +5,7 @@ import type { Order } from '../types/orders'
 import { ProposalsPanel } from '../components/ProposalsPanel'
 import { ContractPanel } from '../components/ContractPanel'
 import { PaymentPanel } from '../components/PaymentPanel'
-import type { OrderStatusDto } from '../services/dashboardApi'
+import { sameFilter, statusFilters, type OrderFilter } from '../services/orderFilters'
 import {
   canChangeOrder,
   hasChosenProposal,
@@ -43,18 +43,14 @@ type Props = {
   onPaid?: () => void
   /** Título e descrição da listagem; os atalhos do menu (Propostas, Avaliações) trocam o padrão. */
   heading?: { title: string; description: string }
-  filter?: { value?: OrderStatusDto; onChange: (value?: OrderStatusDto) => void }
+  filter?: { value?: OrderFilter; onChange: (value?: OrderFilter) => void }
   pager?: { page: number; totalPages: number; onPage: (page: number) => void }
 }
 
-const statusFilters: { value?: OrderStatusDto; label: string }[] = [
-  { label: 'Todos' },
-  { value: 'Pending', label: 'Recebendo propostas' },
-  { value: 'InProgress', label: 'Em andamento' },
-  { value: 'Completed', label: 'Concluídos' },
-  { value: 'Cancelled', label: 'Cancelados' },
-]
 const orderNumber = (order: Order) => order.id.slice(0, 8).toUpperCase()
+
+/** Título da página de um pedido por aba; o foco vai para ele ao trocar de aba, e o leitor de tela anuncia a nova seção. */
+const tabHeadings = { propostas: 'Propostas do pedido', contrato: 'Contrato do pedido', pagamento: 'Pagamento do pedido', acompanhar: 'Acompanhamento do pedido' }
 
 /** Seções do pedido: cada aba é uma rota (/pedidos/:id, /propostas, /acompanhar). */
 function OrderTabs({ order, view }: { order: Order; view?: 'propostas' | 'acompanhar' | 'contrato' | 'pagamento' }) {
@@ -150,7 +146,7 @@ function OrderDetails({ order }: { order: Order }) {
       {canChangeOrder(order) && (
         <div className="order-actions">
           <Link className="button button-secondary" to={`/pedidos/${order.id}/editar`}>Editar pedido</Link>
-          <Link className="button button-secondary" {...modalLink(location.pathname, location.search, 'cancelar-pedido', order.id)}>Cancelar pedido</Link>
+          <Link className="button button-ghost button-ghost-danger" {...modalLink(location.pathname, location.search, 'cancelar-pedido', order.id)}>Cancelar pedido</Link>
         </div>
       )}
       <dl>
@@ -187,7 +183,8 @@ function OrderDetails({ order }: { order: Order }) {
 export function MyOrders({ orders, customerId, orderId, search, loading, error, requiresLogin, onRetry, view, proposalId, token, onProposalAccepted, onContractSigned, onContractCompleted, onPaid, heading: listHeading, filter, pager }: Props) {
   const location = useLocation()
   const heading = useRef<HTMLHeadingElement>(null)
-  useEffect(() => { heading.current?.focus() }, [orderId])
+  // Trocar de pedido ou de aba leva o foco ao título da página (abrir uma proposta também).
+  useEffect(() => { heading.current?.focus() }, [orderId, view, proposalId])
   const failure = error || (!customerId ? 'Entre na sua conta para consultar pedidos.' : '')
   const ownOrders = customerId ? customerOrders(orders, customerId) : []
   const selected = customerId && orderId !== undefined ? customerOrder(orders, customerId, orderId) : undefined
@@ -201,8 +198,8 @@ export function MyOrders({ orders, customerId, orderId, search, loading, error, 
   const filterBar = filter && (
     <div className="order-filters" role="group" aria-label="Filtrar por status">
       {statusFilters.map((item) => (
-        <button key={item.label} className={`button ${filter.value === item.value ? 'button-primary' : 'button-secondary'}`}
-          aria-pressed={filter.value === item.value} onClick={() => filter.onChange(item.value)}>
+        <button key={item.label} className={`button ${sameFilter(filter.value, item.value) ? 'button-primary' : 'button-secondary'}`}
+          aria-pressed={sameFilter(filter.value, item.value)} onClick={() => filter.onChange(item.value)}>
           {item.label}
         </button>
       ))}
@@ -239,10 +236,11 @@ export function MyOrders({ orders, customerId, orderId, search, loading, error, 
     if (!visible.length) return (<>
       {filterBar}
       <div className="empty-state" role="status">
-        <h2>{ownOrders.length ? 'Nenhum pedido encontrado' : 'Você ainda não tem pedidos'}</h2>
+        <h2>{ownOrders.length ? 'Nenhum pedido encontrado' : filter?.value ? 'Nenhum pedido neste filtro' : 'Você ainda não tem pedidos'}</h2>
         <p>{ownOrders.length
           ? 'Tente buscar por outro identificador ou título entre os pedidos desta página.'
-          : 'Seus pedidos aparecerão aqui quando estiverem disponíveis.'}</p>
+          : filter?.value ? 'Escolha outro filtro para ver seus demais pedidos.' : 'Seus pedidos aparecerão aqui quando estiverem disponíveis.'}</p>
+        {!ownOrders.length && !filter?.value && <Link className="button button-primary" to="/pedidos/novo">Criar pedido</Link>}
       </div>
     </>)
     return (<>
@@ -289,7 +287,7 @@ export function MyOrders({ orders, customerId, orderId, search, loading, error, 
       <div className="page-heading">
         <div>
           <h1 ref={heading} tabIndex={-1}>
-            {orderId === undefined ? listHeading?.title ?? 'Meus pedidos' : 'Detalhes do pedido'}
+            {orderId === undefined ? listHeading?.title ?? 'Meus pedidos' : view ? tabHeadings[view] : 'Detalhes do pedido'}
           </h1>
           <p>{orderId === undefined ? listHeading?.description ?? 'Todos os seus pedidos, do mais recente ao mais antigo. A busca considera os pedidos desta página.' : 'Informações do pedido selecionado.'}</p>
         </div>

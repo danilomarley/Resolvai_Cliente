@@ -3,6 +3,9 @@ import type { Order, OrderProposal, OrderStage } from '../types/orders'
 import type { NewOrder } from '../types/orders'
 
 export type OrderStatusDto = 'Pending' | 'InProgress' | 'Completed' | 'Cancelled'
+/** Filtro da lista por estágio: Open é o pedido aberto sem proposta aceita (#108). */
+export type OrderStageFilter = 'Open' | 'AwaitingSignatures' | 'AwaitingPayment'
+export const orderStageFilters: OrderStageFilter[] = ['Open', 'AwaitingSignatures', 'AwaitingPayment']
 export type ProposalDto = Omit<OrderProposal, 'providerName'> & { providerId: string; providerName: string }
 export type OrderDto = {
   id: string; title: string; status: OrderStatusDto; createdAt: string; updatedAt?: string; description?: string
@@ -72,9 +75,10 @@ export function parseLogin(value: unknown): LoginDto {
 }
 export const getSummary = async (token: string, signal?: AbortSignal) => parseSummary(await apiRequest('/api/v1/home/summary', { token, signal }))
 export const getCurrentUser = async (token: string, signal?: AbortSignal) => parseUser(await apiRequest('/api/v1/users/me', { token, signal }))
-export async function getOrders(token: string, query: { status?: OrderStatusDto; page?: number; pageSize?: number } = {}, signal?: AbortSignal) {
+export async function getOrders(token: string, query: { status?: OrderStatusDto; stage?: OrderStageFilter; page?: number; pageSize?: number } = {}, signal?: AbortSignal) {
   const params = new URLSearchParams({ page: String(query.page ?? 1), pageSize: String(query.pageSize ?? 10) })
   if (query.status) params.set('status', query.status)
+  if (query.stage) params.set('stage', query.stage)
   return parsePage(await apiRequest(`/api/v1/orders?${params}`, { token, signal }))
 }
 export async function getOrder(id: string, token: string, signal?: AbortSignal) {

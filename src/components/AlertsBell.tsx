@@ -27,7 +27,7 @@ export function AlertsList({ alerts, failed, loading }: { alerts?: ProposalAlert
               ))}
             </ul>
             {alerts.total > alerts.items.length && (
-              <Link className="alerts-more" to="/pedidos?status=Pending">
+              <Link className="alerts-more" to="/pedidos?status=Pending&stage=Open">
                 Ver todos os pedidos com propostas ({alerts.total - alerts.items.length} a mais)
               </Link>
             )}

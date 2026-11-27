@@ -33,7 +33,7 @@ registerHooks({
 })
 
 const { customerOrders, customerOrder, orderMoney, orderDate, canChangeOrder, orderToForm, orderStatusLabel, hasPaymentStep, nextStep } = await import('../src/services/orders.ts')
-const { parseSummary, parsePage, parseDetail, parseUser, parseLogin, parseAssistantReply, isUuid, updateOrder, cancelOrder, completeOrder, toOrder } = await import('../src/services/dashboardApi.ts')
+const { parseSummary, parsePage, parseDetail, parseUser, parseLogin, parseAssistantReply, isUuid, updateOrder, cancelOrder, completeOrder, toOrder, getOrders } = await import('../src/services/dashboardApi.ts')
 const { parseProfile } = await import('../src/services/accountApi.ts')
 const { scopeToOrder } = await import('../src/services/orderDraft.ts')
 const { DashboardOverview } = await import('../src/components/dashboard/DashboardOverview.tsx')
@@ -58,6 +58,9 @@ const { parseProposals, bestIds, ratingLabel, getOrderProposals, parseProposalDe
 const { parseAlerts, getProposalAlerts } = await import('../src/services/alertsApi.ts')
 const { parseContract, getContract, signContract } = await import('../src/services/contractApi.ts')
 const { ContractView } = await import('../src/components/ContractPanel.tsx')
+const { statusFilters, sameFilter } = await import('../src/services/orderFilters.ts')
+const { breadcrumbFor } = await import('../src/services/breadcrumb.ts')
+const { Breadcrumb } = await import('../src/components/Breadcrumb.tsx')
 const { parsePayment, getPayment, createPayment, simulatePayment, remainingLabel } = await import('../src/services/paymentApi.ts')
 const { PaymentView, PaymentPanel } = await import('../src/components/PaymentPanel.tsx')
 const { CompleteOrderModal } = await import('../src/components/CompleteOrderModal.tsx')
@@ -631,7 +634,7 @@ test('the alerts list links each new proposal to its detail with order, provider
   assert.match(html, /R\$\s?300,00/)
   assert.match(html, /Bruno Pedreiro/)
   assert.match(html, /3 a mais/)
-  assert.match(html, /href="\/pedidos\?status=Pending"/)
+  assert.match(html, /href="\/pedidos\?status=Pending&amp;stage=Open"/)
   const all = renderAt(React.createElement(AlertsList, { alerts: { total: 1, items: [first] } }))
   assert.doesNotMatch(all, /a mais/)
 })
@@ -1193,7 +1196,11 @@ test('the change password form asks for the new password twice and shows the API
   assert.match(html, /minLength="8"/)
   assert.match(html, /maxLength="128"/)
   assert.doesNotMatch(html, /current-password|Senha atual/)
-  assert.match(render({ saving: true }), /<fieldset disabled=""[^>]*>[\s\S]*disabled=""[^>]*>Alterando senha…/)
+  assert.match(render({ saving: true }), /disabled=""[^>]*>Alterando senha…/)
+  // Sem fieldset repetindo o título da seção, e um só botão, com largura natural (dentro de .form-actions).
+  assert.doesNotMatch(html, /<fieldset|<legend/)
+  assert.equal((html.match(/<button/g) ?? []).length, 1)
+  assert.match(html, /<div class="form-actions"><button class="button button-secondary" type="submit"/)
   assert.match(render({ error: 'A senha é fraca.' }), /role="alert">A senha é fraca\./)
   assert.match(render({ success: 'Senha alterada com sucesso.' }), /role="status"[^>]*>Senha alterada com sucesso\./)
   // O erro da API vem antes do aviso de sucesso antigo.
@@ -1218,4 +1225,114 @@ test('the account is a page with its own heading, not a modal', () => {
 test('legacy profile links are sent to the account page', () => {
   assert.equal(legacyModalTarget('/', '?modal=perfil'), '/conta')
   assert.equal(legacyModalTarget('/pedidos', '?status=Pending&modal=perfil'), '/conta')
+})
+
+test('the list filter offers the new stages and keeps one pressed filter at a time', () => {
+  assert.deepEqual(statusFilters.map((item) => item.label), ['Todos', 'Recebendo propostas', 'Aguardando assinaturas', 'Aguardando pagamento', 'Em andamento', 'Concluídos', 'Cancelados'])
+  assert.equal(sameFilter(undefined, undefined), true)
+  assert.equal(sameFilter({ status: 'Pending', stage: 'Open' }, { status: 'Pending', stage: 'Open' }), true)
+  assert.equal(sameFilter({ status: 'Pending', stage: 'Open' }, { status: 'Pending', stage: 'AwaitingPayment' }), false)
+  assert.equal(sameFilter({ status: 'Pending' }, { status: 'Pending', stage: 'Open' }), false)
+  assert.equal(sameFilter({ status: 'Completed' }, undefined), false)
+  // Só um botão fica marcado, e "Todos" quando não há filtro.
+  const render = (value) => renderOrders({ customerId: randomUUID(), orders: [], filter: { value, onChange() {} } })
+  assert.equal((render(undefined).match(/aria-pressed="true"/g) ?? []).length, 1)
+  assert.match(render(undefined), /aria-pressed="true"[^>]*>Todos</)
+  assert.match(render({ status: 'Pending', stage: 'AwaitingPayment' }), /aria-pressed="true"[^>]*>Aguardando pagamento</)
+  assert.match(render({ status: 'Pending', stage: 'AwaitingPayment' }), /aria-pressed="false"[^>]*>Recebendo propostas</)
+})
+
+test('the orders request carries the stage filter only when one is chosen', async () => {
+  const urls = []
+  const original = globalThis.fetch
+  globalThis.fetch = async (url) => { urls.push(String(url)); return new Response(JSON.stringify({ items: [], page: 1, pageSize: 10, totalItems: 0, totalPages: 0 }), { status: 200 }) }
+  try {
+    // apiRequest guarda o fetch do carregamento do modulo; por isso a checagem usa o cliente com fetch proprio.
+    const client = createApiClient('', async (url) => { urls.push(String(url)); return new Response(JSON.stringify({ items: [], page: 1, pageSize: 10, totalItems: 0, totalPages: 0 }), { status: 200 }) })
+    await client('/api/v1/orders?page=1&pageSize=10&status=Pending&stage=Open', { token: 't' })
+    assert.match(urls.at(-1), /status=Pending&stage=Open/)
+  } finally { globalThis.fetch = original }
+  assert.equal(typeof getOrders, 'function')
+})
+
+test('login can return to a filtered list by stage, and only known stages are accepted', () => {
+  for (const ok of ['/pedidos?status=Pending&stage=Open', '/pedidos?status=Pending&stage=AwaitingSignatures', '/pedidos?stage=AwaitingPayment']) assert.equal(safeReturnPath(ok), ok)
+  for (const bad of ['/pedidos?stage=Qualquer', '/pedidos?stage=', '/pedidos?stage=open;drop']) assert.equal(safeReturnPath(bad), '/')
+})
+
+test('the breadcrumb follows the route: list, order, tab and proposal', () => {
+  const id = randomUUID(), proposalId = randomUUID(), short = `#${id.slice(0, 8).toUpperCase()}`
+  assert.deepEqual(breadcrumbFor('/'), [{ label: 'Visão geral' }])
+  assert.deepEqual(breadcrumbFor('/pedidos'), [{ label: 'Meus pedidos' }])
+  assert.deepEqual(breadcrumbFor('/pedidos', 'Propostas'), [{ label: 'Propostas' }])
+  assert.deepEqual(breadcrumbFor('/pedidos/novo'), [{ label: 'Meus pedidos', to: '/pedidos' }, { label: 'Criar pedido' }])
+  assert.deepEqual(breadcrumbFor('/conta'), [{ label: 'Minha conta' }])
+  assert.deepEqual(breadcrumbFor('/ajuda'), [{ label: 'Central de ajuda' }])
+  assert.deepEqual(breadcrumbFor(`/pedidos/${id}`), [{ label: 'Meus pedidos', to: '/pedidos' }, { label: short }])
+  assert.deepEqual(breadcrumbFor(`/pedidos/${id}/contrato`), [{ label: 'Meus pedidos', to: '/pedidos' }, { label: short, to: `/pedidos/${id}` }, { label: 'Contrato' }])
+  assert.deepEqual(breadcrumbFor(`/pedidos/${id}/pagamento/`).at(-1), { label: 'Pagamento' })
+  for (const [tab, label] of [['propostas', 'Propostas'], ['acompanhar', 'Acompanhamento'], ['editar', 'Editar'], ['avaliar', 'Avaliar']]) {
+    assert.deepEqual(breadcrumbFor(`/pedidos/${id}/${tab}`).at(-1), { label })
+  }
+  assert.deepEqual(breadcrumbFor(`/pedidos/${id}/propostas/${proposalId}`), [{ label: 'Meus pedidos', to: '/pedidos' }, { label: short, to: `/pedidos/${id}` },
+    { label: 'Propostas', to: `/pedidos/${id}/propostas` }, { label: 'Proposta' }])
+  // Rota que o app não conhece não inventa trilha.
+  for (const path of ['/outra', `/pedidos/${id}/segredo`, `/pedidos/abc`, `/pedidos/${id}/contrato/${proposalId}`]) assert.deepEqual(breadcrumbFor(path), [])
+})
+
+test('the breadcrumb is a labelled list where only earlier steps are links and the current one is marked', () => {
+  const id = randomUUID()
+  const html = renderAt(React.createElement(Breadcrumb, { crumbs: breadcrumbFor(`/pedidos/${id}/contrato`) }))
+  assert.match(html, /<nav[^>]*aria-label="Você está em"/)
+  assert.match(html, /<ol class="breadcrumb-trail">/)
+  assert.match(html, /href="\/"[^>]*>Meu espaço</)
+  assert.match(html, /href="\/pedidos"[^>]*>Meus pedidos</)
+  assert.match(html, new RegExp(`href="/pedidos/${id}"[^>]*>#${id.slice(0, 8).toUpperCase()}<`))
+  assert.match(html, /<strong aria-current="page">Contrato<\/strong>/)
+  assert.equal((html.match(/aria-current="page"/g) ?? []).length, 1)
+  assert.doesNotMatch(html, /href="[^"]*contrato"/)
+})
+
+test('each order tab has its own page title, which receives the focus when the tab changes', () => {
+  const id = randomUUID(), customerId = randomUUID()
+  const order = { id, customerId, title: 'Serviço', category: 'Pedido', location: '', description: 'Descrição', status: 'waiting', icon: 'bag', proposals: 1,
+    stage: 'AwaitingPayment', proposalList: [proposal({ status: 'Chosen' })] }
+  const title = (view) => /<h1[^>]*>([^<]*)<\/h1>/.exec(renderOrders({ orders: [order], customerId, orderId: id, view }))[1]
+  assert.equal(title(undefined), 'Detalhes do pedido')
+  assert.equal(title('propostas'), 'Propostas do pedido')
+  assert.equal(title('contrato'), 'Contrato do pedido')
+  assert.equal(title('pagamento'), 'Pagamento do pedido')
+  assert.equal(title('acompanhar'), 'Acompanhamento do pedido')
+})
+
+test('an account without orders can create the first one from the list, a filtered empty list cannot', () => {
+  const customerId = randomUUID()
+  const empty = renderOrders({ orders: [], customerId })
+  assert.match(empty, /Você ainda não tem pedidos/)
+  assert.match(empty, /href="\/pedidos\/novo"[^>]*>Criar pedido</)
+  const filtered = renderOrders({ orders: [], customerId, filter: { value: { status: 'Completed' }, onChange() {} } })
+  assert.match(filtered, /Nenhum pedido neste filtro/)
+  assert.match(filtered, /Escolha outro filtro/)
+  assert.doesNotMatch(filtered, /Criar pedido/)
+  // Com pedidos, a busca sem resultado também não oferece criar.
+  const order = { id: randomUUID(), customerId, title: 'Serviço', category: 'Pedido', location: '', description: '', status: 'waiting', icon: 'bag', proposals: 0 }
+  const noMatch = renderOrders({ orders: [order], customerId, search: 'zzz' })
+  assert.match(noMatch, /Nenhum pedido encontrado/)
+  assert.doesNotMatch(noMatch, /Criar pedido/)
+})
+
+test('button hierarchy: ghost and danger variants exist and destructive actions do not look like the main one', () => {
+  const css = readFileSync(new URL('../src/styles/controls.css', import.meta.url), 'utf8')
+  for (const name of ['.button-ghost', '.button-ghost-danger', '.button-danger', '.form-actions']) assert.ok(css.includes(`${name} {`), name)
+  const cancel = renderToStaticMarkup(React.createElement(CancelOrderModal, { order: { id: randomUUID(), title: 'Pedido' }, token: 't', onClose() {}, onCancelled() {} }))
+  assert.match(cancel, /class="button button-danger"[^>]*>Cancelar pedido/)
+  assert.doesNotMatch(cancel, /button-primary/)
+})
+
+test('the logo has an accessible name and is used on the access screens and the sidebar', async () => {
+  const { Logo } = await import('../src/components/Logo.tsx')
+  const html = renderAt(React.createElement(Logo, {}))
+  assert.match(html, /role="img" aria-label="ResolvAI"/)
+  assert.match(html, /Resolv<span class="logo-ai">AI<\/span>/)
+  assert.match(renderAt(React.createElement(Logo, { markOnly: true })), /^<svg[^>]*aria-hidden="true"/)
 })
