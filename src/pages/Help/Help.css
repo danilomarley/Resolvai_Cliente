@@ -1,0 +1,6 @@
+.help-page { display: grid; gap: var(--spacing-md); }
+.help-list { display: grid; gap: var(--spacing-sm); max-width: 760px; }
+.help-topic { padding: var(--spacing-md); }
+.help-topic summary { cursor: pointer; font-weight: 600; }
+.help-topic summary:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 4px; }
+.help-topic p { margin: var(--spacing-sm) 0 0; color: var(--color-muted); }
