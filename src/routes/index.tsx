@@ -3,6 +3,7 @@ import { Login } from "../pages/Login";
 import { Dashboard } from "../pages/Dashboard";
 import { Cadastro } from "../pages/Cadastro";
 import { NotFound } from "../pages/NotFound";
+import { FinalizarCadastro } from "../pages/FinalizarCadastro";
 
 /** Rota antiga da avaliação: agora é um modal sobre o pedido. */
 function ReviewRedirect() {
@@ -16,8 +17,9 @@ export function AppRoutes() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/cadastro" element={<Cadastro />} />
-        {/* Rota antiga: a finalização de cadastro agora é um modal sobre o dashboard. */}
-        <Route path="/complemento-cadastro" element={<Navigate to="/?modal=finalizar-cadastro" replace />} />
+        <Route path="/cadastro/finalizar" element={<FinalizarCadastro />} />
+        {/* Rota antiga da finalização de cadastro. */}
+        <Route path="/complemento-cadastro" element={<Navigate to="/cadastro/finalizar" replace />} />
         <Route path="/pedidos/:orderId/avaliar" element={<ReviewRedirect />} />
         <Route path="/" element={<Dashboard />}>
           <Route path="pedidos" element={null} />
