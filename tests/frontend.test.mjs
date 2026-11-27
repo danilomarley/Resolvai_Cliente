@@ -52,6 +52,7 @@ const { parseProposals, bestIds, ratingLabel, getOrderProposals, parseProposalDe
 const { parseAlerts, getProposalAlerts } = await import('../src/services/alertsApi.ts')
 const { parseContract, getContract, signContract } = await import('../src/services/contractApi.ts')
 const { ContractView } = await import('../src/components/ContractPanel.tsx')
+const { parsePayment, getPayment, createPayment, simulatePayment } = await import('../src/services/paymentApi.ts')
 const { AlertsBell, AlertsList } = await import('../src/components/AlertsBell.tsx')
 const { safeReturnPath } = await import('../src/services/returnPath.ts')
 const { NotFound } = await import('../src/pages/NotFound/index.tsx')
@@ -778,4 +779,43 @@ test('completing an order posts to its route and shows the API explanation', asy
   assert.deepEqual(calls[0], ['POST', `/api/v1/orders/${id}/complete`, undefined])
   const detail = 'Só é possível concluir um pedido em andamento, com o pagamento confirmado.'
   await assert.rejects(client(409, { detail })(`/api/v1/orders/${id}/complete`, { method: 'POST', token: 't' }), (error) => error.status === 409 && error.message === detail)
+})
+
+const paymentDto = (overrides = {}) => ({ id: randomUUID(), orderId: randomUUID(), method: 'Pix', status: 'Pending', amount: 800, brCode: '00020101021226pix',
+  qrCodeBase64: 'data:image/png;base64,AAAA', expiresAt: new Date(Date.now() + 1_800_000).toISOString(), testMode: true, createdAt: new Date().toISOString(), ...overrides })
+
+test('the payment from the API is validated, and Paid needs the payment date', () => {
+  assert.equal(parsePayment(paymentDto()).status, 'Pending')
+  assert.equal(parsePayment(paymentDto({ qrCodeBase64: undefined })).qrCodeBase64, undefined)
+  assert.equal(parsePayment(paymentDto({ status: 'Paid', paidAt: new Date().toISOString() })).status, 'Paid')
+  for (const status of ['Expired', 'Cancelled']) assert.equal(parsePayment(paymentDto({ status })).status, status)
+  for (const bad of [null, {}, paymentDto({ status: 'Outro' }), paymentDto({ method: 'Boleto' }), paymentDto({ amount: '800' }), paymentDto({ amount: -1 }),
+    paymentDto({ brCode: '  ' }), paymentDto({ id: 'abc' }), paymentDto({ testMode: 'sim' }), paymentDto({ expiresAt: 'amanhã' }),
+    paymentDto({ status: 'Paid' }), paymentDto({ status: 'Pending', paidAt: new Date().toISOString() }),
+    // O QR Code só pode ser imagem embutida: nenhum outro tipo de endereço vira src.
+    paymentDto({ qrCodeBase64: 'https://exemplo.com/qr.png' }), paymentDto({ qrCodeBase64: 'javascript:alert(1)' }), paymentDto({ qrCodeBase64: 'data:text/html;base64,AAAA' })]) {
+    assert.throws(() => parsePayment(bad), ApiError)
+  }
+})
+
+test('payment calls reject an invalid order id before reaching the API', async () => {
+  const orderId = randomUUID()
+  await assert.rejects(getPayment('abc', 't'), (error) => error.status === 404)
+  await assert.rejects(createPayment('abc', 't'), (error) => error.status === 404)
+  await assert.rejects(simulatePayment('abc', 't'), (error) => error.status === 404)
+
+  // Uma resposta de outro pedido nunca é aceita como a deste.
+  assert.equal(parsePayment(paymentDto({ orderId })).orderId, orderId)
+})
+
+test('payment routes show the API explanation on 409 and 503', async () => {
+  const id = randomUUID()
+  const client = (status, body) => createApiClient('', async () => new Response(JSON.stringify(body), { status }))
+  for (const [path, status, detail] of [
+    [`/api/v1/orders/${id}/payment`, 409, 'O pagamento só começa depois que as duas partes assinarem o contrato.'],
+    [`/api/v1/orders/${id}/payment`, 503, 'O pagamento está indisponível no momento. Tente novamente em instantes.'],
+    [`/api/v1/orders/${id}/payment/simulate`, 409, 'A simulação de pagamento só existe em modo de teste.'],
+  ]) {
+    await assert.rejects(client(status, { detail })(path, { method: 'POST', token: 't' }), (error) => error.status === status && error.message === detail)
+  }
 })
