@@ -57,7 +57,13 @@ Pedidos concluídos permitem avaliar o prestador com 1 a 5 estrelas e comentári
 
 O `render.yaml` publica o front como Static Site no Render. Configure `VITE_API_BASE_URL` com a URL da API e coloque a URL do front em `CORS_ALLOWED_ORIGINS` da API. O passo a passo está em `docs/DEPLOY.md` do Resolvai_Backend_Node.
 
-## Organização
+## Testes E2E do contratante (#94)
+
+Consulte [o guia E2E](docs/E2E.md) para preparar PostgreSQL, Supabase Auth e API isolados, instalar o Chromium e executar Playwright. A suíte cobre login válido/inválido, sessão, finalização de cadastro, criação/listagem de pedidos e recuperação de senha. O workflow executa em PRs para `main` e publica apenas diagnósticos sanitizados.
+
+A entrega depende das correções de segurança [backend #4](https://github.com/danilomarley/Resolvai_Backend_Node/pull/4) e [frontend #102](https://github.com/danilomarley/Resolvai_Cliente/pull/102). A referência principal continua sendo a main; um job separado testa cópias descartáveis dos candidatos, sem incorporar seus commits. A recuperação usa código recebido por SMTP local e testa também que uma tentativa sem código não altera a senha. A PR fica Draft até integração e aprovação da suíte principal.
+
+## Organização do código
 
 - `src/services/`: comunicação com a API e sessão.
 - `src/types/orders.ts`: tipos de pedidos e propostas.

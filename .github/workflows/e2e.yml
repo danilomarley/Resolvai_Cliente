@@ -1,0 +1,53 @@
+name: E2E contratante
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  customer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ler versão isolada da API
+        id: backend
+        run: echo "sha=$(node -p 'JSON.parse(require("fs").readFileSync("e2e/backend-ref.json")).sha')" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          repository: danilomarley/Resolvai_Backend_Node
+          ref: ${{ steps.backend.outputs.sha }}
+          path: .e2e-backend
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm ci
+        working-directory: .e2e-backend
+      - run: npm run build
+        working-directory: .e2e-backend
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e-tools
+      - name: Preparar PostgreSQL e Supabase Auth locais
+        run: npm run e2e:up
+      - name: Executar os fluxos no navegador contra a API
+        run: npm run test:e2e
+      - name: Remover credenciais dos diagnósticos
+        if: always()
+        id: sanitize
+        run: npm run e2e:artifacts
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.sanitize.outcome == 'success'
+        with:
+          name: e2e-diagnosticos-sanitizados
+          path: e2e-artifacts/
+          retention-days: 7
+          if-no-files-found: ignore
+      - name: Encerrar somente os serviços E2E
+        if: always()
+        run: npm run e2e:down
