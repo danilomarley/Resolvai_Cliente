@@ -44,7 +44,8 @@ const { OrderForm } = await import('../src/components/OrderForm.tsx')
 const { ReviewForm } = await import('../src/components/OrderReview.tsx')
 const { Modal } = await import('../src/components/Modal.tsx')
 const { Sidebar } = await import('../src/components/dashboard/Sidebar.tsx')
-const { CreateOrderModal } = await import('../src/components/CreateOrderModal.tsx')
+const { NewOrderPage } = await import('../src/pages/NewOrder/index.tsx')
+const { createOrderDraftStore, parseDraft, draftHasContent, emptyDraft } = await import('../src/services/orderDraftStore.ts')
 const { EditOrderModal } = await import('../src/components/EditOrderModal.tsx')
 const { AcceptProposalModal } = await import('../src/components/AcceptProposalModal.tsx')
 const { CancelOrderModal } = await import('../src/components/CancelOrderModal.tsx')
@@ -329,15 +330,14 @@ test('order list shortcuts can replace the page heading', () => {
   assert.match(renderOrders({}), />Meus pedidos<\/h1>/)
 })
 
-test('create order opens as a wide modal on the assistant, without a page heading or back button', () => {
-  const html = renderToStaticMarkup(React.createElement(CreateOrderModal, { token: 't', onClose() {}, onCreated() {} }))
-  assert.match(html, /class="modal modal-xl"/)
-  assert.match(html, /<h2[^>]*>Criar pedido<\/h2>/)
-  assert.match(html, /<h3 id="assistant-title">Vamos resolver, juntos\.<\/h3>/)
-  assert.doesNotMatch(html, /Voltar à visão geral/)
-  assert.doesNotMatch(html, /<h1/)
-  assert.doesNotMatch(html, /Descartar este pedido/)
-  assert.doesNotMatch(html, /hidden=""/)
+test('create order is a page that starts on the assistant, with a way back and no modal', () => {
+  const html = renderAt(React.createElement(NewOrderPage, { token: 't', customerId: randomUUID(), onCreated() {} }), '/pedidos/novo')
+  assert.doesNotMatch(html, /<dialog|class="modal/)
+  assert.match(html, /<h1 id="assistant-title">Vamos resolver, juntos\.<\/h1>/)
+  assert.match(html, /href="\/pedidos"[^>]*>Voltar para meus pedidos</)
+  assert.match(html, /Prefiro preencher o formulário/)
+  // Sem rascunho guardado não há aviso de recuperação.
+  assert.doesNotMatch(html, /Recuperamos o rascunho|Descartar/)
 })
 
 test('review modal link keeps the current page and carries the order id in the URL', () => {
@@ -476,7 +476,7 @@ test('the order form switches to edit mode with the saved photos and a save butt
     scope: { details: 'Banheiro', urgency: 'Urgente', specifications: 'Trocar o chuveiro' } }
   const html = renderToStaticMarkup(React.createElement(OrderForm, { onCancel() {}, onCreate: async () => {}, submitting: false, submitError: '',
     initial, savedPhotos: ['https://exemplo.com/a.jpg'] }))
-  assert.match(html, /<h3 id="order-form-title">Editar pedido<\/h3>/)
+  assert.match(html, /<h1 id="order-form-title">Editar pedido<\/h1>/)
   assert.match(html, /value="Trocar chuveiro"/)
   assert.match(html, /Salvar alterações/)
   assert.doesNotMatch(html, /Publicar pedido/)
@@ -1042,4 +1042,63 @@ test('the registration page is a standalone page, without the app menu', () => {
   assert.match(html, /Finalizar cadastro/)
   assert.match(html, /Carregando seus dados/)
   assert.doesNotMatch(html, /Menu principal|class="sidebar/)
+})
+
+const memoryStorage = () => {
+  const data = new Map()
+  return { getItem: (key) => data.get(key) ?? null, setItem: (key, value) => { data.set(key, value) }, removeItem: (key) => { data.delete(key) }, data }
+}
+const filledDraft = (extra = {}) => ({ step: 'form', fromAssistant: true, assistant: { messages: [{ role: 'user', content: 'Chuveiro queimou' }, { role: 'assistant', content: 'Onde fica?' }], scope: { titulo: 'Trocar chuveiro', urgencia: 'Urgente' }, complete: true },
+  form: { title: 'Trocar chuveiro', category: 'Elétrica', description: 'Chuveiro queimou e precisa de troca', location: 'Meireles', scope: { details: 'Banheiro', urgency: 'Urgente', specifications: 'Trocar e testar' } }, ...extra })
+
+test('the order draft is saved per person, read back and cleared', () => {
+  const storage = memoryStorage()
+  const store = createOrderDraftStore(() => storage)
+  const maria = randomUUID(), joao = randomUUID()
+  assert.equal(store.read(maria), null)
+  store.write(maria, filledDraft())
+  assert.deepEqual(store.read(maria), filledDraft())
+  assert.equal(store.read(joao), null)
+  store.clear(maria)
+  assert.equal(store.read(maria), null)
+  assert.equal(storage.data.size, 0)
+})
+
+test('an empty draft is not kept, and a draft with only the conversation or only the form is', () => {
+  assert.equal(draftHasContent(emptyDraft()), false)
+  assert.equal(draftHasContent({ ...emptyDraft(), step: 'form', form: filledDraft().form }), true)
+  assert.equal(draftHasContent({ ...emptyDraft(), form: { ...filledDraft().form, title: '  ', category: '', description: '', location: '', scope: { details: '', urgency: '', specifications: '' } } }), false)
+  assert.equal(draftHasContent(filledDraft({ form: undefined, step: 'assistant' })), true)
+  const storage = memoryStorage()
+  const store = createOrderDraftStore(() => storage)
+  const id = randomUUID()
+  store.write(id, filledDraft())
+  store.write(id, emptyDraft())
+  assert.equal(storage.data.size, 0)
+})
+
+test('a damaged or tampered draft is discarded instead of trusted', () => {
+  const storage = memoryStorage()
+  const store = createOrderDraftStore(() => storage)
+  const id = randomUUID()
+  const key = `resolvai.rascunho-pedido.${id}`
+  for (const raw of ['isto nao e json', '[]', '{}', JSON.stringify({ ...filledDraft(), step: 'outra' }), JSON.stringify(filledDraft({ form: undefined })),
+    JSON.stringify(filledDraft({ form: { title: 1 } })), JSON.stringify({ ...filledDraft(), assistant: { messages: [{ role: 'system', content: 'x' }], scope: {}, complete: false } }),
+    JSON.stringify({ ...filledDraft(), assistant: { messages: [], scope: { titulo: 5 }, complete: false } })]) {
+    storage.setItem(key, raw)
+    assert.equal(store.read(id), null)
+    assert.equal(storage.getItem(key), null)
+  }
+  assert.equal(parseDraft(filledDraft()).assistant.scope.titulo, 'Trocar chuveiro')
+  // Chaves desconhecidas do escopo não passam adiante.
+  assert.deepEqual(parseDraft({ ...filledDraft(), assistant: { messages: [], scope: { titulo: 'a', intruso: 'b' }, complete: false } }).assistant.scope, { titulo: 'a' })
+})
+
+test('storage that is blocked or full never breaks the order page', () => {
+  const broken = { getItem() { throw new Error('bloqueado') }, setItem() { throw new Error('cheio') }, removeItem() { throw new Error('bloqueado') } }
+  const store = createOrderDraftStore(() => broken)
+  const id = randomUUID()
+  assert.equal(store.read(id), null)
+  assert.doesNotThrow(() => store.write(id, filledDraft()))
+  assert.doesNotThrow(() => store.clear(id))
 })
