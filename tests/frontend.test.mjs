@@ -33,7 +33,7 @@ registerHooks({
 })
 
 const { customerOrders, customerOrder, orderMoney, orderDate, canChangeOrder, orderToForm, orderStatusLabel, hasPaymentStep, nextStep } = await import('../src/services/orders.ts')
-const { parseSummary, parsePage, parseDetail, parseUser, parseLogin, parseAssistantReply, isUuid, updateOrder, cancelOrder, completeOrder, toOrder } = await import('../src/services/dashboardApi.ts')
+const { parseSummary, parsePage, parseDetail, parseUser, parseLogin, parseAssistantReply, isUuid, updateOrder, cancelOrder, completeOrder, toOrder, getOrders } = await import('../src/services/dashboardApi.ts')
 const { parseProfile } = await import('../src/services/accountApi.ts')
 const { scopeToOrder } = await import('../src/services/orderDraft.ts')
 const { DashboardOverview } = await import('../src/components/dashboard/DashboardOverview.tsx')
@@ -58,6 +58,7 @@ const { parseProposals, bestIds, ratingLabel, getOrderProposals, parseProposalDe
 const { parseAlerts, getProposalAlerts } = await import('../src/services/alertsApi.ts')
 const { parseContract, getContract, signContract } = await import('../src/services/contractApi.ts')
 const { ContractView } = await import('../src/components/ContractPanel.tsx')
+const { statusFilters, sameFilter } = await import('../src/services/orderFilters.ts')
 const { parsePayment, getPayment, createPayment, simulatePayment, remainingLabel } = await import('../src/services/paymentApi.ts')
 const { PaymentView, PaymentPanel } = await import('../src/components/PaymentPanel.tsx')
 const { CompleteOrderModal } = await import('../src/components/CompleteOrderModal.tsx')
@@ -631,7 +632,7 @@ test('the alerts list links each new proposal to its detail with order, provider
   assert.match(html, /R\$\s?300,00/)
   assert.match(html, /Bruno Pedreiro/)
   assert.match(html, /3 a mais/)
-  assert.match(html, /href="\/pedidos\?status=Pending"/)
+  assert.match(html, /href="\/pedidos\?status=Pending&amp;stage=Open"/)
   const all = renderAt(React.createElement(AlertsList, { alerts: { total: 1, items: [first] } }))
   assert.doesNotMatch(all, /a mais/)
 })
@@ -1218,4 +1219,37 @@ test('the account is a page with its own heading, not a modal', () => {
 test('legacy profile links are sent to the account page', () => {
   assert.equal(legacyModalTarget('/', '?modal=perfil'), '/conta')
   assert.equal(legacyModalTarget('/pedidos', '?status=Pending&modal=perfil'), '/conta')
+})
+
+test('the list filter offers the new stages and keeps one pressed filter at a time', () => {
+  assert.deepEqual(statusFilters.map((item) => item.label), ['Todos', 'Recebendo propostas', 'Aguardando assinaturas', 'Aguardando pagamento', 'Em andamento', 'Concluídos', 'Cancelados'])
+  assert.equal(sameFilter(undefined, undefined), true)
+  assert.equal(sameFilter({ status: 'Pending', stage: 'Open' }, { status: 'Pending', stage: 'Open' }), true)
+  assert.equal(sameFilter({ status: 'Pending', stage: 'Open' }, { status: 'Pending', stage: 'AwaitingPayment' }), false)
+  assert.equal(sameFilter({ status: 'Pending' }, { status: 'Pending', stage: 'Open' }), false)
+  assert.equal(sameFilter({ status: 'Completed' }, undefined), false)
+  // Só um botão fica marcado, e "Todos" quando não há filtro.
+  const render = (value) => renderOrders({ customerId: randomUUID(), orders: [], filter: { value, onChange() {} } })
+  assert.equal((render(undefined).match(/aria-pressed="true"/g) ?? []).length, 1)
+  assert.match(render(undefined), /aria-pressed="true"[^>]*>Todos</)
+  assert.match(render({ status: 'Pending', stage: 'AwaitingPayment' }), /aria-pressed="true"[^>]*>Aguardando pagamento</)
+  assert.match(render({ status: 'Pending', stage: 'AwaitingPayment' }), /aria-pressed="false"[^>]*>Recebendo propostas</)
+})
+
+test('the orders request carries the stage filter only when one is chosen', async () => {
+  const urls = []
+  const original = globalThis.fetch
+  globalThis.fetch = async (url) => { urls.push(String(url)); return new Response(JSON.stringify({ items: [], page: 1, pageSize: 10, totalItems: 0, totalPages: 0 }), { status: 200 }) }
+  try {
+    // apiRequest guarda o fetch do carregamento do modulo; por isso a checagem usa o cliente com fetch proprio.
+    const client = createApiClient('', async (url) => { urls.push(String(url)); return new Response(JSON.stringify({ items: [], page: 1, pageSize: 10, totalItems: 0, totalPages: 0 }), { status: 200 }) })
+    await client('/api/v1/orders?page=1&pageSize=10&status=Pending&stage=Open', { token: 't' })
+    assert.match(urls.at(-1), /status=Pending&stage=Open/)
+  } finally { globalThis.fetch = original }
+  assert.equal(typeof getOrders, 'function')
+})
+
+test('login can return to a filtered list by stage, and only known stages are accepted', () => {
+  for (const ok of ['/pedidos?status=Pending&stage=Open', '/pedidos?status=Pending&stage=AwaitingSignatures', '/pedidos?stage=AwaitingPayment']) assert.equal(safeReturnPath(ok), ok)
+  for (const bad of ['/pedidos?stage=Qualquer', '/pedidos?stage=', '/pedidos?stage=open;drop']) assert.equal(safeReturnPath(bad), '/')
 })
