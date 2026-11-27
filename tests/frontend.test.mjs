@@ -59,6 +59,8 @@ const { parseAlerts, getProposalAlerts } = await import('../src/services/alertsA
 const { parseContract, getContract, signContract } = await import('../src/services/contractApi.ts')
 const { ContractView } = await import('../src/components/ContractPanel.tsx')
 const { statusFilters, sameFilter } = await import('../src/services/orderFilters.ts')
+const { breadcrumbFor } = await import('../src/services/breadcrumb.ts')
+const { Breadcrumb } = await import('../src/components/Breadcrumb.tsx')
 const { parsePayment, getPayment, createPayment, simulatePayment, remainingLabel } = await import('../src/services/paymentApi.ts')
 const { PaymentView, PaymentPanel } = await import('../src/components/PaymentPanel.tsx')
 const { CompleteOrderModal } = await import('../src/components/CompleteOrderModal.tsx')
@@ -1252,4 +1254,65 @@ test('the orders request carries the stage filter only when one is chosen', asyn
 test('login can return to a filtered list by stage, and only known stages are accepted', () => {
   for (const ok of ['/pedidos?status=Pending&stage=Open', '/pedidos?status=Pending&stage=AwaitingSignatures', '/pedidos?stage=AwaitingPayment']) assert.equal(safeReturnPath(ok), ok)
   for (const bad of ['/pedidos?stage=Qualquer', '/pedidos?stage=', '/pedidos?stage=open;drop']) assert.equal(safeReturnPath(bad), '/')
+})
+
+test('the breadcrumb follows the route: list, order, tab and proposal', () => {
+  const id = randomUUID(), proposalId = randomUUID(), short = `#${id.slice(0, 8).toUpperCase()}`
+  assert.deepEqual(breadcrumbFor('/'), [{ label: 'Visão geral' }])
+  assert.deepEqual(breadcrumbFor('/pedidos'), [{ label: 'Meus pedidos' }])
+  assert.deepEqual(breadcrumbFor('/pedidos', 'Propostas'), [{ label: 'Propostas' }])
+  assert.deepEqual(breadcrumbFor('/pedidos/novo'), [{ label: 'Meus pedidos', to: '/pedidos' }, { label: 'Criar pedido' }])
+  assert.deepEqual(breadcrumbFor('/conta'), [{ label: 'Minha conta' }])
+  assert.deepEqual(breadcrumbFor('/ajuda'), [{ label: 'Central de ajuda' }])
+  assert.deepEqual(breadcrumbFor(`/pedidos/${id}`), [{ label: 'Meus pedidos', to: '/pedidos' }, { label: short }])
+  assert.deepEqual(breadcrumbFor(`/pedidos/${id}/contrato`), [{ label: 'Meus pedidos', to: '/pedidos' }, { label: short, to: `/pedidos/${id}` }, { label: 'Contrato' }])
+  assert.deepEqual(breadcrumbFor(`/pedidos/${id}/pagamento/`).at(-1), { label: 'Pagamento' })
+  for (const [tab, label] of [['propostas', 'Propostas'], ['acompanhar', 'Acompanhamento'], ['editar', 'Editar'], ['avaliar', 'Avaliar']]) {
+    assert.deepEqual(breadcrumbFor(`/pedidos/${id}/${tab}`).at(-1), { label })
+  }
+  assert.deepEqual(breadcrumbFor(`/pedidos/${id}/propostas/${proposalId}`), [{ label: 'Meus pedidos', to: '/pedidos' }, { label: short, to: `/pedidos/${id}` },
+    { label: 'Propostas', to: `/pedidos/${id}/propostas` }, { label: 'Proposta' }])
+  // Rota que o app não conhece não inventa trilha.
+  for (const path of ['/outra', `/pedidos/${id}/segredo`, `/pedidos/abc`, `/pedidos/${id}/contrato/${proposalId}`]) assert.deepEqual(breadcrumbFor(path), [])
+})
+
+test('the breadcrumb is a labelled list where only earlier steps are links and the current one is marked', () => {
+  const id = randomUUID()
+  const html = renderAt(React.createElement(Breadcrumb, { crumbs: breadcrumbFor(`/pedidos/${id}/contrato`) }))
+  assert.match(html, /<nav[^>]*aria-label="Você está em"/)
+  assert.match(html, /<ol class="breadcrumb-trail">/)
+  assert.match(html, /href="\/"[^>]*>Meu espaço</)
+  assert.match(html, /href="\/pedidos"[^>]*>Meus pedidos</)
+  assert.match(html, new RegExp(`href="/pedidos/${id}"[^>]*>#${id.slice(0, 8).toUpperCase()}<`))
+  assert.match(html, /<strong aria-current="page">Contrato<\/strong>/)
+  assert.equal((html.match(/aria-current="page"/g) ?? []).length, 1)
+  assert.doesNotMatch(html, /href="[^"]*contrato"/)
+})
+
+test('each order tab has its own page title, which receives the focus when the tab changes', () => {
+  const id = randomUUID(), customerId = randomUUID()
+  const order = { id, customerId, title: 'Serviço', category: 'Pedido', location: '', description: 'Descrição', status: 'waiting', icon: 'bag', proposals: 1,
+    stage: 'AwaitingPayment', proposalList: [proposal({ status: 'Chosen' })] }
+  const title = (view) => /<h1[^>]*>([^<]*)<\/h1>/.exec(renderOrders({ orders: [order], customerId, orderId: id, view }))[1]
+  assert.equal(title(undefined), 'Detalhes do pedido')
+  assert.equal(title('propostas'), 'Propostas do pedido')
+  assert.equal(title('contrato'), 'Contrato do pedido')
+  assert.equal(title('pagamento'), 'Pagamento do pedido')
+  assert.equal(title('acompanhar'), 'Acompanhamento do pedido')
+})
+
+test('an account without orders can create the first one from the list, a filtered empty list cannot', () => {
+  const customerId = randomUUID()
+  const empty = renderOrders({ orders: [], customerId })
+  assert.match(empty, /Você ainda não tem pedidos/)
+  assert.match(empty, /href="\/pedidos\/novo"[^>]*>Criar pedido</)
+  const filtered = renderOrders({ orders: [], customerId, filter: { value: { status: 'Completed' }, onChange() {} } })
+  assert.match(filtered, /Nenhum pedido neste filtro/)
+  assert.match(filtered, /Escolha outro filtro/)
+  assert.doesNotMatch(filtered, /Criar pedido/)
+  // Com pedidos, a busca sem resultado também não oferece criar.
+  const order = { id: randomUUID(), customerId, title: 'Serviço', category: 'Pedido', location: '', description: '', status: 'waiting', icon: 'bag', proposals: 0 }
+  const noMatch = renderOrders({ orders: [order], customerId, search: 'zzz' })
+  assert.match(noMatch, /Nenhum pedido encontrado/)
+  assert.doesNotMatch(noMatch, /Criar pedido/)
 })
