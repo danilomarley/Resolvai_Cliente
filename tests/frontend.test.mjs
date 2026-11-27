@@ -44,6 +44,9 @@ const { OrderForm } = await import('../src/components/OrderForm.tsx')
 const { ReviewForm } = await import('../src/components/OrderReview.tsx')
 const { ReviewOrderPage } = await import('../src/pages/ReviewOrder/index.tsx')
 const { HelpPage } = await import('../src/pages/Help/index.tsx')
+const { AccountPage } = await import('../src/pages/Account/index.tsx')
+const { ChangePasswordForm } = await import('../src/components/ChangePasswordForm.tsx')
+const { validateNewPassword } = await import('../src/services/passwordForm.ts')
 const { Modal } = await import('../src/components/Modal.tsx')
 const { Sidebar } = await import('../src/components/dashboard/Sidebar.tsx')
 const { NewOrderPage } = await import('../src/pages/NewOrder/index.tsx')
@@ -1173,4 +1176,49 @@ test('the help page answers the main questions of the order journey in plain pag
   }
   assert.match(html, /30 minutos/)
   assert.match(html, /Confirmar conclusão/)
+})
+
+test('the new password is checked against the API limits and its confirmation', () => {
+  assert.match(validateNewPassword('curta', 'curta'), /pelo menos 8 caracteres/)
+  assert.match(validateNewPassword('a'.repeat(129), 'a'.repeat(129)), /no máximo 128 caracteres/)
+  assert.match(validateNewPassword('senhaboa123', 'senhaboa124'), /não coincidem/)
+  assert.equal(validateNewPassword('senhaboa123', 'senhaboa123'), '')
+  assert.equal(validateNewPassword('a'.repeat(8), 'a'.repeat(8)), '')
+  assert.equal(validateNewPassword('a'.repeat(128), 'a'.repeat(128)), '')
+})
+
+test('the change password form asks for the new password twice and shows the API result', () => {
+  const render = (props = {}) => renderToStaticMarkup(React.createElement(ChangePasswordForm, { saving: false, onSubmit() {}, ...props }))
+  const html = render()
+  assert.match(html, /<h2 id="password-title">Alterar senha<\/h2>/)
+  assert.equal((html.match(/type="password"/g) ?? []).length, 2)
+  assert.equal((html.match(/autoComplete="new-password"/g) ?? []).length, 2)
+  assert.match(html, /minLength="8"/)
+  assert.match(html, /maxLength="128"/)
+  assert.doesNotMatch(html, /current-password|Senha atual/)
+  assert.match(render({ saving: true }), /<fieldset disabled=""[^>]*>[\s\S]*disabled=""[^>]*>Alterando senha…/)
+  assert.match(render({ error: 'A senha é fraca.' }), /role="alert">A senha é fraca\./)
+  assert.match(render({ success: 'Senha alterada com sucesso.' }), /role="status"[^>]*>Senha alterada com sucesso\./)
+  // O erro da API vem antes do aviso de sucesso antigo.
+  assert.doesNotMatch(render({ error: 'x', success: 'Senha alterada com sucesso.' }), /Senha alterada com sucesso/)
+})
+
+test('the change password route shows the API explanation on 400 and 429', async () => {
+  const client = (status, body) => createApiClient('', async () => new Response(JSON.stringify(body), { status }))
+  for (const [status, detail] of [[400, 'A senha informada é muito fraca.'], [429, 'Muitas tentativas. Aguarde alguns minutos e tente novamente.']]) {
+    await assert.rejects(client(status, { detail })('/api/v1/auth/change-password', { method: 'POST', token: 't', body: { newPassword: 'x' } }),
+      (error) => error.status === status && error.message === detail)
+  }
+})
+
+test('the account is a page with its own heading, not a modal', () => {
+  const html = renderAt(React.createElement(AccountPage, { token: 't', customerId: randomUUID(), onUpdated() {} }))
+  assert.doesNotMatch(html, /<dialog|class="modal/)
+  assert.match(html, /<h1>Minha conta<\/h1>/)
+  assert.match(html, /Carregando dados da conta/)
+})
+
+test('legacy profile links are sent to the account page', () => {
+  assert.equal(legacyModalTarget('/', '?modal=perfil'), '/conta')
+  assert.equal(legacyModalTarget('/pedidos', '?status=Pending&modal=perfil'), '/conta')
 })
