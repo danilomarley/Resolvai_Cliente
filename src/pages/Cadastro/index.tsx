@@ -1,3 +1,4 @@
+import { Logo } from '../../components/Logo'
 import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom"; 
 import "../../styles/login.css"; 
@@ -44,10 +45,7 @@ export function Cadastro() {
     <main className="login-container">
       <div className="login-card">
         <header className="login-header">
-          <div className="logo-container">
-            <div className="logo-icon">R</div>
-            <h1 className="logo-text">ResolvAI</h1>
-          </div>
+          <h1 className="logo-container"><Logo size={44} /></h1>
           <p>Crie sua conta para começar a resolver.</p>
         </header>
 
