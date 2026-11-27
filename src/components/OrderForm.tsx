@@ -12,7 +12,7 @@ const emptyOrder: NewOrder = {
   scope: { details: '', urgency: '', specifications: '' },
 }
 
-export function OrderForm({ onCancel, onCreate, submitting, submitError, initial, onBackToAssistant, onDirtyChange, savedPhotos }: {
+export function OrderForm({ onCancel, onCreate, submitting, submitError, initial, onBackToAssistant, onDirtyChange, onValuesChange, savedPhotos }: {
   onCancel: () => void
   /** Recebe o pedido, as fotos novas e as URLs das fotos já salvas que continuam no pedido (só na edição). */
   onCreate: (order: NewOrder, photos: File[], savedPhotos: string[]) => Promise<void>
@@ -23,6 +23,8 @@ export function OrderForm({ onCancel, onCreate, submitting, submitError, initial
   onBackToAssistant?: () => void
   /** Avisa quando há algo preenchido, para o modal pedir confirmação antes de descartar. */
   onDirtyChange?: (dirty: boolean) => void
+  /** Avisa a cada alteração dos campos, para a página guardar o rascunho. */
+  onValuesChange?: (order: NewOrder) => void
   /** Edição de um pedido já publicado (#88): `initial` traz os dados atuais e as fotos salvas podem ser removidas. */
   savedPhotos?: string[]
 }) {
@@ -38,6 +40,7 @@ export function OrderForm({ onCancel, onCreate, submitting, submitError, initial
     ? photos.length > 0 || kept.length !== (savedPhotos?.length ?? 0) || JSON.stringify(order) !== JSON.stringify(initial)
     : !!initial || photos.length > 0 || JSON.stringify(order) !== JSON.stringify(emptyOrder)
   useEffect(() => { onDirtyChange?.(dirty) }, [dirty, onDirtyChange])
+  useEffect(() => { onValuesChange?.(order) }, [order]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function addPhotos(files: File[]) {
     if (!files.length) return
@@ -71,7 +74,7 @@ export function OrderForm({ onCancel, onCreate, submitting, submitError, initial
 
   return (
     <section className="order-form panel" aria-labelledby="order-form-title">
-      <h3 id="order-form-title">{editing ? 'Editar pedido' : initial ? 'Revise seu pedido' : 'Criar pedido'}</h3>
+      <h1 id="order-form-title">{editing ? 'Editar pedido' : initial ? 'Revise seu pedido' : 'Criar pedido'}</h1>
       <p>{editing
         ? 'Altere o que precisar. As propostas já recebidas continuam no pedido.'
         : initial
