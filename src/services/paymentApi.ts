@@ -56,3 +56,9 @@ export const createPayment = (orderId: string, token: string, signal?: AbortSign
 
 /** Paga o Pix de teste sem dinheiro; a API recusa fora do modo de teste. */
 export const simulatePayment = (orderId: string, token: string, signal?: AbortSignal) => request(orderId, token, 'POST', '/simulate', signal)
+
+/** Tempo que falta para o Pix expirar, como mm:ss (nunca negativo). */
+export function remainingLabel(expiresAt: string, now: number) {
+  const seconds = Math.max(0, Math.floor((Date.parse(expiresAt) - now) / 1000))
+  return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`
+}
