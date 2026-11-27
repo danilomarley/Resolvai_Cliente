@@ -54,6 +54,7 @@ const { parseContract, getContract, signContract } = await import('../src/servic
 const { ContractView } = await import('../src/components/ContractPanel.tsx')
 const { parsePayment, getPayment, createPayment, simulatePayment, remainingLabel } = await import('../src/services/paymentApi.ts')
 const { PaymentView, PaymentPanel } = await import('../src/components/PaymentPanel.tsx')
+const { CompleteOrderModal } = await import('../src/components/CompleteOrderModal.tsx')
 const { AlertsBell, AlertsList } = await import('../src/components/AlertsBell.tsx')
 const { safeReturnPath } = await import('../src/services/returnPath.ts')
 const { NotFound } = await import('../src/pages/NotFound/index.tsx')
@@ -908,4 +909,99 @@ test('the payment panel explains when the payment is not available yet', () => {
   assert.match(render(open), new RegExp(`href="/pedidos/${open.id}/propostas"[^>]*>Ver propostas`))
   assert.match(render(stageOrder({ status: 'cancelled' })), /foi cancelado, então não há pagamento/)
   assert.doesNotMatch(render(open), /Carregando pagamento/)
+})
+
+const customerStage = (extra = {}) => { const customerId = randomUUID(); return { customerId, order: stageOrder({ customerId, ...extra }) } }
+const showOrder = (extra, props = {}) => { const { customerId, order } = customerStage(extra); return { order, html: renderOrders({ orders: [order], customerId, orderId: order.id, ...props }) } }
+
+test('the payment tab appears only when the contract is signed by both or the order was paid', () => {
+  const chosen = [proposal({ status: 'Chosen' })]
+  const tab = (id) => new RegExp(`href="/pedidos/${id}/pagamento"[^>]*>Pagamento<`)
+  const waiting = showOrder({ stage: 'AwaitingPayment', proposalList: chosen })
+  assert.match(waiting.html, tab(waiting.order.id))
+  const signatures = showOrder({ stage: 'AwaitingSignatures', proposalList: chosen })
+  assert.doesNotMatch(signatures.html, /\/pagamento/)
+  assert.match(signatures.html, /\/contrato/)
+  const paid = showOrder({ status: 'progress', proposalList: chosen })
+  assert.match(paid.html, tab(paid.order.id))
+  assert.doesNotMatch(showOrder({ proposalList: [proposal({ status: 'Sent' })] }).html, /\/pagamento/)
+})
+
+test('the payment route renders the payment panel with the order', () => {
+  const { html } = showOrder({ stage: 'AwaitingPayment' }, { view: 'pagamento', token: 'abc' })
+  assert.match(html, /Carregando pagamento/)
+  assert.match(html, /order-tab active[^>]*aria-current="page"[^>]*>Pagamento</)
+  assert.match(showOrder({ stage: 'AwaitingPayment' }, { view: 'pagamento' }).html, /Entre na sua conta para consultar o pagamento/)
+})
+
+test('the order details point to the next step and hide edit and cancel once a proposal was accepted', () => {
+  const sign = showOrder({ stage: 'AwaitingSignatures' })
+  assert.match(sign.html, /Próximo passo/)
+  assert.match(sign.html, new RegExp(`href="/pedidos/${sign.order.id}/contrato"[^>]*>Ver e assinar contrato<`))
+  assert.match(sign.html, /Aguardando assinaturas/)
+  assert.doesNotMatch(sign.html, /Editar pedido|Cancelar pedido/)
+
+  const pay = showOrder({ stage: 'AwaitingPayment' })
+  assert.match(pay.html, new RegExp(`href="/pedidos/${pay.order.id}/pagamento"[^>]*>Pagar com Pix<`))
+  assert.match(pay.html, /Aguardando pagamento/)
+
+  const running = showOrder({ status: 'progress' })
+  assert.match(running.html, new RegExp(`href="/pedidos\\?modal=concluir-pedido&amp;pedido=${running.order.id}"[^>]*>Confirmar conclusão<`))
+  assert.match(running.html, /Em andamento/)
+
+  assert.doesNotMatch(showOrder({}).html, /Próximo passo/)
+  assert.doesNotMatch(showOrder({ status: 'completed' }).html, /Próximo passo/)
+})
+
+test('the orders list shows the stage and a direct button to the next step', () => {
+  const customerId = randomUUID()
+  const orders = [stageOrder({ customerId, stage: 'AwaitingPayment' }), stageOrder({ customerId, stage: 'AwaitingSignatures' }), stageOrder({ customerId, status: 'progress' }), stageOrder({ customerId })]
+  const html = renderOrders({ orders, customerId })
+  assert.match(html, /Aguardando pagamento/)
+  assert.match(html, /Aguardando assinaturas/)
+  assert.match(html, new RegExp(`href="/pedidos/${orders[0].id}/pagamento"[^>]*>Pagar com Pix<`))
+  assert.match(html, new RegExp(`href="/pedidos/${orders[1].id}/contrato"[^>]*>Ver e assinar contrato<`))
+  assert.match(html, /concluir-pedido[^>]*>Confirmar conclusão</)
+  // Só os pedidos com algo a fazer ganham o botão; os demais mantêm "Ver detalhes" como ação principal.
+  assert.equal((html.match(/Pagar com Pix|Ver e assinar contrato|Confirmar conclusão/g) ?? []).length, 3)
+  assert.equal((html.match(/button-primary/g) ?? []).length, 4)
+})
+
+test('the tracking history follows the contract, the payment and the conclusion', () => {
+  const chosen = [proposal({ status: 'Chosen', providerName: 'Ana Eletricista' })]
+  const open = showOrder({ proposalList: chosen, stage: 'AwaitingSignatures' }, { view: 'acompanhar' }).html
+  assert.match(open, /Proposta de Ana Eletricista escolhida/)
+  assert.doesNotMatch(open, /Contrato assinado pelas duas partes|Pagamento confirmado/)
+  const waiting = showOrder({ proposalList: chosen, stage: 'AwaitingPayment' }, { view: 'acompanhar' }).html
+  assert.match(waiting, /Contrato assinado pelas duas partes/)
+  assert.doesNotMatch(waiting, /Pagamento confirmado/)
+  const paid = showOrder({ proposalList: chosen, status: 'progress' }, { view: 'acompanhar' }).html
+  assert.match(paid, /Contrato assinado pelas duas partes/)
+  assert.match(paid, /Pagamento confirmado/)
+  assert.match(showOrder({ proposalList: chosen, status: 'completed' }, { view: 'acompanhar' }).html, /Pedido concluído/)
+})
+
+test('the contract screen links to the payment only when the order is ready to pay', () => {
+  const ready = showOrder({ stage: 'AwaitingPayment', proposalList: [proposal({ status: 'Chosen' })] }, { view: 'contrato', token: 'abc' })
+  assert.match(ready.html, /Carregando contrato/)
+  assert.match(renderContract(parseContract(contractDto({ status: 'Signed', customerSignedAt: new Date().toISOString(), providerSignedAt: new Date().toISOString() })),
+    { onPay: `/pedidos/${ready.order.id}/pagamento` }), new RegExp(`href="/pedidos/${ready.order.id}/pagamento"[^>]*>Ir para pagamento`))
+})
+
+test('the completion modal asks for confirmation before concluding the service', () => {
+  const order = stageOrder({ status: 'progress', title: 'Trocar o chuveiro' })
+  const html = renderToStaticMarkup(React.createElement(CompleteOrderModal, { order, token: 't', onClose() {}, onCompleted() {} }))
+  assert.match(html, /Confirmar conclusão/)
+  assert.match(html, /Trocar o chuveiro/)
+  assert.match(html, /avaliar o prestador/)
+  assert.match(html, />Ainda não</)
+  assert.match(html, />Confirmar conclusão</)
+})
+
+test('login returns to the payment screen and to the completion dialog, nothing else', () => {
+  const id = randomUUID()
+  assert.equal(safeReturnPath(`/pedidos/${id}/pagamento`), `/pedidos/${id}/pagamento`)
+  assert.equal(safeReturnPath(`/pedidos/${id}?modal=concluir-pedido&pedido=${id}`), `/pedidos/${id}?modal=concluir-pedido&pedido=${id}`)
+  assert.equal(safeReturnPath(`/pedidos/${id}/pagamento/simular`), '/')
+  assert.equal(safeReturnPath(`/pedidos/${id}?modal=simular-pagamento`), '/')
 })
