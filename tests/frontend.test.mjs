@@ -56,7 +56,9 @@ const { parsePayment, getPayment, createPayment, simulatePayment, remainingLabel
 const { PaymentView, PaymentPanel } = await import('../src/components/PaymentPanel.tsx')
 const { CompleteOrderModal } = await import('../src/components/CompleteOrderModal.tsx')
 const { AlertsBell, AlertsList } = await import('../src/components/AlertsBell.tsx')
-const { safeReturnPath } = await import('../src/services/returnPath.ts')
+const { safeReturnPath, nextAfterRegistration } = await import('../src/services/returnPath.ts')
+const { legacyModalTarget } = await import('../src/services/legacyModals.ts')
+const { FinalizarCadastro } = await import('../src/pages/FinalizarCadastro/index.tsx')
 const { NotFound } = await import('../src/pages/NotFound/index.tsx')
 const { readModal, readNext, readOrder, searchWithModal, modalLink } = await import('../src/services/modalRoute.ts')
 const { buildRegistration, emptyRegistration, maskCpf, maskCep, maskPhone, isValidPhone } = await import('../src/services/registrationForm.ts')
@@ -1004,4 +1006,40 @@ test('login returns to the payment screen and to the completion dialog, nothing 
   assert.equal(safeReturnPath(`/pedidos/${id}?modal=concluir-pedido&pedido=${id}`), `/pedidos/${id}?modal=concluir-pedido&pedido=${id}`)
   assert.equal(safeReturnPath(`/pedidos/${id}/pagamento/simular`), '/')
   assert.equal(safeReturnPath(`/pedidos/${id}?modal=simular-pagamento`), '/')
+})
+
+test('old modal links are sent to the page that replaced them', () => {
+  assert.equal(legacyModalTarget('/', '?modal=finalizar-cadastro'), '/cadastro/finalizar')
+  assert.equal(legacyModalTarget('/', '?modal=finalizar-cadastro&next=criar-pedido'), '/cadastro/finalizar?next=%2Fpedidos%2Fnovo')
+  // Confirmações curtas continuam como modal, e sem modal não há o que redirecionar.
+  for (const search of ['', '?status=Pending', '?modal=aceitar-proposta', '?modal=cancelar-pedido', '?modal=concluir-pedido', '?modal=qualquer']) {
+    assert.equal(legacyModalTarget('/pedidos', search), null)
+  }
+})
+
+test('after finishing the registration only app screens are accepted as the destination', () => {
+  const id = randomUUID()
+  assert.equal(nextAfterRegistration(''), '/')
+  assert.equal(nextAfterRegistration('?next=%2Fpedidos%2Fnovo'), '/pedidos/novo')
+  assert.equal(nextAfterRegistration(`?next=%2Fpedidos%2F${id}%2Fcontrato`), `/pedidos/${id}/contrato`)
+  for (const next of ['https://evil.example', '//evil.example', '/outra-coisa', '/cadastro/finalizar', '/pedidos/novo?x=1', 'criar-pedido']) {
+    assert.equal(nextAfterRegistration(`?next=${encodeURIComponent(next)}`), '/')
+  }
+})
+
+test('login can return to the new pages and to the registration page with a destination', () => {
+  const id = randomUUID()
+  for (const ok of ['/pedidos/novo', `/pedidos/${id}/editar`, `/pedidos/${id}/avaliar`, '/conta', '/ajuda', '/cadastro/finalizar',
+    '/cadastro/finalizar?next=%2Fpedidos%2Fnovo']) assert.equal(safeReturnPath(ok), ok)
+  for (const bad of ['/pedidos/novo/x', '/conta/outra', `/pedidos/${id}/editar/x`, '/cadastro', '/cadastro/finalizar?next=https%3A%2F%2Fevil.example']) {
+    assert.equal(safeReturnPath(bad), '/')
+  }
+})
+
+test('the registration page is a standalone page, without the app menu', () => {
+  const html = renderToStaticMarkup(React.createElement(StaticRouter, { location: '/cadastro/finalizar?next=%2Fpedidos%2Fnovo' }, React.createElement(FinalizarCadastro)))
+  assert.match(html, /<main class="login-container"/)
+  assert.match(html, /Finalizar cadastro/)
+  assert.match(html, /Carregando seus dados/)
+  assert.doesNotMatch(html, /Menu principal|class="sidebar/)
 })
