@@ -52,7 +52,8 @@ const { parseProposals, bestIds, ratingLabel, getOrderProposals, parseProposalDe
 const { parseAlerts, getProposalAlerts } = await import('../src/services/alertsApi.ts')
 const { parseContract, getContract, signContract } = await import('../src/services/contractApi.ts')
 const { ContractView } = await import('../src/components/ContractPanel.tsx')
-const { parsePayment, getPayment, createPayment, simulatePayment } = await import('../src/services/paymentApi.ts')
+const { parsePayment, getPayment, createPayment, simulatePayment, remainingLabel } = await import('../src/services/paymentApi.ts')
+const { PaymentView, PaymentPanel } = await import('../src/components/PaymentPanel.tsx')
 const { AlertsBell, AlertsList } = await import('../src/components/AlertsBell.tsx')
 const { safeReturnPath } = await import('../src/services/returnPath.ts')
 const { NotFound } = await import('../src/pages/NotFound/index.tsx')
@@ -818,4 +819,93 @@ test('payment routes show the API explanation on 409 and 503', async () => {
   ]) {
     await assert.rejects(client(status, { detail })(path, { method: 'POST', token: 't' }), (error) => error.status === status && error.message === detail)
   }
+})
+
+const payOrder = (extra = {}) => stageOrder({ stage: 'AwaitingPayment', chosenProposalValue: 800, ...extra })
+const renderPayment = (props = {}) => renderAt(React.createElement(PaymentView, { order: payOrder(), onGenerate() {}, onSimulate() {}, ...props }))
+
+test('remainingLabel counts down as mm:ss and never goes negative', () => {
+  const now = Date.parse('2026-11-27T12:00:00Z')
+  assert.equal(remainingLabel('2026-11-27T12:30:00Z', now), '30:00')
+  assert.equal(remainingLabel('2026-11-27T12:00:59Z', now), '00:59')
+  assert.equal(remainingLabel('2026-11-27T12:05:09.900Z', now), '05:09')
+  assert.equal(remainingLabel('2026-11-27T11:59:00Z', now), '00:00')
+})
+
+test('without a charge the payment screen offers to generate the Pix with the agreed value', () => {
+  const html = renderPayment()
+  assert.match(html, /Pagamento do pedido #/)
+  assert.match(html, /R\$\s?800,00/)
+  assert.match(html, />Gerar Pix</)
+  assert.match(html, /30 minutos/)
+  assert.doesNotMatch(html, /QR Code/)
+  assert.match(renderPayment({ generating: true }), /disabled=""[^>]*>Gerando Pix…/)
+  assert.match(renderPayment({ actionError: 'O pagamento está indisponível no momento.' }), /role="alert">O pagamento está indisponível/)
+  // Fora de "aguardando pagamento" não há como gerar.
+  const closed = renderPayment({ order: payOrder({ stage: undefined, status: 'progress' }) })
+  assert.match(closed, /Não há pagamento registrado/)
+  assert.doesNotMatch(closed, />Gerar Pix</)
+})
+
+test('a pending Pix shows the QR Code, the copy and paste code and the time left', () => {
+  const html = renderPayment({ payment: parsePayment(paymentDto()) })
+  assert.match(html, /Aguardando pagamento/)
+  assert.match(html, /<img[^>]*class="payment-qr"[^>]*src="data:image\/png;base64,AAAA"[^>]*alt="QR Code do Pix"/)
+  assert.match(html, /Pix copia e cola/)
+  assert.match(html, /<textarea[^>]*readonly=""[^>]*>00020101021226pix<\/textarea>/)
+  assert.match(html, />Copiar código</)
+  assert.match(html, /Expira em <time[^>]*>\d\d:\d\d<\/time>/)
+  assert.match(html, /confere o pagamento sozinha/)
+  assert.doesNotMatch(html, />Gerar (novo )?Pix</)
+  // Sem imagem (a API não mandou o QR Code), o código copia e cola continua disponível.
+  const noImage = renderPayment({ payment: parsePayment(paymentDto({ qrCodeBase64: undefined })) })
+  assert.doesNotMatch(noImage, /<img/)
+  assert.match(noImage, /Pix copia e cola/)
+})
+
+test('the simulate button only exists for test charges', () => {
+  const test_ = renderPayment({ payment: parsePayment(paymentDto({ testMode: true })) })
+  assert.match(test_, /Modo de teste/)
+  assert.match(test_, />Simular pagamento</)
+  assert.match(renderPayment({ payment: parsePayment(paymentDto({ testMode: true })), simulating: true }), /disabled=""[^>]*>Simulando…/)
+  const real = renderPayment({ payment: parsePayment(paymentDto({ testMode: false })) })
+  assert.doesNotMatch(real, /Modo de teste/)
+  assert.doesNotMatch(real, /Simular pagamento/)
+})
+
+test('an expired or cancelled Pix explains it and offers a new one', () => {
+  const expired = renderPayment({ payment: parsePayment(paymentDto({ status: 'Expired' })) })
+  assert.match(expired, /Pix expirado/)
+  assert.match(expired, /Nenhum valor foi cobrado/)
+  assert.match(expired, />Gerar novo Pix</)
+  assert.doesNotMatch(expired, /QR Code/)
+  const cancelled = renderPayment({ payment: parsePayment(paymentDto({ status: 'Cancelled' })) })
+  assert.match(cancelled, /Pix cancelado/)
+  assert.match(cancelled, />Gerar novo Pix</)
+})
+
+test('a paid Pix confirms the payment and leads to the tracking', () => {
+  const payment = parsePayment(paymentDto({ status: 'Paid', paidAt: new Date().toISOString() }))
+  const order = payOrder({ stage: undefined, status: 'progress' })
+  const html = renderPayment({ order, payment })
+  assert.match(html, /Pagamento confirmado/)
+  assert.match(html, /O serviço está em andamento/)
+  assert.match(html, new RegExp(`href="/pedidos/${order.id}/acompanhar"[^>]*>Acompanhar o serviço`))
+  assert.doesNotMatch(html, /QR Code|Gerar/)
+  assert.match(renderPayment({ order: { ...order, status: 'completed' }, payment }), /O serviço foi concluído/)
+})
+
+test('the payment panel explains when the payment is not available yet', () => {
+  const render = (order, token = 'abc') => renderAt(React.createElement(PaymentPanel, { order, token }))
+  assert.match(render(payOrder(), null), /Entre na sua conta para consultar o pagamento/)
+  assert.match(render(payOrder()), /Carregando pagamento/)
+
+  const waiting = stageOrder({ stage: 'AwaitingSignatures' })
+  const signatures = render(waiting)
+  assert.match(signatures, /Pagamento ainda não disponível/)
+  assert.match(signatures, new RegExp(`href="/pedidos/${waiting.id}/contrato"[^>]*>Ver contrato`))
+  const open = stageOrder()
+  assert.match(render(open), new RegExp(`href="/pedidos/${open.id}/propostas"[^>]*>Ver propostas`))
+  assert.match(render(stageOrder({ status: 'cancelled' })), /foi cancelado, então não há pagamento/)
+  assert.doesNotMatch(render(open), /Carregando pagamento/)
 })
