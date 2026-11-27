@@ -1,11 +1,11 @@
 const uuid = '[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}'
-const paths = new RegExp(`^/(?:pedidos(?:/${uuid}(?:/(?:propostas(?:/${uuid})?|contrato|acompanhar))?)?)?$`, 'i')
+const paths = new RegExp(`^/(?:pedidos(?:/${uuid}(?:/(?:propostas(?:/${uuid})?|contrato|pagamento|acompanhar))?)?)?$`, 'i')
 
 // Só parâmetros que o próprio app grava na URL são aceitos de volta.
 const queryRules: Record<string, (value: string) => boolean> = {
   status: (value) => ['Pending', 'InProgress', 'Completed', 'Cancelled'].includes(value),
   page: (value) => /^\d{1,4}$/.test(value),
-  modal: (value) => ['perfil', 'ajuda', 'finalizar-cadastro', 'criar-pedido', 'avaliar', 'editar-pedido', 'cancelar-pedido', 'aceitar-proposta'].includes(value),
+  modal: (value) => ['perfil', 'ajuda', 'finalizar-cadastro', 'criar-pedido', 'avaliar', 'editar-pedido', 'cancelar-pedido', 'concluir-pedido', 'aceitar-proposta'].includes(value),
   next: (value) => value === 'criar-pedido',
   pedido: (value) => new RegExp(`^${uuid}$`, 'i').test(value),
 }

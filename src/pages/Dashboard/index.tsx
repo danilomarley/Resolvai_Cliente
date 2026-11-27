@@ -13,6 +13,7 @@ import { CreateOrderModal } from '../../components/CreateOrderModal'
 import { OrderReview } from '../../components/OrderReview'
 import { EditOrderModal } from '../../components/EditOrderModal'
 import { CancelOrderModal } from '../../components/CancelOrderModal'
+import { CompleteOrderModal } from '../../components/CompleteOrderModal'
 import { AlertsBell } from '../../components/AlertsBell'
 import { useProposalAlerts } from '../../services/useProposalAlerts'
 import { useReviewSummary } from '../../services/useReviewSummary'
@@ -44,6 +45,7 @@ export function Dashboard() {
   const proposalMatch = useMatch('/pedidos/:orderId/propostas/:proposalId')
   const trackingRoute = !!useMatch('/pedidos/:orderId/acompanhar')
   const contractRoute = !!useMatch('/pedidos/:orderId/contrato')
+  const paymentRoute = !!useMatch('/pedidos/:orderId/pagamento')
   const returnTo = location.pathname + location.search
   const session = useCustomerSession()
   const dashboard = useDashboardData(session.accessToken, session.customerId)
@@ -65,14 +67,14 @@ export function Dashboard() {
     })
   }
   // Perfil, ajuda, cadastro, criação de pedido, avaliação, edição e cancelamento vivem na URL (?modal=...): recarregar reabre e "voltar" fecha.
-  const urlModal = useModalRoute(['perfil', 'ajuda', 'finalizar-cadastro', 'criar-pedido', 'avaliar', 'editar-pedido', 'cancelar-pedido'] as const)
+  const urlModal = useModalRoute(['perfil', 'ajuda', 'finalizar-cadastro', 'criar-pedido', 'avaliar', 'editar-pedido', 'cancelar-pedido', 'concluir-pedido'] as const)
   // Os modais de um pedido (avaliar, editar, cancelar) usam o pedido da URL (?pedido=) ou, no detalhe, o pedido aberto.
-  const orderModal = urlModal.current === 'avaliar' || urlModal.current === 'editar-pedido' || urlModal.current === 'cancelar-pedido'
+  const orderModal = urlModal.current === 'avaliar' || urlModal.current === 'editar-pedido' || urlModal.current === 'cancelar-pedido' || urlModal.current === 'concluir-pedido'
   const reviewId = orderModal ? urlModal.order ?? orderId : undefined
   const ownDetail = useOrderDetail(reviewId && reviewId !== orderId ? reviewId : undefined, session.accessToken)
   const reviewOrder = reviewId && reviewId === orderId ? detail : ownDetail
   const ordersList = useOrdersList(session.accessToken, viewingOrders && !orderId, statusFilter, page)
-  const orderView = proposalsRoute || proposalMatch ? 'propostas' : contractRoute ? 'contrato' : trackingRoute ? 'acompanhar' : undefined
+  const orderView = proposalsRoute || proposalMatch ? 'propostas' : contractRoute ? 'contrato' : paymentRoute ? 'pagamento' : trackingRoute ? 'acompanhar' : undefined
   const [tab, setTab] = useState<Tab>('all')
   const [search, setSearch] = useState('')
   const registrationHandled = useRef(false)
@@ -195,6 +197,8 @@ export function Dashboard() {
                 if (orderId) routerNavigate(`/pedidos/${orderId}/contrato`, { replace: true })
               }}
               onContractSigned={() => { detail.retry(); setNotice('Contrato assinado.') }}
+              onContractCompleted={() => { detail.retry(); ordersList.retry(); setNotice('As duas partes assinaram o contrato. Já dá para pagar.') }}
+              onPaid={() => { detail.retry(); ordersList.retry(); dashboard.retry(); setNotice('Pagamento confirmado. O serviço está em andamento.') }}
               loading={orderId ? detail.loading : ordersList.loading}
               error={orderId ? (detail.error?.status === 404 ? undefined : detail.error?.message) : ordersList.error?.message}
               requiresLogin={(orderId ? detail.error : ordersList.error)?.status === 401}
@@ -224,7 +228,7 @@ export function Dashboard() {
         && <OrderReview key={`${session.accessToken}:${reviewOrder.data.id}`} order={toOrder(reviewOrder.data, session.customerId!)}
           token={session.accessToken} onClose={urlModal.close} onSaved={() => setReviewRevision((value) => value + 1)} />}
       {!session.loading && orderModal && reviewOrder.error && !reviewOrder.data
-        && <Modal size="sm" title={urlModal.current === 'avaliar' ? 'Avaliar serviço' : urlModal.current === 'editar-pedido' ? 'Editar pedido' : 'Cancelar pedido'}
+        && <Modal size="sm" title={urlModal.current === 'avaliar' ? 'Avaliar serviço' : urlModal.current === 'editar-pedido' ? 'Editar pedido' : urlModal.current === 'concluir-pedido' ? 'Confirmar conclusão' : 'Cancelar pedido'}
           onClose={urlModal.close}
           footer={<button type="button" className="button button-secondary" onClick={urlModal.close}>Fechar</button>}>
           <p role="alert">{reviewOrder.error.status === 404 ? 'Este pedido não está disponível para sua conta.' : reviewOrder.error.message}</p>
@@ -239,6 +243,14 @@ export function Dashboard() {
           : <Modal size="sm" title={urlModal.current === 'editar-pedido' ? 'Editar pedido' : 'Cancelar pedido'} onClose={urlModal.close}
             footer={<button type="button" className="button button-secondary" onClick={urlModal.close}>Fechar</button>}>
             <p role="alert">Este pedido não pode mais ser alterado: ele já foi cancelado, concluído, está em andamento ou teve uma proposta aceita.</p>
+          </Modal>)}
+      {!session.loading && urlModal.current === 'concluir-pedido' && session.accessToken && reviewOrder.data
+        && (toOrder(reviewOrder.data, session.customerId!).status === 'progress'
+          ? <CompleteOrderModal key={`${session.accessToken}:${reviewOrder.data.id}`} order={toOrder(reviewOrder.data, session.customerId!)}
+            token={session.accessToken} onClose={urlModal.close} onCompleted={() => orderChanged('Serviço concluído. Agora você pode avaliar o prestador.')} />
+          : <Modal size="sm" title="Confirmar conclusão" onClose={urlModal.close}
+            footer={<button type="button" className="button button-secondary" onClick={urlModal.close}>Fechar</button>}>
+            <p role="alert">Só é possível confirmar a conclusão de um pedido em andamento, com o pagamento confirmado.</p>
           </Modal>)}
       {!session.loading && (urlModal.current === 'perfil' || urlModal.current === 'ajuda') && <Modal size="lg" onClose={urlModal.close}
         title={urlModal.current === 'perfil' ? 'Configurações da conta' : 'Central de ajuda'}>
