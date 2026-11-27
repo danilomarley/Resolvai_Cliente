@@ -29,6 +29,9 @@ export type OrderProposal = {
   providerRating?: { average: number | null; count: number }
 }
 
+/** Onde um pedido aberto com proposta aceita está: falta assinar o contrato ou falta pagar (#97). */
+export type OrderStage = 'AwaitingSignatures' | 'AwaitingPayment'
+
 export type Order = {
   id: string
   customerId: string
@@ -47,4 +50,6 @@ export type Order = {
   photoUrls?: string[]
   /** Motivo informado pelo contratante ao cancelar o pedido (#88). */
   cancellationReason?: string
+  /** Só em pedido aberto com proposta aceita; depois do pagamento o próprio status é 'progress'. */
+  stage?: OrderStage
 }

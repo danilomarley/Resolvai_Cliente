@@ -32,8 +32,8 @@ registerHooks({
   },
 })
 
-const { customerOrders, customerOrder, orderMoney, orderDate, canChangeOrder, orderToForm, orderStatusLabel } = await import('../src/services/orders.ts')
-const { parseSummary, parsePage, parseDetail, parseUser, parseLogin, parseAssistantReply, isUuid, updateOrder, cancelOrder, toOrder } = await import('../src/services/dashboardApi.ts')
+const { customerOrders, customerOrder, orderMoney, orderDate, canChangeOrder, orderToForm, orderStatusLabel, hasPaymentStep, nextStep } = await import('../src/services/orders.ts')
+const { parseSummary, parsePage, parseDetail, parseUser, parseLogin, parseAssistantReply, isUuid, updateOrder, cancelOrder, completeOrder, toOrder } = await import('../src/services/dashboardApi.ts')
 const { parseProfile } = await import('../src/services/accountApi.ts')
 const { scopeToOrder } = await import('../src/services/orderDraft.ts')
 const { DashboardOverview } = await import('../src/components/dashboard/DashboardOverview.tsx')
@@ -721,4 +721,61 @@ test('the contract tab only exists after a proposal was accepted, and loads from
   assert.doesNotMatch(renderOrders({ orders: [{ ...base, proposalList: [proposal({ status: 'Sent' })] }], customerId, orderId: id }), /\/contrato/)
   assert.match(renderOrders({ orders: [base], customerId, orderId: id, view: 'contrato' }), /Entre na sua conta para consultar o contrato/)
   assert.match(renderOrders({ orders: [base], customerId, orderId: id, view: 'contrato', token: 'abc' }), /Carregando contrato/)
+})
+
+const stageOrder = (extra = {}) => ({ id: randomUUID(), customerId: randomUUID(), title: 'Serviço', category: 'Pedido', location: '', description: '', status: 'waiting', icon: 'bag', proposals: 1, ...extra })
+const stageDto = (extra = {}) => ({ id: randomUUID(), title: 'Serviço', description: 'Descrição longa', status: 'Pending', createdAt: new Date().toISOString(), ...extra })
+
+test('the stage from the API is read, validated and shown in the order status', () => {
+  assert.equal(toOrder(parseDetail(stageDto({ stage: 'AwaitingPayment' })), randomUUID()).stage, 'AwaitingPayment')
+  assert.equal(toOrder(parseDetail(stageDto()), randomUUID()).stage, undefined)
+  assert.throws(() => parseDetail(stageDto({ stage: 'Qualquer' })), ApiError)
+  assert.throws(() => parsePage({ items: [stageDto({ stage: 1 })], page: 1, pageSize: 10, totalItems: 1, totalPages: 1 }), ApiError)
+
+  // Na lista não há propostas carregadas: o estágio sozinho já diz em que passo o pedido está.
+  assert.equal(orderStatusLabel(stageOrder({ stage: 'AwaitingSignatures' })), 'Aguardando assinaturas')
+  assert.equal(orderStatusLabel(stageOrder({ stage: 'AwaitingPayment' })), 'Aguardando pagamento')
+  assert.equal(orderStatusLabel(stageOrder()), 'Recebendo propostas')
+  assert.equal(orderStatusLabel(stageOrder({ status: 'progress' })), 'Em andamento')
+  assert.equal(orderStatusLabel(stageOrder({ status: 'progress', stage: 'AwaitingPayment' })), 'Em andamento')
+})
+
+test('an order waiting for signatures or payment can no longer be edited or cancelled', () => {
+  assert.equal(canChangeOrder(stageOrder()), true)
+  assert.equal(canChangeOrder(stageOrder({ stage: 'AwaitingSignatures' })), false)
+  assert.equal(canChangeOrder(stageOrder({ stage: 'AwaitingPayment' })), false)
+})
+
+test('the payment step and the next action follow the order stage', () => {
+  const chosen = [{ id: randomUUID(), providerName: 'Ana', status: 'Chosen', value: 800 }]
+  const open = stageOrder()
+  assert.equal(hasPaymentStep(open), false)
+  assert.equal(hasPaymentStep(stageOrder({ stage: 'AwaitingSignatures' })), false)
+  assert.equal(hasPaymentStep(stageOrder({ stage: 'AwaitingPayment' })), true)
+  assert.equal(hasPaymentStep(stageOrder({ status: 'progress', proposalList: chosen })), true)
+  assert.equal(hasPaymentStep(stageOrder({ status: 'completed', proposalList: chosen })), true)
+  assert.equal(hasPaymentStep(stageOrder({ status: 'cancelled' })), false)
+
+  assert.equal(nextStep(open), undefined)
+  assert.equal(nextStep(stageOrder({ status: 'completed' })), undefined)
+  const sign = stageOrder({ stage: 'AwaitingSignatures' })
+  assert.deepEqual([nextStep(sign).label, nextStep(sign).to], ['Ver e assinar contrato', `/pedidos/${sign.id}/contrato`])
+  const pay = stageOrder({ stage: 'AwaitingPayment' })
+  assert.deepEqual([nextStep(pay).label, nextStep(pay).to], ['Pagar com Pix', `/pedidos/${pay.id}/pagamento`])
+  const running = nextStep(stageOrder({ status: 'progress' }))
+  assert.deepEqual([running.label, running.action, running.to], ['Confirmar conclusão', 'complete', undefined])
+})
+
+test('completing an order posts to its route and shows the API explanation', async () => {
+  const id = randomUUID()
+  const calls = []
+  const client = (status, body) => createApiClient('', async (url, init) => {
+    calls.push([init.method, url, init.body]); return new Response(JSON.stringify(body), { status })
+  })
+  await assert.rejects(completeOrder('t', 'abc'), (error) => error.status === 404)
+  const ok = client(200, stageDto({ id, status: 'Completed' }))
+  assert.equal((await ok(`/api/v1/orders/${id}/complete`, { method: 'POST', token: 't' })).status, 'Completed')
+  assert.deepEqual(calls[0], ['POST', `/api/v1/orders/${id}/complete`, undefined])
+  const detail = 'Só é possível concluir um pedido em andamento, com o pagamento confirmado.'
+  await assert.rejects(client(409, { detail })(`/api/v1/orders/${id}/complete`, { method: 'POST', token: 't' }), (error) => error.status === 409 && error.message === detail)
 })
