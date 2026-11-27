@@ -8,7 +8,7 @@ type Options = { token?: string; signal?: AbortSignal; body?: unknown; form?: Fo
 // Editar (PATCH), cancelar (POST .../cancel), aceitar proposta (POST .../proposals/{id}/accept), assinar contrato (POST .../contract/sign),
 // pagar (POST .../payment, .../payment/simulate) e concluir (POST .../complete): 400 e 409 trazem a explicação em português (#88, #89, #95, #97, #92).
 const orderChangePath = /^\/api\/v1\/orders\/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}(?:\/cancel|\/complete|\/payment|\/payment\/simulate|\/contract\/sign|\/proposals\/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\/accept)?$/i
-const detailPaths = ['/api/v1/orders', '/api/v1/orders/photos', '/api/v1/orders/assistant', '/api/v1/users/me/profile']
+const detailPaths = ['/api/v1/orders', '/api/v1/orders/photos', '/api/v1/orders/assistant', '/api/v1/users/me/profile', '/api/v1/auth/change-password']
 
 export function createApiClient(baseUrl: string, fetcher: typeof fetch = fetch) {
   const base = baseUrl.replace(/\/$/, '')
