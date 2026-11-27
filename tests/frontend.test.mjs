@@ -46,7 +46,7 @@ const { Modal } = await import('../src/components/Modal.tsx')
 const { Sidebar } = await import('../src/components/dashboard/Sidebar.tsx')
 const { NewOrderPage } = await import('../src/pages/NewOrder/index.tsx')
 const { createOrderDraftStore, parseDraft, draftHasContent, emptyDraft } = await import('../src/services/orderDraftStore.ts')
-const { EditOrderModal } = await import('../src/components/EditOrderModal.tsx')
+const { EditOrderPage } = await import('../src/pages/EditOrder/index.tsx')
 const { AcceptProposalModal } = await import('../src/components/AcceptProposalModal.tsx')
 const { CancelOrderModal } = await import('../src/components/CancelOrderModal.tsx')
 const { parseProposals, bestIds, ratingLabel, getOrderProposals, parseProposalDetail, getProposalDetail, acceptProposal, acceptBlock } = await import('../src/services/proposalsApi.ts')
@@ -493,7 +493,8 @@ test('order details offer edit and cancel only while nothing was accepted and sh
   const open = renderOrders({ orders: [order()], customerId, orderId: id })
   assert.match(open, />Editar pedido<\/a>/)
   assert.match(open, />Cancelar pedido<\/a>/)
-  assert.match(open, new RegExp(`modal=editar-pedido&amp;pedido=${id}`))
+  assert.match(open, new RegExp(`href="/pedidos/${id}/editar"[^>]*>Editar pedido<`))
+  assert.doesNotMatch(open, /modal=editar-pedido/)
   assert.match(open, new RegExp(`modal=cancelar-pedido&amp;pedido=${id}`))
   for (const closed of [order({ proposalList: [proposal({ status: 'Chosen' })] }), order({ status: 'progress' }), order({ status: 'completed' })]) {
     const html = renderOrders({ orders: [closed], customerId, orderId: id })
@@ -505,7 +506,7 @@ test('order details offer edit and cancel only while nothing was accepted and sh
   assert.doesNotMatch(cancelled, />Editar pedido</)
 })
 
-test('the cancel modal asks for confirmation with an optional reason and the edit modal opens on the order data', () => {
+test('the cancel modal asks for confirmation with an optional reason', () => {
   const id = randomUUID()
   const order = { id, customerId: randomUUID(), title: 'Trocar chuveiro', category: 'Elétrica', location: 'Meireles', description: 'Chuveiro queimou',
     status: 'waiting', icon: 'bag', proposals: 0, scope: { details: 'Banheiro', urgency: 'Urgente', specifications: 'Trocar o chuveiro' }, photoUrls: ['https://exemplo.com/a.jpg'] }
@@ -514,11 +515,6 @@ test('the cancel modal asks for confirmation with an optional reason and the edi
   assert.match(cancel, /Motivo do cancelamento/)
   assert.match(cancel, /maxLength="500"/)
   assert.match(cancel, /Manter pedido/)
-  const edit = renderToStaticMarkup(React.createElement(EditOrderModal, { order, token: 't', onClose() {}, onSaved() {} }))
-  assert.match(edit, /Editar pedido/)
-  assert.match(edit, /value="Trocar chuveiro"/)
-  assert.match(edit, /Salvar alterações/)
-  assert.match(edit, /Remover foto salva 1/)
 })
 
 test('proposal detail needs the provider summary and rejects a different proposal', async () => {
@@ -1101,4 +1097,43 @@ test('storage that is blocked or full never breaks the order page', () => {
   assert.equal(store.read(id), null)
   assert.doesNotThrow(() => store.write(id, filledDraft()))
   assert.doesNotThrow(() => store.clear(id))
+})
+
+test('legacy edit links are sent to the edit page of the right order', () => {
+  const id = randomUUID()
+  assert.equal(legacyModalTarget('/pedidos', `?modal=editar-pedido&pedido=${id.toUpperCase()}`), `/pedidos/${id}/editar`)
+  assert.equal(legacyModalTarget(`/pedidos/${id}`, '?modal=editar-pedido'), `/pedidos/${id}/editar`)
+  assert.equal(legacyModalTarget(`/pedidos/${id}/propostas`, '?modal=editar-pedido'), `/pedidos/${id}/editar`)
+  // Sem saber qual pedido, a lista é o destino mais seguro.
+  assert.equal(legacyModalTarget('/', '?modal=editar-pedido'), '/pedidos')
+})
+
+test('the edit page opens on the order data, with a way back and no modal', () => {
+  const id = randomUUID()
+  const order = { id, customerId: randomUUID(), title: 'Trocar chuveiro', category: 'Elétrica', location: 'Meireles', description: 'Chuveiro queimou',
+    status: 'waiting', icon: 'bag', proposals: 0, scope: { details: 'Banheiro', urgency: 'Urgente', specifications: 'Trocar o chuveiro' }, photoUrls: ['https://exemplo.com/a.jpg'] }
+  const render = (props) => renderAt(React.createElement(EditOrderPage, { orderId: id, token: 't', loading: false, onSaved() {}, onRetry() {}, ...props }))
+  const html = render({ order })
+  assert.doesNotMatch(html, /<dialog|class="modal/)
+  assert.match(html, /<h1 id="order-form-title">Editar pedido<\/h1>/)
+  assert.match(html, /value="Trocar chuveiro"/)
+  assert.match(html, /Salvar alterações/)
+  assert.match(html, /Remover foto salva 1/)
+  assert.match(html, new RegExp(`href="/pedidos/${id}"[^>]*>Voltar para o pedido<`))
+})
+
+test('the edit page explains when the order is loading, missing or can no longer be changed', () => {
+  const id = randomUUID()
+  const base = { id, customerId: randomUUID(), title: 'Serviço', category: 'Pedido', location: '', description: 'Descrição do pedido', status: 'waiting', icon: 'bag', proposals: 1 }
+  const render = (props) => renderAt(React.createElement(EditOrderPage, { orderId: id, token: 't', loading: false, onSaved() {}, onRetry() {}, ...props }))
+  assert.match(render({ loading: true }), /Carregando pedido/)
+  assert.match(render({ error: new ApiError(404, 'x') }), /Este pedido não está disponível para sua conta/)
+  const failed = render({ error: new ApiError(500, 'Falha ao consultar') })
+  assert.match(failed, /Falha ao consultar/)
+  assert.match(failed, />Tentar novamente</)
+  for (const closed of [{ ...base, proposalList: [proposal({ status: 'Chosen' })] }, { ...base, status: 'progress' }, { ...base, status: 'completed' }, { ...base, status: 'cancelled' }, { ...base, stage: 'AwaitingPayment' }]) {
+    const html = render({ order: closed })
+    assert.match(html, /não pode mais ser alterado/)
+    assert.doesNotMatch(html, /Salvar alterações/)
+  }
 })
