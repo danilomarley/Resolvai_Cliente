@@ -39,7 +39,7 @@ test('finalização exige campos e persiste perfil, endereço e contato na API',
   await page.getByLabel('CPF', { exact: true }).fill(account.cpf)
   await page.getByLabel('CEP', { exact: true }).fill('00000000')
   await expect(page.getByText('Não foi possível buscar o CEP. Preencha o endereço manualmente.')).toBeVisible()
-  await dialog.getByLabel('Estado', { exact: true }).selectOption('CE')
+  await dialog.getByRole('combobox', { name: /^Estado\b/ }).selectOption('CE')
   for (const [label, value] of Object.entries({ Logradouro: 'Rua de Teste', Número: '10', Bairro: 'Bairro E2E', Cidade: 'Fortaleza', 'Número de contato': '85999999999' })) await dialog.getByLabel(label, { exact: true }).fill(value)
   await submit.click()
   await expect(page).toHaveURL(/\/$/)
