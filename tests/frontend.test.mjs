@@ -66,7 +66,7 @@ const { safeReturnPath, nextAfterRegistration } = await import('../src/services/
 const { legacyModalTarget } = await import('../src/services/legacyModals.ts')
 const { FinalizarCadastro } = await import('../src/pages/FinalizarCadastro/index.tsx')
 const { NotFound } = await import('../src/pages/NotFound/index.tsx')
-const { readModal, readNext, readOrder, searchWithModal, modalLink } = await import('../src/services/modalRoute.ts')
+const { readModal, readOrder, searchWithModal, modalLink } = await import('../src/services/modalRoute.ts')
 const { buildRegistration, emptyRegistration, maskCpf, maskCep, maskPhone, isValidPhone } = await import('../src/services/registrationForm.ts')
 const { CompleteRegistrationForm } = await import('../src/components/CompleteRegistrationForm.tsx')
 const { parseReview, parseReviewSummary, validRating, submitReview } = await import('../src/services/reviews.ts')
@@ -277,12 +277,9 @@ test('modal renders size, description, scrollable body and footer; blocks closin
   assert.match(render({ dismissible: false }), /aria-label="Fechar janela"[^>]*disabled=""|disabled=""[^>]*aria-label="Fechar janela"/)
 })
 
-test('modal intent is only kept for known actions and leaves with the modal', () => {
-  assert.equal(readNext('?modal=finalizar-cadastro&next=criar-pedido'), 'criar-pedido')
-  assert.equal(readNext('?next=apagar-tudo'), null)
-  assert.equal(searchWithModal('', 'finalizar-cadastro', 'criar-pedido'), '?modal=finalizar-cadastro&next=criar-pedido')
-  assert.equal(searchWithModal('?modal=finalizar-cadastro&next=criar-pedido', null), '')
-  assert.equal(searchWithModal('?modal=perfil&next=criar-pedido', 'ajuda'), '?modal=ajuda')
+test('only the order travels with a modal and leaves with it', () => {
+  // Um parâmetro next de links antigos não passa para o modal seguinte.
+  assert.equal(searchWithModal('?modal=perfil&next=criar-pedido', 'ajuda'), '?modal=ajuda&next=criar-pedido')
 })
 
 test('registration masks and validation build the API payload', () => {
@@ -350,7 +347,7 @@ test('review modal link keeps the current page and carries the order id in the U
   const id = randomUUID()
   assert.equal(readOrder(`?modal=avaliar&pedido=${id.toUpperCase()}`), id)
   assert.equal(readOrder('?pedido=../../etc'), null)
-  assert.equal(searchWithModal('?status=Completed', 'avaliar', undefined, id), `?status=Completed&modal=avaliar&pedido=${id}`)
+  assert.equal(searchWithModal('?status=Completed', 'avaliar', id), `?status=Completed&modal=avaliar&pedido=${id}`)
   assert.equal(searchWithModal(`?modal=avaliar&pedido=${id}&status=Completed`, null), '?status=Completed')
   const link = modalLink('/pedidos', '?status=Completed', 'avaliar', id)
   assert.deepEqual(link.to, { pathname: '/pedidos', search: `?status=Completed&modal=avaliar&pedido=${id}` })
