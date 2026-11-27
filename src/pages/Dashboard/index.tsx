@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, Navigate, useLocation, useMatch, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { MyOrders } from '../MyOrders'
 import { useCustomerSession } from '../../services/useCustomerSession'
@@ -8,7 +8,6 @@ import { canChangeOrder } from '../../services/orders'
 import { Icon } from '../../components/Icon'
 import { Modal } from '../../components/Modal'
 import { AccountSettings } from '../../components/AccountSettings'
-import { CompleteRegistrationModal } from '../../components/CompleteRegistrationModal'
 import { CreateOrderModal } from '../../components/CreateOrderModal'
 import { OrderReview } from '../../components/OrderReview'
 import { EditOrderModal } from '../../components/EditOrderModal'
@@ -18,6 +17,7 @@ import { AlertsBell } from '../../components/AlertsBell'
 import { useProposalAlerts } from '../../services/useProposalAlerts'
 import { useReviewSummary } from '../../services/useReviewSummary'
 import { useModalRoute } from '../../services/modalRoute'
+import { legacyModalTarget } from '../../services/legacyModals'
 import { Sidebar } from '../../components/dashboard/Sidebar'
 import { DashboardOverview } from '../../components/dashboard/DashboardOverview'
 import type { Order } from '../../types/orders'
@@ -67,7 +67,7 @@ export function Dashboard() {
     })
   }
   // Perfil, ajuda, cadastro, criação de pedido, avaliação, edição e cancelamento vivem na URL (?modal=...): recarregar reabre e "voltar" fecha.
-  const urlModal = useModalRoute(['perfil', 'ajuda', 'finalizar-cadastro', 'criar-pedido', 'avaliar', 'editar-pedido', 'cancelar-pedido', 'concluir-pedido'] as const)
+  const urlModal = useModalRoute(['perfil', 'ajuda', 'criar-pedido', 'avaliar', 'editar-pedido', 'cancelar-pedido', 'concluir-pedido'] as const)
   // Os modais de um pedido (avaliar, editar, cancelar) usam o pedido da URL (?pedido=) ou, no detalhe, o pedido aberto.
   const orderModal = urlModal.current === 'avaliar' || urlModal.current === 'editar-pedido' || urlModal.current === 'cancelar-pedido' || urlModal.current === 'concluir-pedido'
   const reviewId = orderModal ? urlModal.order ?? orderId : undefined
@@ -77,7 +77,6 @@ export function Dashboard() {
   const orderView = proposalsRoute || proposalMatch ? 'propostas' : contractRoute ? 'contrato' : paymentRoute ? 'pagamento' : trackingRoute ? 'acompanhar' : undefined
   const [tab, setTab] = useState<Tab>('all')
   const [search, setSearch] = useState('')
-  const registrationHandled = useRef(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [notice, setNotice] = useState('')
   const completedList = useOrdersList(session.accessToken, !viewingOrders && !!dashboard.data, 'Completed', 1, 3)
@@ -93,32 +92,17 @@ export function Dashboard() {
     setMobileOpen(false)
     if (value === 'profile') urlModal.open('perfil')
     else if (value === 'help') urlModal.open('ajuda')
-    else if (value === 'create' && dashboard.data && !dashboard.data.user.cpf) urlModal.open('finalizar-cadastro', 'criar-pedido')
+    else if (value === 'create' && dashboard.data && !dashboard.data.user.cpf) routerNavigate('/cadastro/finalizar?next=%2Fpedidos%2Fnovo')
     else if (value === 'create') urlModal.open('criar-pedido')
   }
-  function registrationCompleted() {
-    registrationHandled.current = true
-    dashboard.retry()
-    if (urlModal.next === 'criar-pedido') urlModal.swap('criar-pedido')
-    else { urlModal.close(); setNotice('Cadastro finalizado com sucesso.') }
-  }
-  // Link direto (?modal=finalizar-cadastro) de quem já finalizou: não há o que preencher.
-  const alreadyRegistered = urlModal.current === 'finalizar-cadastro' && !!dashboard.data?.user.cpf
+  // Telas que terminam em outra página (ex.: finalizar cadastro) avisam o resultado pelo estado da navegação.
+  const stateNotice = (location.state as { notice?: string } | null)?.notice
   useEffect(() => {
-    if (urlModal.current !== 'finalizar-cadastro') registrationHandled.current = false
-    else if (alreadyRegistered && !registrationHandled.current) {
-      registrationHandled.current = true
-      if (urlModal.next === 'criar-pedido') urlModal.swap('criar-pedido')
-      else urlModal.close()
-    }
+    if (!stateNotice) return
+    setNotice(stateNotice)
+    routerNavigate(location.pathname + location.search, { replace: true, state: null })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [urlModal.current, alreadyRegistered])
-  // Link direto para criar pedido sem cadastro finalizado: pede o cadastro primeiro.
-  const needsRegistration = urlModal.current === 'criar-pedido' && !!dashboard.data && !dashboard.data.user.cpf
-  useEffect(() => {
-    if (needsRegistration) urlModal.swap('finalizar-cadastro', 'criar-pedido')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [needsRegistration])
+  }, [stateNotice])
   // Pedido editado ou cancelado: recarrega o detalhe, a lista e os cards da Home e avisa o resultado.
   function orderChanged(message: string) {
     reviewOrder.retry()
@@ -147,6 +131,9 @@ export function Dashboard() {
   // A busca só filtra o painel da Visão geral e a lista de pedidos; no detalhe não teria efeito.
   const searchable = !orderId && (viewingOrders || location.pathname === '/')
   const failure = session.error || dashboard.error?.message
+  // Links antigos de modal que hoje são páginas.
+  const legacyTarget = legacyModalTarget(location.pathname, location.search)
+  if (legacyTarget) return <Navigate to={legacyTarget} replace />
   if (!session.loading && !session.error && !session.customerId) {
     return <Navigate to="/login" replace state={{ from: returnTo }} />
   }
@@ -218,11 +205,7 @@ export function Dashboard() {
       {notice && <div className="toast" role="status"><span>{notice}</span>
         <button className="icon-button" onClick={() => setNotice('')} aria-label="Dispensar aviso"><Icon name="close" size={17} /></button>
       </div>}
-      {!session.loading && urlModal.current === 'finalizar-cadastro' && dashboard.data && !alreadyRegistered
-        && <CompleteRegistrationModal token={session.accessToken} customerId={session.customerId}
-          defaultName={dashboard.data.user.name} onClose={urlModal.close} onCompleted={registrationCompleted}
-          reason={urlModal.next === 'criar-pedido' ? 'Para criar um pedido, precisamos concluir seu cadastro. Leva menos de um minuto.' : undefined} />}
-      {!session.loading && urlModal.current === 'criar-pedido' && session.accessToken && dashboard.data && !needsRegistration
+      {!session.loading && urlModal.current === 'criar-pedido' && session.accessToken && dashboard.data
         && <CreateOrderModal token={session.accessToken} onClose={urlModal.close} onCreated={orderCreated} />}
       {!session.loading && urlModal.current === 'avaliar' && session.accessToken && reviewOrder.data
         && <OrderReview key={`${session.accessToken}:${reviewOrder.data.id}`} order={toOrder(reviewOrder.data, session.customerId!)}
