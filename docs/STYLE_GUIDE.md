@@ -26,7 +26,7 @@ O laranja identifica a marca; não deve ser usado como texto pequeno sobre fundo
 
 ## Tipografia
 
-A barra lateral renderiza diretamente o conteúdo de `public/brand/resolvai-original.svg`, sem modificar seus traçados, composição, slogan ou proporções. A fonte Alexandria regular é carregada localmente por `@fontsource/alexandria` para o texto do slogan dentro do SVG. A imagem é inserida como SVG inline para compartilhar essa fonte com a página; não separar ou recriar o slogan em HTML.
+A logo é o componente `src/components/Logo.tsx`: um símbolo em SVG (um "R" branco em quadrado laranja arredondado, com a perna em forma de visto) ao lado do nome, escrito em Rajdhani 700 ("Resolv" na cor do texto e "AI" em `--color-secondary`). Ela aparece na barra lateral e nas telas de login, cadastro e finalizar cadastro, e o `public/favicon.svg` usa o mesmo símbolo. Os arquivos antigos de `public/brand` não são mais usados.
 
 O slogan “Conectando quem precisa a quem resolve” aparece no rodapé. O HTML `VisualizacaoPrototipo/index.html` e a página vinculada `cliente-web.html` orientam a estrutura e a linguagem do contratante. O histórico é identificado explicitamente por “Serviços concluídos”, com a descrição “Serviços finalizados, valores e avaliações”.
 

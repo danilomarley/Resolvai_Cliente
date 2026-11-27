@@ -1,3 +1,4 @@
+import { Logo } from '../../components/Logo'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import '../../styles/login.css'
 import { CompleteRegistrationForm } from '../../components/CompleteRegistrationForm'
@@ -32,10 +33,8 @@ export function FinalizarCadastro() {
     <main className="login-container">
       <div className="login-card login-card-wide">
         <header className="login-header">
-          <div className="logo-container">
-            <div className="logo-icon">R</div>
-            <h1 className="logo-text">Finalizar cadastro</h1>
-          </div>
+          <div className="logo-container"><Logo size={44} /></div>
+          <h1 className="logo-text">Finalizar cadastro</h1>
           <p>{creating
             ? 'Para criar um pedido, precisamos concluir seu cadastro. Leva menos de um minuto.'
             : 'Informe seu documento, endereço principal e contato para usar todos os recursos.'}</p>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ApiError } from './api'
-import { getCurrentUser, getOrder, getOrders, getSummary, type HomeSummary, type OrderDto, type OrdersPage, type OrderStatusDto, type UserDto } from './dashboardApi'
+import { getCurrentUser, getOrder, getOrders, getSummary, type HomeSummary, type OrderDto, type OrderStageFilter, type OrdersPage, type OrderStatusDto, type UserDto } from './dashboardApi'
 
 type State<T> = { key: string; data?: T; error?: ApiError }
 const asError = (error: unknown) => error instanceof ApiError ? error : new ApiError(0, 'Não foi possível carregar os dados. Tente novamente.')
@@ -48,21 +48,21 @@ export function useOrderDetail(id: string | undefined, token: string | null) {
     retry: () => setAttempt((value) => value + 1) }
 }
 
-export function useOrdersList(token: string | null, enabled: boolean, status: OrderStatusDto | undefined, page: number, pageSize = 10) {
+export function useOrdersList(token: string | null, enabled: boolean, status: OrderStatusDto | undefined, page: number, pageSize = 10, stage?: OrderStageFilter) {
   const [state, setState] = useState<State<OrdersPage>>({ key: '' })
   const [attempt, setAttempt] = useState(0)
-  const key = `${token}:${status}:${page}:${pageSize}`
+  const key = `${token}:${status}:${stage}:${page}:${pageSize}`
   useEffect(() => {
     if (!token || !enabled) return
     const controller = new AbortController()
     setState({ key })
-    getOrders(token, { status, page, pageSize }, controller.signal).then((data) => {
+    getOrders(token, { status, stage, page, pageSize }, controller.signal).then((data) => {
       if (!controller.signal.aborted) setState({ key, data })
     }).catch((error: unknown) => {
       if (!controller.signal.aborted) setState({ key, error: asError(error) })
     })
     return () => controller.abort()
-  }, [token, enabled, status, page, pageSize, key, attempt])
+  }, [token, enabled, status, stage, page, pageSize, key, attempt])
   const current = state.key === key ? state : undefined
   return { data: current?.data, error: current?.error, loading: enabled && !!token && !current?.data && !current?.error,
     retry: () => setAttempt((value) => value + 1) }

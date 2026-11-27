@@ -54,6 +54,21 @@ function AddressAndContactFields({ disabled, profile, contactType, setContactTyp
   </>
 }
 
+// Confere se algum campo do formulário é diferente do que está salvo no perfil.
+function changedFields(form: HTMLFormElement, profile: Profile, contactType: string) {
+  const data = new FormData(form)
+  const field = (name: string) => String(data.get(name) ?? '').trim()
+  const address = profile.endereco
+  const saved: Record<string, string> = {
+    name: profile.user.name ?? '', logradouro: address?.logradouro ?? '', numero: address?.numero ?? '',
+    complemento: address?.complemento ?? '', bairro: address?.bairro ?? '', cidade: address?.cidade ?? '',
+    estado: address?.estado ?? '', apelido: address?.apelido ?? '', contato: profile.contato?.valor ?? '',
+  }
+  if (onlyDigits(field('cep')) !== onlyDigits(address?.cep ?? '')) return true
+  if (contactType !== (profile.contato?.tipo ?? 'telefone')) return true
+  return Object.keys(saved).some((name) => field(name) !== saved[name].trim())
+}
+
 function readAddress(field: FormField): CompleteRegistration['endereco'] {
   return {
     logradouro: field('logradouro'), numero: field('numero'), complemento: field('complemento') || undefined,
@@ -71,6 +86,7 @@ export function AccountSettings({ token, customerId, onCompleted }: Props) {
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState('')
   const [attempt, setAttempt] = useState(0)
+  const [dirty, setDirty] = useState(false)
   const [contactType, setContactType] = useState<ProfileContact['tipo']>('telefone')
   const submission = useRef<AbortController>()
   const user = profile?.user
@@ -123,7 +139,7 @@ export function AccountSettings({ token, customerId, onCompleted }: Props) {
 
   async function saveChanges(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!user?.cpf || !token) return
+    if (!user?.cpf || !token || !dirty) return
     const form = new FormData(event.currentTarget)
     const field: FormField = (name) => String(form.get(name) ?? '').trim()
     await run(async (signal) => {
@@ -132,6 +148,7 @@ export function AccountSettings({ token, customerId, onCompleted }: Props) {
       }, signal)
       setProfile(updated)
       setSuccess('Dados da conta atualizados.')
+      setDirty(false)
       onCompleted()
     })
   }
@@ -159,18 +176,20 @@ export function AccountSettings({ token, customerId, onCompleted }: Props) {
     navigate('/login', { replace: true })
   }
 
-  const logoutButton = <button className="button button-secondary" type="button" onClick={logout}>Sair da conta</button>
+  const logoutButton = <button className="button button-ghost" type="button" onClick={logout}>Sair da conta</button>
 
   if (loading) return <p role="status">Carregando dados da conta…</p>
   if (loadError || !user) return <div className="dialog-stack" role="alert">
     <p>{loadError?.message ?? 'Não foi possível consultar sua conta.'}</p>
-    <button className="button button-secondary" onClick={() => setAttempt((value) => value + 1)}>Tentar novamente</button>
-    {loadError?.status === 401 && <Link to="/login">Entrar novamente</Link>}
-    {logoutButton}
+    <div className="form-actions form-actions-start">
+      <button className="button button-secondary" onClick={() => setAttempt((value) => value + 1)}>Tentar novamente</button>
+      {loadError?.status === 401 && <Link to="/login">Entrar novamente</Link>}
+      {logoutButton}
+    </div>
   </div>
 
   return <div className="account-settings dialog-stack">
-    <section aria-labelledby="account-data-title">
+    <section className="account-section" aria-labelledby="account-data-title">
       <h2 id="account-data-title">Dados da conta</h2>
       <dl className="account-data">
         <div><dt>E-mail de acesso</dt><dd>{user.email}</dd></div>
@@ -182,7 +201,11 @@ export function AccountSettings({ token, customerId, onCompleted }: Props) {
     </section>
     {success && <p role="status" className="account-success">{success}</p>}
     {user.cpf
-      ? <form className="form-stack" onSubmit={saveChanges} key={`editar-${attempt}`}>
+      ? <form className="form-stack account-section" onSubmit={saveChanges} key={`editar-${attempt}`}
+        onChange={(event) => {
+          const select = event.currentTarget.querySelector<HTMLSelectElement>('#account-contact-type')
+          if (profile) setDirty(changedFields(event.currentTarget, profile, select?.value ?? contactType))
+        }}>
         <h2>Editar dados</h2>
         <p>Atualize seu nome, endereço principal e contato. O CPF não pode ser alterado.</p>
         <fieldset disabled={saving} className="account-fields">
@@ -192,15 +215,22 @@ export function AccountSettings({ token, customerId, onCompleted }: Props) {
         </fieldset>
         <AddressAndContactFields disabled={saving} profile={profile} contactType={contactType} setContactType={setContactType} />
         {saveError && <div role="alert"><p>{saveError.message}</p>{saveError.status === 401 && <Link to="/login">Entrar novamente</Link>}</div>}
-        <button className="button button-primary" type="submit" disabled={saving}>{saving ? 'Salvando…' : 'Salvar alterações'}</button>
+        <div className="form-actions">
+          {!dirty && !saving && <span id="account-save-hint" className="account-hint">Nenhuma alteração para salvar.</span>}
+          <button className="button button-primary" type="submit" disabled={saving}
+            aria-disabled={!dirty || saving} aria-describedby={!dirty && !saving ? 'account-save-hint' : undefined}>{saving ? 'Salvando…' : 'Salvar alterações'}</button>
+        </div>
       </form>
-      : <div className="form-stack" role="status">
+      : <div className="form-stack account-section" role="status">
         <h2>Finalizar cadastro</h2>
         <p>Informe seu CPF, endereço principal e contato para poder criar pedidos.</p>
-        <Link className="button button-primary" to="/cadastro/finalizar">Finalizar cadastro</Link>
+        <div className="form-actions"><Link className="button button-primary" to="/cadastro/finalizar">Finalizar cadastro</Link></div>
       </div>}
     <ChangePasswordForm key={`senha-${passwordRound}`} saving={passwordSaving} error={passwordError} success={passwordSuccess} onSubmit={savePassword} />
-    <button className="button button-secondary" disabled={saving} onClick={() => { setSaveError(undefined); setSuccess(''); setAttempt((value) => value + 1) }}>Atualizar dados da conta</button>
-    {logoutButton}
+    <section className="account-section" aria-labelledby="account-session-title">
+      <h2 id="account-session-title">Sessão</h2>
+      <p>Encerre o acesso a esta conta neste aparelho.</p>
+      <div className="form-actions form-actions-start">{logoutButton}</div>
+    </section>
   </div>
 }

@@ -175,6 +175,56 @@
   border-color: #a9bddb;
 }
 
+/* Ação discreta: sem fundo nem borda, para sair, cancelar e recarregar sem competir com a principal. */
+.button-ghost {
+  background: transparent;
+  color: #465e80;
+  border-color: transparent;
+}
+
+.button-ghost:hover {
+  background: #f4f7fc;
+  color: var(--color-text);
+}
+
+.button-ghost-danger {
+  color: var(--color-danger);
+}
+
+.button-ghost-danger:hover {
+  background: var(--color-warning-soft);
+  color: var(--color-danger);
+}
+
+/* Confirmação de ação destrutiva (ex.: cancelar pedido). */
+.button-danger {
+  background: var(--color-danger);
+  color: white;
+}
+
+.button-danger:hover {
+  background: #a93240;
+}
+
+/* Linha de ações de um formulário: a principal à direita, com largura natural; no celular empilha. */
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.form-actions-start {
+  justify-content: flex-start;
+}
+
+@media (max-width: 560px) {
+  .form-actions > .button {
+    flex: 1 1 100%;
+  }
+}
+
 .panel-footer {
   display: flex;
   gap: 7px;

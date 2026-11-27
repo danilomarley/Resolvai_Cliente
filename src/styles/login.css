@@ -27,26 +27,14 @@
   margin-bottom: var(--spacing-lg);
 }
 
-/* Replicando visualmente a logo da imagem */
+/* Logo da ResolvAI nas telas de acesso */
 .logo-container {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-sm);
-}
-
-.logo-icon {
-  background-color: var(--color-secondary);
-  color: var(--color-surface);
-  font-weight: 700;
-  font-size: var(--font-size-lg);
-  height: 32px;
-  width: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-sm);
+  margin: 0 0 var(--spacing-sm);
+  color: var(--color-text);
+  font-size: inherit;
 }
 
 .logo-text {
@@ -212,3 +200,9 @@
   font-size: var(--font-size-sm);
   color: var(--color-muted);
 }
+
+/* Logo: símbolo + nome */
+.logo { display: inline-flex; align-items: center; gap: 10px; line-height: 1; }
+.logo-mark { flex-shrink: 0; display: block; }
+.logo-name { font-family: var(--font-main); font-size: 1.7rem; font-weight: 700; letter-spacing: 0.01em; color: inherit; }
+.logo-ai { color: var(--color-secondary); }

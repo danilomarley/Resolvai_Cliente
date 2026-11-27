@@ -1,3 +1,4 @@
+import { Logo } from '../../components/Logo'
 import { FormEvent, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import "../../styles/login.css"; 
@@ -81,10 +82,7 @@ export function Login() {
     <main className="login-container">
       <div className="login-card">
         <header className="login-header">
-          <div className="logo-container">
-            <div className="logo-icon">R</div>
-            <h1 className="logo-text">ResolvAI</h1>
-          </div>
+          <h1 className="logo-container"><Logo size={44} /></h1>
           {view === 'login' && <p>Bem-vindo de volta! Faça login na sua conta.</p>}
           {view === 'verify-email' && <p>Informe seu e-mail para recuperar a senha.</p>}
           {view === 'reset-password' && <p>Se houver uma conta para este e-mail, você receberá um código de recuperação. Informe o código e defina sua nova senha.</p>}

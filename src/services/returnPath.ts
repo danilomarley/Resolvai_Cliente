@@ -4,6 +4,7 @@ const paths = new RegExp(`^/(?:pedidos(?:/novo|/${uuid}(?:/(?:propostas(?:/${uui
 // Só parâmetros que o próprio app grava na URL são aceitos de volta.
 const queryRules: Record<string, (value: string) => boolean> = {
   status: (value) => ['Pending', 'InProgress', 'Completed', 'Cancelled'].includes(value),
+  stage: (value) => ['Open', 'AwaitingSignatures', 'AwaitingPayment'].includes(value),
   page: (value) => /^\d{1,4}$/.test(value),
   modal: (value) => ['perfil', 'ajuda', 'finalizar-cadastro', 'criar-pedido', 'avaliar', 'editar-pedido', 'cancelar-pedido', 'concluir-pedido', 'aceitar-proposta'].includes(value),
   // Links antigos usavam next=criar-pedido; hoje o destino é o próprio caminho (só telas do app, sem parâmetros).
