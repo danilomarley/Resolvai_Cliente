@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { orderMoney } from '../services/orders'
 import { signContract, type Contract } from '../services/contractApi'
@@ -69,15 +69,24 @@ export function ContractView({ order, contract, signing, signError, onSign, onPa
 }
 
 /** Contrato do pedido (#95, tela C9): busca o contrato na API e registra a assinatura do contratante. */
-export function ContractPanel({ order, token, onSigned, onPay }: {
+export function ContractPanel({ order, token, onSigned, onBothSigned, onPay }: {
   order: Order
   token?: string | null
   onSigned?: () => void
+  /** Quando o contrato passa a assinado pelas duas partes com a tela aberta (o prestador assinou, ou foi a sua assinatura que fechou). */
+  onBothSigned?: () => void
   onPay?: string
 }) {
   const { data: contract, error, loading, retry, replace } = useOrderContract(order.id, token)
   const [signing, setSigning] = useState(false)
   const [signError, setSignError] = useState('')
+  const previous = useRef<Contract['status']>()
+  useEffect(() => {
+    if (previous.current === 'Pending' && contract?.status === 'Signed') onBothSigned?.()
+    previous.current = contract?.status
+    // onBothSigned muda a cada render do pai; só a mudança de status importa.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contract?.status])
 
   if (!token) return <article className="panel order-summary" role="alert"><p>Entre na sua conta para consultar o contrato.</p></article>
   if (loading) return <article className="panel order-summary"><p role="status">Carregando contrato…</p></article>
