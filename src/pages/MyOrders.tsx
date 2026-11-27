@@ -5,7 +5,7 @@ import type { Order } from '../types/orders'
 import { ProposalsPanel } from '../components/ProposalsPanel'
 import { ContractPanel } from '../components/ContractPanel'
 import { PaymentPanel } from '../components/PaymentPanel'
-import type { OrderStatusDto } from '../services/dashboardApi'
+import { sameFilter, statusFilters, type OrderFilter } from '../services/orderFilters'
 import {
   canChangeOrder,
   hasChosenProposal,
@@ -43,17 +43,10 @@ type Props = {
   onPaid?: () => void
   /** Título e descrição da listagem; os atalhos do menu (Propostas, Avaliações) trocam o padrão. */
   heading?: { title: string; description: string }
-  filter?: { value?: OrderStatusDto; onChange: (value?: OrderStatusDto) => void }
+  filter?: { value?: OrderFilter; onChange: (value?: OrderFilter) => void }
   pager?: { page: number; totalPages: number; onPage: (page: number) => void }
 }
 
-const statusFilters: { value?: OrderStatusDto; label: string }[] = [
-  { label: 'Todos' },
-  { value: 'Pending', label: 'Recebendo propostas' },
-  { value: 'InProgress', label: 'Em andamento' },
-  { value: 'Completed', label: 'Concluídos' },
-  { value: 'Cancelled', label: 'Cancelados' },
-]
 const orderNumber = (order: Order) => order.id.slice(0, 8).toUpperCase()
 
 /** Seções do pedido: cada aba é uma rota (/pedidos/:id, /propostas, /acompanhar). */
@@ -201,8 +194,8 @@ export function MyOrders({ orders, customerId, orderId, search, loading, error, 
   const filterBar = filter && (
     <div className="order-filters" role="group" aria-label="Filtrar por status">
       {statusFilters.map((item) => (
-        <button key={item.label} className={`button ${filter.value === item.value ? 'button-primary' : 'button-secondary'}`}
-          aria-pressed={filter.value === item.value} onClick={() => filter.onChange(item.value)}>
+        <button key={item.label} className={`button ${sameFilter(filter.value, item.value) ? 'button-primary' : 'button-secondary'}`}
+          aria-pressed={sameFilter(filter.value, item.value)} onClick={() => filter.onChange(item.value)}>
           {item.label}
         </button>
       ))}

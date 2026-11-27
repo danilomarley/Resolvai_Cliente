@@ -3,7 +3,7 @@ import { Link, Navigate, useLocation, useMatch, useNavigate, useParams, useSearc
 import { MyOrders } from '../MyOrders'
 import { useCustomerSession } from '../../services/useCustomerSession'
 import { useDashboardData, useOrderDetail, useOrdersList } from '../../services/useDashboardData'
-import { toOrder, type OrderStatusDto } from '../../services/dashboardApi'
+import { orderStageFilters, toOrder, type OrderStageFilter, type OrderStatusDto } from '../../services/dashboardApi'
 import { canChangeOrder } from '../../services/orders'
 import { Icon } from '../../components/Icon'
 import { Modal } from '../../components/Modal'
@@ -29,7 +29,7 @@ const orderStatuses: OrderStatusDto[] = ['Pending', 'InProgress', 'Completed', '
 const destinations: Record<Exclude<NavKey, 'Criar pedido'>, string> = {
   'Visão geral': '/',
   'Meus pedidos': '/pedidos',
-  'Propostas': '/pedidos?status=Pending',
+  'Propostas': '/pedidos?status=Pending&stage=Open',
   'Avaliações': '/pedidos?status=Completed',
 }
 const listHeadings: Partial<Record<NavKey, { title: string; description: string }>> = {
@@ -63,11 +63,13 @@ export function Dashboard() {
   // Filtro e página da lista de pedidos vivem na URL (?status=...&page=...): os atalhos do menu e o botão voltar funcionam.
   const [searchParams, setSearchParams] = useSearchParams()
   const statusFilter = orderStatuses.find((status) => status === searchParams.get('status'))
+  const stageFilter: OrderStageFilter | undefined = statusFilter === 'Pending' ? orderStageFilters.find((stage) => stage === searchParams.get('stage')) : undefined
   const page = Math.max(1, Number.parseInt(searchParams.get('page') ?? '1', 10) || 1)
-  function updateList(changes: { status?: OrderStatusDto | null; page?: number }) {
+  function updateList(changes: { status?: OrderStatusDto | null; stage?: OrderStageFilter | null; page?: number }) {
     setSearchParams((current) => {
       const next = new URLSearchParams(current)
       if (changes.status !== undefined) { if (changes.status) next.set('status', changes.status); else next.delete('status') }
+      if (changes.stage !== undefined) { if (changes.stage) next.set('stage', changes.stage); else next.delete('stage') }
       if (changes.page && changes.page > 1) next.set('page', String(changes.page)); else next.delete('page')
       return next
     })
@@ -79,7 +81,7 @@ export function Dashboard() {
   const reviewId = orderModal ? urlModal.order ?? orderId : undefined
   const ownDetail = useOrderDetail(reviewId && reviewId !== orderId ? reviewId : undefined, session.accessToken)
   const reviewOrder = reviewId && reviewId === orderId ? detail : ownDetail
-  const ordersList = useOrdersList(session.accessToken, viewingOrders && !orderId, statusFilter, page)
+  const ordersList = useOrdersList(session.accessToken, viewingOrders && !orderId, statusFilter, page, 10, stageFilter)
   const orderView = proposalsRoute || proposalMatch ? 'propostas' : contractRoute ? 'contrato' : paymentRoute ? 'pagamento' : trackingRoute ? 'acompanhar' : undefined
   const [tab, setTab] = useState<Tab>('all')
   const [search, setSearch] = useState('')
@@ -90,7 +92,7 @@ export function Dashboard() {
   const profile = { name: dashboard.data?.user.name ?? 'Minha conta', location: 'Localização não informada' }
   const activeNav: NavKey | null = newOrderRoute ? 'Criar pedido' : editRoute ? 'Meus pedidos' : reviewRoute ? 'Avaliações' : helpRoute || accountRoute ? null : !viewingOrders ? 'Visão geral'
     : orderId ? 'Meus pedidos'
-    : statusFilter === 'Pending' ? 'Propostas'
+    : statusFilter === 'Pending' && stageFilter === 'Open' ? 'Propostas'
     : statusFilter === 'Completed' ? 'Avaliações' : 'Meus pedidos'
 
   function openDialog(value: Dialog) {
@@ -215,7 +217,7 @@ export function Dashboard() {
               requiresLogin={(orderId ? detail.error : ordersList.error)?.status === 401}
               onRetry={orderId ? detail.retry : ordersList.retry}
               heading={activeNav ? listHeadings[activeNav] : undefined}
-              filter={orderId ? undefined : { value: statusFilter, onChange: (value) => updateList({ status: value ?? null }) }}
+              filter={orderId ? undefined : { value: statusFilter && { status: statusFilter, stage: stageFilter }, onChange: (value) => updateList({ status: value?.status ?? null, stage: value?.stage ?? null }) }}
               pager={orderId || !ordersList.data ? undefined : { page, totalPages: ordersList.data.totalPages, onPage: (value) => updateList({ page: value }) }} />
             : dashboard.data && <DashboardOverview orders={orders} summary={dashboard.data.summary}
               reviews={reviews}
