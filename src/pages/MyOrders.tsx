@@ -2,8 +2,15 @@ import { useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { modalLink } from '../services/modalRoute'
 import type { Order } from '../types/orders'
+import { ProposalsPanel } from '../components/ProposalsPanel'
+import { ContractPanel } from '../components/ContractPanel'
+import { PaymentPanel } from '../components/PaymentPanel'
 import type { OrderStatusDto } from '../services/dashboardApi'
 import {
+  canChangeOrder,
+  hasChosenProposal,
+  hasPaymentStep,
+  nextStep,
   customerOrders,
   customerOrder,
   orderDate,
@@ -21,7 +28,19 @@ type Props = {
   error?: string
   requiresLogin?: boolean
   onRetry?: () => void
-  view?: 'propostas' | 'acompanhar'
+  view?: 'propostas' | 'acompanhar' | 'contrato' | 'pagamento'
+  /** Proposta aberta em /pedidos/:id/propostas/:proposalId. */
+  proposalId?: string
+  /** Token da sessão; as propostas são consultadas na API (#86). */
+  token?: string | null
+  /** Chamado depois que o contratante aceita uma proposta (#89), para recarregar o pedido. */
+  onProposalAccepted?: () => void
+  /** Chamado depois que o contratante assina o contrato (#95), para recarregar o pedido. */
+  onContractSigned?: () => void
+  /** Chamado quando o prestador também assina e o contrato fica assinado pelas duas partes, para o pedido seguir ao pagamento. */
+  onContractCompleted?: () => void
+  /** Chamado quando o Pix é confirmado (#97), para recarregar o pedido, que passa a Em andamento. */
+  onPaid?: () => void
   /** Título e descrição da listagem; os atalhos do menu (Propostas, Avaliações) trocam o padrão. */
   heading?: { title: string; description: string }
   filter?: { value?: OrderStatusDto; onChange: (value?: OrderStatusDto) => void }
@@ -36,14 +55,17 @@ const statusFilters: { value?: OrderStatusDto; label: string }[] = [
   { value: 'Cancelled', label: 'Cancelados' },
 ]
 const orderNumber = (order: Order) => order.id.slice(0, 8).toUpperCase()
-const proposalLabels = { Sent: 'Enviada', Viewed: 'Visualizada', Chosen: 'Escolhida' }
 
 /** Seções do pedido: cada aba é uma rota (/pedidos/:id, /propostas, /acompanhar). */
-function OrderTabs({ order, view }: { order: Order; view?: 'propostas' | 'acompanhar' }) {
+function OrderTabs({ order, view }: { order: Order; view?: 'propostas' | 'acompanhar' | 'contrato' | 'pagamento' }) {
   const base = `/pedidos/${order.id}`
   const tabs = [
     { key: undefined, label: 'Detalhes', to: base },
     { key: 'propostas', label: order.proposals ? `Propostas (${order.proposals})` : 'Propostas', to: `${base}/propostas` },
+    // O contrato existe depois que uma proposta é aceita.
+    ...(hasChosenProposal(order) ? [{ key: 'contrato', label: 'Contrato', to: `${base}/contrato` }] : []),
+    // Com o contrato assinado pelas duas partes o pedido espera o pagamento; depois de pago a aba mostra o comprovante.
+    ...(hasPaymentStep(order) ? [{ key: 'pagamento', label: 'Pagamento', to: `${base}/pagamento` }] : []),
     { key: 'acompanhar', label: 'Acompanhamento', to: `${base}/acompanhar` },
   ]
   return (
@@ -64,45 +86,41 @@ function OrderStatus({ order }: { order: Order }) {
   )
 }
 
-function Proposals({ order }: { order: Order }) {
-  const list = order.proposalList ?? []
+/** O que o contratante precisa fazer agora; leva à tela certa (contrato, pagamento) ou abre a confirmação de conclusão. */
+function NextStepCard({ order }: { order: Order }) {
+  const location = useLocation()
+  const step = nextStep(order)
+  if (!step) return null
   return (
-    <article className="panel order-summary">
-      <h2>Propostas do pedido #{orderNumber(order)}</h2>
-      <OrderStatus order={order} />
-      {list.length ? (
-        <ul className="proposal-list">
-          {list.map((proposal) => (
-            <li className="proposal-item" key={proposal.id}>
-              <strong>{proposal.providerName}</strong>
-              <span className="status-badge progress"><i />{proposalLabels[proposal.status]}</span>
-              <dl>
-                <div><dt>Valor</dt><dd>{orderMoney(proposal.value)}</dd></div>
-                <div><dt>Prazo</dt><dd>{proposal.deadline ?? 'Não informado'}</dd></div>
-                <div><dt>Garantia</dt><dd>{proposal.warranty ?? 'Não informada'}</dd></div>
-              </dl>
-              {proposal.description && <p>{proposal.description}</p>}
-            </li>
-          ))}
-        </ul>
-      ) : <p>Nenhuma proposta recebida ainda. Assim que um profissional enviar, ela aparece aqui.</p>}
-    </article>
+    <section className="next-step" aria-label="Próximo passo">
+      <strong>Próximo passo</strong>
+      <p>{step.text}</p>
+      {step.to
+        ? <Link className="button button-primary" to={step.to}>{step.label}</Link>
+        : <Link className="button button-primary" {...modalLink(location.pathname, location.search, 'concluir-pedido', order.id)}>{step.label}</Link>}
+    </section>
   )
 }
 
 function Tracking({ order }: { order: Order }) {
   const chosen = order.proposalList?.find((proposal) => proposal.status === 'Chosen')
   const closed = order.status === 'completed' || order.status === 'cancelled'
+  // Os passos intermediários saem do estágio: depois do pagamento o contrato já estava assinado pelas duas partes.
+  const paid = !!chosen && (order.status === 'progress' || order.status === 'completed')
+  const signed = !!chosen && (order.stage === 'AwaitingPayment' || paid)
   const history = [
     { label: 'Pedido criado', date: order.createdAt },
     ...(order.proposals ? [{ label: `${order.proposals} proposta(s) recebida(s)`, date: undefined }] : []),
     ...(chosen ? [{ label: `Proposta de ${chosen.providerName} escolhida`, date: undefined }] : []),
+    ...(signed ? [{ label: 'Contrato assinado pelas duas partes', date: undefined }] : []),
+    ...(paid ? [{ label: 'Pagamento confirmado', date: undefined }] : []),
     ...(closed ? [{ label: order.status === 'completed' ? 'Pedido concluído' : 'Pedido cancelado', date: order.updatedAt }] : []),
   ]
   return (
     <article className="panel order-summary">
       <h2>{closed ? 'Informações gerais e histórico' : 'Andamento do pedido'} #{orderNumber(order)}</h2>
       <OrderStatus order={order} />
+      <NextStepCard order={order} />
       <dl>
         <div><dt>Pedido</dt><dd>{order.title}</dd></div>
         <div><dt>Profissional</dt><dd>{chosen?.providerName ?? 'Não definido'}</dd></div>
@@ -127,13 +145,26 @@ function OrderDetails({ order }: { order: Order }) {
     <article className="panel order-summary">
       <h2>Pedido #{orderNumber(order)} · {order.title}</h2>
       <OrderStatus order={order} />
-      {order.status === 'completed' && <Link className="button button-primary" {...modalLink(location.pathname, location.search, 'avaliar', order.id)}>Avaliar serviço</Link>}
+      <NextStepCard order={order} />
+      {order.status === 'completed' && <Link className="button button-primary" to={`/pedidos/${order.id}/avaliar`}>Avaliar serviço</Link>}
+      {canChangeOrder(order) && (
+        <div className="order-actions">
+          <Link className="button button-secondary" to={`/pedidos/${order.id}/editar`}>Editar pedido</Link>
+          <Link className="button button-secondary" {...modalLink(location.pathname, location.search, 'cancelar-pedido', order.id)}>Cancelar pedido</Link>
+        </div>
+      )}
       <dl>
         <div><dt>Data de realização</dt><dd>{orderDate(order.createdAt)}</dd></div>
         {order.updatedAt && <div><dt>Última atualização</dt><dd>{orderDate(order.updatedAt)}</dd></div>}
         {order.category !== 'Pedido' && <div><dt>Categoria</dt><dd>{order.category}</dd></div>}
         {order.location !== 'Localização não informada' && <div><dt>Localização</dt><dd>{order.location}</dd></div>}
       </dl>
+      {order.status === 'cancelled' && order.cancellationReason && (
+        <>
+          <h3>Motivo do cancelamento</h3>
+          <p>{order.cancellationReason}</p>
+        </>
+      )}
       <h3>Descrição</h3>
       <p>{order.description}</p>
       {order.scope && (
@@ -153,7 +184,7 @@ function OrderDetails({ order }: { order: Order }) {
   )
 }
 
-export function MyOrders({ orders, customerId, orderId, search, loading, error, requiresLogin, onRetry, view, heading: listHeading, filter, pager }: Props) {
+export function MyOrders({ orders, customerId, orderId, search, loading, error, requiresLogin, onRetry, view, proposalId, token, onProposalAccepted, onContractSigned, onContractCompleted, onPaid, heading: listHeading, filter, pager }: Props) {
   const location = useLocation()
   const heading = useRef<HTMLHeadingElement>(null)
   useEffect(() => { heading.current?.focus() }, [orderId])
@@ -193,7 +224,10 @@ export function MyOrders({ orders, customerId, orderId, search, loading, error, 
     )
     if (orderId !== undefined) return selected ? (<>
       <OrderTabs order={selected} view={view} />
-      {view === 'propostas' ? <Proposals order={selected} />
+      {view === 'propostas' ? <ProposalsPanel key={selected.id} order={selected} token={token} proposalId={proposalId} onAccepted={onProposalAccepted} />
+        : view === 'contrato' ? <ContractPanel key={selected.id} order={selected} token={token} onSigned={onContractSigned} onBothSigned={onContractCompleted}
+          onPay={hasPaymentStep(selected) ? `/pedidos/${selected.id}/pagamento` : undefined} />
+        : view === 'pagamento' ? <PaymentPanel key={selected.id} order={selected} token={token} onPaid={onPaid} />
         : view === 'acompanhar' ? <Tracking order={selected} />
         : <OrderDetails order={selected} />}
     </>) : (
@@ -220,7 +254,10 @@ export function MyOrders({ orders, customerId, orderId, search, loading, error, 
             <OrderStatus order={order} />
             <p>Data de realização: {orderDate(order.createdAt)}</p>
             <div className="order-actions">
-              <Link className="button button-primary" to={`/pedidos/${order.id}`}
+              {nextStep(order) && (nextStep(order)?.to
+                ? <Link className="button button-primary" to={nextStep(order)!.to!}>{nextStep(order)!.label}</Link>
+                : <Link className="button button-primary" {...modalLink(location.pathname, location.search, 'concluir-pedido', order.id)}>{nextStep(order)!.label}</Link>)}
+              <Link className={`button ${nextStep(order) ? 'button-secondary' : 'button-primary'}`} to={`/pedidos/${order.id}`}
                 aria-label={`Ver detalhes do pedido ${order.id}`}>
                 Ver detalhes
               </Link>
@@ -230,7 +267,7 @@ export function MyOrders({ orders, customerId, orderId, search, loading, error, 
                   Ver propostas ({order.proposals})
                 </Link>
               )}
-              {order.status === 'completed' && <Link className="button button-secondary" {...modalLink(location.pathname, location.search, 'avaliar', order.id)}>Avaliar serviço</Link>}
+              {order.status === 'completed' && <Link className="button button-secondary" to={`/pedidos/${order.id}/avaliar`}>Avaliar serviço</Link>}
             </div>
           </article>
         ))}

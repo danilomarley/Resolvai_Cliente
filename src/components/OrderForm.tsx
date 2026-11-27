@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import type { NewOrder } from '../types/orders'
 import { maxPhotoBytes, maxPhotos, photoTypes } from '../services/dashboardApi'
 import { PhotoPreview } from './PhotoPreview'
+import { Icon } from './Icon'
 import { urgencyOptions } from '../services/orderDraft'
 import './OrderForm.css'
 import './OrderScope.css'
@@ -11,9 +12,10 @@ const emptyOrder: NewOrder = {
   scope: { details: '', urgency: '', specifications: '' },
 }
 
-export function OrderForm({ onCancel, onCreate, submitting, submitError, initial, onBackToAssistant, onDirtyChange }: {
+export function OrderForm({ onCancel, onCreate, submitting, submitError, initial, onBackToAssistant, onDirtyChange, onValuesChange, savedPhotos }: {
   onCancel: () => void
-  onCreate: (order: NewOrder, photos: File[]) => Promise<void>
+  /** Recebe o pedido, as fotos novas e as URLs das fotos já salvas que continuam no pedido (só na edição). */
+  onCreate: (order: NewOrder, photos: File[], savedPhotos: string[]) => Promise<void>
   submitting: boolean
   submitError: string
   /** Valores sugeridos pelo assistente (#69); o cliente revisa antes de publicar. */
@@ -21,18 +23,28 @@ export function OrderForm({ onCancel, onCreate, submitting, submitError, initial
   onBackToAssistant?: () => void
   /** Avisa quando há algo preenchido, para o modal pedir confirmação antes de descartar. */
   onDirtyChange?: (dirty: boolean) => void
+  /** Avisa a cada alteração dos campos, para a página guardar o rascunho. */
+  onValuesChange?: (order: NewOrder) => void
+  /** Edição de um pedido já publicado (#88): `initial` traz os dados atuais e as fotos salvas podem ser removidas. */
+  savedPhotos?: string[]
 }) {
+  const editing = savedPhotos !== undefined
   const [order, setOrder] = useState<NewOrder>(initial ?? emptyOrder)
   const [photos, setPhotos] = useState<File[]>([])
+  const [kept, setKept] = useState<string[]>(savedPhotos ?? [])
   const [error, setError] = useState('')
+  const photoCount = photos.length + kept.length
 
-  // O rascunho do assistente já conta como conteúdo a preservar, mesmo sem edição.
-  const dirty = !!initial || photos.length > 0 || JSON.stringify(order) !== JSON.stringify(emptyOrder)
+  // O rascunho do assistente já conta como conteúdo a preservar, mesmo sem edição. Na edição, só o que mudou.
+  const dirty = editing
+    ? photos.length > 0 || kept.length !== (savedPhotos?.length ?? 0) || JSON.stringify(order) !== JSON.stringify(initial)
+    : !!initial || photos.length > 0 || JSON.stringify(order) !== JSON.stringify(emptyOrder)
   useEffect(() => { onDirtyChange?.(dirty) }, [dirty, onDirtyChange])
+  useEffect(() => { onValuesChange?.(order) }, [order]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function addPhotos(files: File[]) {
     if (!files.length) return
-    if (files.length + photos.length > maxPhotos
+    if (files.length + photoCount > maxPhotos
       || files.some((file) => file.size > maxPhotoBytes || !photoTypes.includes(file.type))) {
       setError(`Selecione até ${maxPhotos} fotos JPG, PNG ou WebP, com no máximo 5 MB cada.`)
       return
@@ -57,15 +69,17 @@ export function OrderForm({ onCancel, onCreate, submitting, submitError, initial
       return
     }
     setError('')
-    await onCreate(clean, photos)
+    await onCreate(clean, photos, kept)
   }
 
   return (
     <section className="order-form panel" aria-labelledby="order-form-title">
-      <h3 id="order-form-title">{initial ? 'Revise seu pedido' : 'Criar pedido'}</h3>
-      <p>{initial
-        ? 'O assistente preencheu os campos com o que você contou. Confira, ajuste o que precisar e publique.'
-        : 'Informe os detalhes do serviço para publicar seu pedido.'}</p>
+      <h1 id="order-form-title">{editing ? 'Editar pedido' : initial ? 'Revise seu pedido' : 'Criar pedido'}</h1>
+      <p>{editing
+        ? 'Altere o que precisar. As propostas já recebidas continuam no pedido.'
+        : initial
+          ? 'O assistente preencheu os campos com o que você contou. Confira, ajuste o que precisar e publique.'
+          : 'Informe os detalhes do serviço para publicar seu pedido.'}</p>
       <form onSubmit={submit}>
         <fieldset disabled={submitting}>
           <legend>Dados do serviço</legend>
@@ -101,13 +115,26 @@ export function OrderForm({ onCancel, onCreate, submitting, submitError, initial
               onChange={(event) => setOrder({ ...order, scope: { ...order.scope, specifications: event.target.value } })} />
           </label>
           <label>Fotos do local <span className="scope-field-hint">Opcional · até {maxPhotos} fotos de 5 MB · JPG, PNG ou WebP</span>
-            <input type="file" accept={photoTypes.join(',')} multiple disabled={photos.length >= maxPhotos}
+            <input type="file" accept={photoTypes.join(',')} multiple disabled={photoCount >= maxPhotos}
               onChange={(event) => {
                 const files = Array.from(event.target.files ?? [])
                 event.target.value = ''
                 addPhotos(files)
               }} />
           </label>
+          {kept.length > 0 && (
+            <div className="scope-photos" aria-label="Fotos já salvas no pedido">
+              {kept.map((url, index) => (
+                <figure key={url}>
+                  <img src={url} alt={`Foto salva do pedido ${index + 1}`} />
+                  <button type="button" aria-label={`Remover foto salva ${index + 1}`}
+                    onClick={() => setKept((current) => current.filter((item) => item !== url))}>
+                    <Icon name="close" size={15} />
+                  </button>
+                </figure>
+              ))}
+            </div>
+          )}
           <PhotoPreview photos={photos} onRemove={(index) => setPhotos((current) => current.filter((_, i) => i !== index))} />
         </fieldset>
         {(error || submitError) && <p role="alert">{error || submitError}</p>}
@@ -119,7 +146,9 @@ export function OrderForm({ onCancel, onCreate, submitting, submitError, initial
             </button>
           )}
           <button className="button button-primary" type="submit" disabled={submitting}>
-            {submitting ? (photos.length ? 'Enviando fotos e publicando…' : 'Publicando…') : 'Publicar pedido'}
+            {editing
+              ? submitting ? (photos.length ? 'Enviando fotos e salvando…' : 'Salvando…') : 'Salvar alterações'
+              : submitting ? (photos.length ? 'Enviando fotos e publicando…' : 'Publicando…') : 'Publicar pedido'}
           </button>
         </div>
       </form>

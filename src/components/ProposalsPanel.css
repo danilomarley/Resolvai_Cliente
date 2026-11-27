@@ -1,0 +1,20 @@
+.proposal-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--spacing-md); }
+.proposal-toolbar select { margin-left: var(--spacing-xs); padding: 6px 10px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); font: inherit; background: var(--color-surface); }
+.proposal-hint { margin: 0; color: var(--color-muted); font-size: var(--font-size-sm); }
+.proposal-select { display: inline-flex; align-items: center; gap: var(--spacing-sm); font-weight: 600; cursor: pointer; }
+.proposal-highlight { justify-self: start; display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: var(--font-size-sm); font-weight: 600; color: var(--color-success); background: var(--color-success-soft); }
+.compare-scroll { overflow-x: auto; }
+.proposal-compare table { width: 100%; min-width: 560px; border-collapse: collapse; table-layout: fixed; }
+.proposal-compare th, .proposal-compare td { padding: var(--spacing-sm) var(--spacing-md); text-align: left; vertical-align: top; border-bottom: 1px solid var(--color-border); overflow-wrap: anywhere; }
+.proposal-compare thead .button { display: flex; margin-top: var(--spacing-sm); }
+.proposal-compare tbody th { width: 110px; color: var(--color-muted); font-weight: 600; }
+.proposal-compare td.is-best { background: var(--color-success-soft); font-weight: 600; }
+.proposal-compare td .proposal-highlight { display: block; margin-top: var(--spacing-xs); padding: 0; background: transparent; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (max-width: 560px) { .proposal-compare th, .proposal-compare td { padding: var(--spacing-sm); } .proposal-compare tbody th { width: 84px; } }
+.proposal-accepted { padding: var(--spacing-md); border-radius: var(--radius-sm); background: var(--color-success-soft); color: var(--color-success); }
+.proposal-accepted h3, .proposal-accepted p { margin: 0; }
+.proposal-accepted p { margin-top: var(--spacing-xs); }
+.proposal-accept { display: grid; gap: var(--spacing-sm); justify-items: start; }
+.proposal-accept p { margin: 0; color: var(--color-muted); }
+.accept-notes { margin: 0; padding-left: var(--spacing-md); color: var(--color-muted); }

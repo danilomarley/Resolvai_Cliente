@@ -5,7 +5,10 @@ export class ApiError extends Error {
 type Options = { token?: string; signal?: AbortSignal; body?: unknown; form?: FormData; method?: string }
 
 // Rotas em que a mensagem de erro da API (detail) já é escrita para o cliente final.
-const detailPaths = ['/api/v1/orders', '/api/v1/orders/photos', '/api/v1/orders/assistant', '/api/v1/users/me/profile']
+// Editar (PATCH), cancelar (POST .../cancel), aceitar proposta (POST .../proposals/{id}/accept), assinar contrato (POST .../contract/sign),
+// pagar (POST .../payment, .../payment/simulate) e concluir (POST .../complete): 400 e 409 trazem a explicação em português (#88, #89, #95, #97, #92).
+const orderChangePath = /^\/api\/v1\/orders\/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}(?:\/cancel|\/complete|\/payment|\/payment\/simulate|\/contract\/sign|\/proposals\/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\/accept)?$/i
+const detailPaths = ['/api/v1/orders', '/api/v1/orders/photos', '/api/v1/orders/assistant', '/api/v1/users/me/profile', '/api/v1/auth/change-password']
 
 export function createApiClient(baseUrl: string, fetcher: typeof fetch = fetch) {
   const base = baseUrl.replace(/\/$/, '')
@@ -46,6 +49,13 @@ export function createApiClient(baseUrl: string, fetcher: typeof fetch = fetch) 
         throw new ApiError(409, detail === 'Cadastro já finalizado.' ? 'Seu cadastro já foi finalizado.'
           : typeof detail === 'string' && detail.startsWith('Já existe um usuário com o CPF') ? 'Este CPF já está em uso por outra conta.'
           : 'Não foi possível finalizar o cadastro com os dados informados.')
+      }
+      if ([400, 409, 429, 503].includes(response.status) && method !== 'GET' && orderChangePath.test(path)) {
+        let detail: unknown
+        try { detail = (await response.json()).detail } catch { /* A resposta pode vir sem detail. */ }
+        if (typeof detail === 'string' && detail) throw new ApiError(response.status, detail)
+        if (response.status === 409) throw new ApiError(409, 'Este pedido não pode mais ser alterado.')
+        if (response.status === 400) throw new ApiError(400, 'Confira os dados informados.')
       }
       if ([400, 429, 503].includes(response.status) && method !== 'GET' && detailPaths.includes(path)) {
         let detail: unknown

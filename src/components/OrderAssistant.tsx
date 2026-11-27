@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Icon } from './Icon'
 import type { AssistantMessage, AssistantReply, AssistantScope } from '../services/dashboardApi'
+import type { AssistantDraft } from '../services/orderDraftStore'
 import type { NewOrder } from '../types/orders'
 import { scopeToOrder } from '../services/orderDraft'
 import './OrderAssistant.css'
@@ -17,23 +18,25 @@ const scopeFields: { key: keyof AssistantScope; label: string }[] = [
   { key: 'especificacoes', label: 'Serviço esperado' },
 ]
 
-export function OrderAssistant({ onAsk, onReview, onManual, onDirtyChange }: {
+export function OrderAssistant({ onAsk, onReview, onManual, initial, onStateChange }: {
   onAsk: (messages: AssistantMessage[]) => Promise<AssistantReply>
   onReview: (order: NewOrder) => void
   onManual: () => void
-  /** Avisa quando há conversa em andamento, para o modal pedir confirmação antes de descartar. */
-  onDirtyChange?: (dirty: boolean) => void
+  /** Conversa guardada no rascunho, para retomar de onde parou. */
+  initial?: AssistantDraft
+  /** Avisa a cada mudança da conversa e do escopo entendido, para a página guardar o rascunho. */
+  onStateChange?: (state: AssistantDraft) => void
 }) {
-  const [messages, setMessages] = useState<AssistantMessage[]>([])
-  const [scope, setScope] = useState<AssistantScope>({})
-  const [complete, setComplete] = useState(false)
+  const [messages, setMessages] = useState<AssistantMessage[]>(initial?.messages ?? [])
+  const [scope, setScope] = useState<AssistantScope>(initial?.scope ?? {})
+  const [complete, setComplete] = useState(initial?.complete ?? false)
   const [answer, setAnswer] = useState('')
   const [waiting, setWaiting] = useState(false)
   const [error, setError] = useState('')
   const conversation = useRef<HTMLDivElement>(null)
 
-  const dirty = messages.length > 0 || answer.trim().length > 0
-  useEffect(() => { onDirtyChange?.(dirty) }, [dirty, onDirtyChange])
+  // onStateChange muda a cada render da página; só a conversa e o escopo importam.
+  useEffect(() => { onStateChange?.({ messages, scope, complete }) }, [messages, scope, complete]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     conversation.current?.scrollTo({ top: conversation.current.scrollHeight })
   }, [messages, waiting])
@@ -74,7 +77,7 @@ export function OrderAssistant({ onAsk, onReview, onManual, onDirtyChange }: {
       <div className="assistant-page-heading">
         <div>
           <p className="eyebrow">NOVO PEDIDO</p>
-          <h3 id="assistant-title">Vamos resolver, juntos.</h3>
+          <h1 id="assistant-title">Vamos resolver, juntos.</h1>
           <p>Conte o que você precisa. O assistente ajuda a organizar o escopo.</p>
         </div>
         <span className="assistant-demo"><Icon name="sparkles" size={15} /> Assistente com IA</span>

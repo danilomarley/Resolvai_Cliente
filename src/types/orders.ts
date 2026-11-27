@@ -17,12 +17,20 @@ export type NewOrder = {
 export type OrderProposal = {
   id: string
   providerName: string
-  status: 'Sent' | 'Viewed' | 'Chosen'
+  status: 'Sent' | 'Viewed' | 'Chosen' | 'NotChosen'
   value: number
   deadline?: string
+  /** Prazo em dias; base da ordenação por prazo e do destaque "menor prazo". */
+  deadlineDays?: number
   description?: string
   warranty?: string
+  createdAt?: string
+  /** Média das avaliações do prestador (null quando ainda não foi avaliado). */
+  providerRating?: { average: number | null; count: number }
 }
+
+/** Onde um pedido aberto com proposta aceita está: falta assinar o contrato ou falta pagar (#97). */
+export type OrderStage = 'AwaitingSignatures' | 'AwaitingPayment'
 
 export type Order = {
   id: string
@@ -40,4 +48,8 @@ export type Order = {
   chosenProposalValue?: number
   proposalList?: OrderProposal[]
   photoUrls?: string[]
+  /** Motivo informado pelo contratante ao cancelar o pedido (#88). */
+  cancellationReason?: string
+  /** Só em pedido aberto com proposta aceita; depois do pagamento o próprio status é 'progress'. */
+  stage?: OrderStage
 }

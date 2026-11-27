@@ -1,5 +1,5 @@
 import { apiRequest, ApiError } from './api'
-import type { Order, OrderProposal } from '../types/orders'
+import type { Order, OrderProposal, OrderStage } from '../types/orders'
 import type { NewOrder } from '../types/orders'
 
 export type OrderStatusDto = 'Pending' | 'InProgress' | 'Completed' | 'Cancelled'
@@ -7,6 +7,8 @@ export type ProposalDto = Omit<OrderProposal, 'providerName'> & { providerId: st
 export type OrderDto = {
   id: string; title: string; status: OrderStatusDto; createdAt: string; updatedAt?: string; description?: string
   category?: string; location?: string; proposalsCount?: number; chosenProposalValue?: number
+  cancellationReason?: string
+  stage?: OrderStage
   scope?: Record<string, unknown>; photos?: { id: string; url: string; description?: string }[]; proposals?: ProposalDto[]
 }
 export type OrdersPage = { items: OrderDto[]; page: number; pageSize: number; totalItems: number; totalPages: number }
@@ -27,6 +29,7 @@ function isOrder(value: unknown): value is OrderDto {
   return object(value) && typeof value.id === 'string' && isUuid(value.id) && typeof value.title === 'string'
     && ['Pending', 'InProgress', 'Completed', 'Cancelled'].includes(String(value.status))
     && date(value.createdAt) && (value.updatedAt === undefined || date(value.updatedAt))
+    && (value.stage === undefined || ['AwaitingSignatures', 'AwaitingPayment'].includes(String(value.stage)))
 }
 export function parseSummary(value: unknown): HomeSummary {
   if (!object(value) || !object(value.orders) || !Array.isArray(value.recentOrders)) throw invalid()
@@ -42,7 +45,7 @@ export function parseSummary(value: unknown): HomeSummary {
   return value as HomeSummary
 }
 const isProposal = (value: unknown) => object(value) && typeof value.id === 'string' && typeof value.providerName === 'string'
-  && ['Sent', 'Viewed', 'Chosen'].includes(String(value.status)) && typeof value.value === 'number'
+  && ['Sent', 'Viewed', 'Chosen', 'NotChosen'].includes(String(value.status)) && typeof value.value === 'number'
 export function parsePage(value: unknown): OrdersPage {
   if (!object(value) || !Array.isArray(value.items) || !value.items.every(isOrder)
     || !['page', 'pageSize', 'totalItems', 'totalPages'].every((key) => Number.isSafeInteger(value[key]) && Number(value[key]) >= 0)) throw invalid()
@@ -99,20 +102,38 @@ export function toOrder(dto: OrderDto, customerId: string): Order {
     updatedAt: dto.updatedAt, description: dto.description ?? 'Abra os detalhes para consultar a descrição.',
     category: dto.category ?? 'Pedido', location: dto.location ?? 'Localização não informada',
     proposals: dto.proposalsCount ?? dto.proposals?.length ?? 0, chosenProposalValue: dto.chosenProposalValue,
-    proposalList: dto.proposals, photoUrls: dto.photos?.map((photo) => photo.url),
+    proposalList: dto.proposals, photoUrls: dto.photos?.map((photo) => photo.url), cancellationReason: dto.cancellationReason,
+    stage: dto.stage,
     scope: dto.scope && { details: text('detalhes'), urgency: text('urgencia'), specifications: text('especificacoes') },
     icon: 'bag' }
 }
 
+const orderBody = (order: NewOrder, photoUrls: string[]) => ({
+  titulo: order.title, categoria: order.category, descricao: order.description, localizacao: order.location,
+  detalhes: order.scope.details, urgencia: order.scope.urgency, especificacoes: order.scope.specifications,
+  fotos: photoUrls.map((url) => ({ url })),
+})
+
 export const createOrder = async (token: string, order: NewOrder, photoUrls: string[], signal?: AbortSignal) =>
-  parseDetail(await apiRequest('/api/v1/orders', {
-    method: 'POST', token, signal,
-    body: {
-      titulo: order.title, categoria: order.category, descricao: order.description, localizacao: order.location,
-      detalhes: order.scope.details, urgencia: order.scope.urgency, especificacoes: order.scope.specifications,
-      fotos: photoUrls.map((url) => ({ url })),
-    },
-  }))
+  parseDetail(await apiRequest('/api/v1/orders', { method: 'POST', token, signal, body: orderBody(order, photoUrls) }))
+
+// Edição e cancelamento (#88): a API troca o pedido inteiro, então `photoUrls` traz as fotos mantidas e as novas.
+export async function updateOrder(token: string, id: string, order: NewOrder, photoUrls: string[], signal?: AbortSignal) {
+  if (!isUuid(id)) throw new ApiError(404, 'Pedido não encontrado ou indisponível para sua conta.')
+  return parseDetail(await apiRequest(`/api/v1/orders/${id}`, { method: 'PATCH', token, signal, body: orderBody(order, photoUrls) }))
+}
+
+export async function cancelOrder(token: string, id: string, reason: string, signal?: AbortSignal) {
+  if (!isUuid(id)) throw new ApiError(404, 'Pedido não encontrado ou indisponível para sua conta.')
+  const text = reason.trim()
+  return parseDetail(await apiRequest(`/api/v1/orders/${id}/cancel`, { method: 'POST', token, signal, body: text ? { reason: text } : {} }))
+}
+
+// Conclusão do serviço (#92): o contratante confirma e o pedido em andamento (já pago) passa a concluído.
+export async function completeOrder(token: string, id: string, signal?: AbortSignal) {
+  if (!isUuid(id)) throw new ApiError(404, 'Pedido não encontrado ou indisponível para sua conta.')
+  return parseDetail(await apiRequest(`/api/v1/orders/${id}/complete`, { method: 'POST', token, signal }))
+}
 
 // Fotos do pedido (#67): cada foto é enviada à API antes da criação do pedido; a URL devolvida vai em fotos[].
 export const photoTypes = ['image/jpeg', 'image/png', 'image/webp']
