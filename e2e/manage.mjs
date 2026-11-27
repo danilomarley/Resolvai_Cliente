@@ -25,9 +25,13 @@ if (action === 'down') {
     await assertTestDatabase(db)
     const existing = await db.query("select to_regclass('public.users') as table_name")
     if (existing.rows[0].table_name) throw new Error('Banco E2E já inicializado. Encerre com npm run e2e:down e inicie novamente para uma execução limpa.')
-    for (const file of readdirSync(join(backend, 'db/scripts')).filter(name => name.endsWith('.sql')).sort()) {
-      await db.query(readFileSync(join(backend, 'db/scripts', file), 'utf8'))
+    const scripts = join(backend, 'db/scripts')
+    for (const file of readdirSync(scripts).filter(name => name.endsWith('.sql')).sort()) {
+      await db.query(readFileSync(join(scripts, file), 'utf8'))
     }
+    // A expansão de propostas já está em db/scripts/016; siga a ordem usada nos testes da API.
+    const reconcile = join(backend, 'supabase/migrations/20261109014627_reconcile_fornecedor_prestador.sql')
+    await db.query(readFileSync(reconcile, 'utf8'))
     console.log(`Banco E2E efêmero preparado com API ${backendRef.sha}.`)
   } finally { await db.end() }
 }

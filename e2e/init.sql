@@ -1,5 +1,7 @@
 -- Apenas o container efêmero resolvai-sprint4-e2e, sem conexão externa.
 create role supabase_auth_admin login password 'local-e2e-only';
+create role anon nologin;
+create role authenticated nologin;
 create schema auth authorization supabase_auth_admin;
 grant all on database resolvai_e2e to supabase_auth_admin;
 alter role supabase_auth_admin set search_path = auth, public;

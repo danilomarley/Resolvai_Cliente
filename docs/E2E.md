@@ -11,7 +11,7 @@ Na raiz do frontend:
 ```sh
 npm ci
 git clone https://github.com/danilomarley/Resolvai_Backend_Node.git .e2e-backend
-git -C .e2e-backend checkout --detach 3cdfc789f649f46c083322dd2e8a08a43b9fdf33
+git -C .e2e-backend checkout --detach ae9a414df8cb550d79004279f46bb42235470c86
 npm --prefix .e2e-backend ci
 npm --prefix .e2e-backend run build
 npx playwright install chromium
@@ -24,7 +24,7 @@ npm run e2e:down
 
 Execute e2e:artifacts e e2e:down também após falhas. Linux pode exigir `npx playwright install --with-deps chromium`. Os comandos não exigem .env nem credenciais externas. Não copie .env de outro ambiente. runtime.mjs fixa hosts, portas, nome do banco e chaves exclusivamente locais; start-api.mjs não carrega arquivos .env e remove variáveis herdadas de banco, Supabase, IA e Vite. O Vite E2E ignora arquivos .env. IA e Storage não participam dos cinco fluxos.
 
-`e2e/backend-ref.json` registra o SHA da main Node usado por esta suíte, sem commits pendentes de #92/#93. Para atualizar, revisar o novo contrato, atualizar o arquivo e o comando deste guia e executar novamente toda a suíte. O workflow usa esse mesmo SHA. A preparação recusa um checkout diferente.
+`e2e/backend-ref.json` registra o SHA da main Node usado por esta suíte. Para atualizar, revisar o novo contrato, atualizar o arquivo e o comando deste guia e executar novamente toda a suíte. O workflow usa esse mesmo SHA. A preparação recusa um checkout diferente.
 
 ## Isolamento e dados
 
@@ -32,7 +32,7 @@ O Compose tem nome fixo resolvai-sprint4-e2e e publica portas apenas em 127.0.0.
 
 Cada teste registra uma conta aleatória na API real, com e-mail @e2e.example.test, senha própria e CPF sintético. Pedidos, perfil, endereço e contato são conferidos pela API. A limpeza remove somente a conta criada pelo teste e seus pedidos, após validar o marcador de banco; depois remove a conta no Auth local. Uma falha de limpeza falha o teste. O encerramento dos containers elimina o estado restante. Não há volumes persistentes.
 
-## Fluxos e pendência de recuperação segura
+## Fluxos cobertos
 
 - Login válido/inválido, sessão após reload e retorno a Meus pedidos.
 - Finalização: campos obrigatórios, envio, persistência de perfil/endereço/contato e navegação.
@@ -41,9 +41,7 @@ Cada teste registra uma conta aleatória na API real, com e-mail @e2e.example.te
 - Recuperação segura: solicitação, obtenção do código no Mailpit local, nova senha, login com ela e rejeição da senha anterior.
 - Rejeição sem prova: a tentativa sem token deve ser recusada e a senha original deve continuar funcionando.
 
-As correções estão nas PRs [backend #4](https://github.com/danilomarley/Resolvai_Backend_Node/pull/4) e [frontend #102](https://github.com/danilomarley/Resolvai_Cliente/pull/102), ainda pendentes de integração. A referência principal em backend-ref.json não foi trocada por uma branch pendente. Portanto a suíte principal evidencia os contratos ausentes na main; ela não usa skip, expected-failure ou continue-on-error. Depois da integração autorizada, atualizar o SHA da main e executar novamente. A PR permanece Draft enquanto a execução principal não passar.
-
-Um job separado **Candidatos de seguranca (sem merge)** valida os sete cenários em checkouts descartáveis das revisões registradas em e2e/candidates.json. prepare-candidate.mjs copia apenas testes/configuração/manifests para esse ambiente e registra ali o SHA candidato. Nenhum commit de segurança é incorporado à branch #94 e nenhum resultado candidato é apresentado como aprovação da main. Esse job oferece evidência de integração enquanto o merge está sob controle dos mantenedores.
+A suíte usa a recuperação por código já integrada à main do backend e do frontend.
 
 O SMTP é o Mailpit do Compose, com API somente em 127.0.0.1:8025. O código é extraído da mensagem recebida pelo destinatário sintético correto usando espera por condição; não é lido do banco Auth nem gerado pelo teste. O template usa {{ .Token }} e a janela local é de 600 segundos. A sanitização remove também códigos de seis dígitos de corpos SMTP, recursos e ações de preenchimento. Não publicar mensagens ou traces brutos.
 
@@ -59,6 +57,5 @@ Traces e screenshots são capturados nas falhas. `npm run e2e:artifacts` sanitiz
 - Porta ocupada: encerrar o processo responsável antes de iniciar.
 - Auth não saudável: conferir `docker compose -f e2e/compose.yml logs auth` localmente; não publicar logs brutos com credenciais.
 - Banco já inicializado: executar e2e:down/e2e:up.
-- Falha em recuperação segura com status 200: comportamento preexistente da #70; corrigir o contrato seguro antes de considerar #94 concluída.
 
 Fontes de configuração: [compose oficial Supabase](https://github.com/supabase/supabase/blob/master/docker/docker-compose.yml) e [configuração oficial do Auth](https://github.com/supabase/auth/blob/master/example.env), consultados em 06/11/2026. GoTrue v2.197.0 foi obtido do compose oficial. PostgreSQL e nginx usam as imagens oficiais indicadas em e2e/compose.yml.
