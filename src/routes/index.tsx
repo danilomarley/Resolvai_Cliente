@@ -23,6 +23,7 @@ export function AppRoutes() {
         <Route path="/pedidos/:orderId/avaliar" element={<ReviewRedirect />} />
         <Route path="/" element={<Dashboard />}>
           <Route path="pedidos" element={null} />
+          <Route path="pedidos/novo" element={null} />
           <Route path="pedidos/:orderId" element={null} />
           <Route path="pedidos/:orderId/propostas" element={null} />
           <Route path="pedidos/:orderId/propostas/:proposalId" element={null} />

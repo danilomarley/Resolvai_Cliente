@@ -1,0 +1,5 @@
+.new-order-page { display: grid; gap: var(--spacing-md); justify-items: stretch; }
+.new-order-page > .button { justify-self: start; }
+.draft-notice { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--spacing-sm); padding: var(--spacing-md); border-radius: var(--radius-sm); background: var(--color-primary-soft); }
+.draft-notice p { margin: 0; }
+.draft-actions { display: flex; flex-wrap: wrap; gap: var(--spacing-sm); }
