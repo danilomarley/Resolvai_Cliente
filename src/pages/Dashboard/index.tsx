@@ -15,6 +15,8 @@ import { AccountPage } from '../Account'
 import { CancelOrderModal } from '../../components/CancelOrderModal'
 import { CompleteOrderModal } from '../../components/CompleteOrderModal'
 import { AlertsBell } from '../../components/AlertsBell'
+import { Breadcrumb } from '../../components/Breadcrumb'
+import { breadcrumbFor } from '../../services/breadcrumb'
 import { useProposalAlerts } from '../../services/useProposalAlerts'
 import { useReviewSummary } from '../../services/useReviewSummary'
 import { useModalRoute } from '../../services/modalRoute'
@@ -164,8 +166,7 @@ export function Dashboard() {
           <div className="breadcrumb">
             <button className="icon-button mobile-menu" aria-label="Abrir menu"
               aria-expanded={mobileOpen} onClick={() => setMobileOpen(true)}><Icon name="menu" /></button>
-            <span>Meu espaço</span><Icon name="chevron" size={13} />
-            <strong>{activeNav ?? (accountRoute ? 'Minha conta' : 'Central de ajuda')}</strong>
+            <Breadcrumb crumbs={breadcrumbFor(location.pathname, activeNav ?? undefined)} />
           </div>
           <div className="topbar-actions">
             {searchable && <label className="search-box">

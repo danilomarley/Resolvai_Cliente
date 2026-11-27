@@ -49,6 +49,9 @@ type Props = {
 
 const orderNumber = (order: Order) => order.id.slice(0, 8).toUpperCase()
 
+/** Título da página de um pedido por aba; o foco vai para ele ao trocar de aba, e o leitor de tela anuncia a nova seção. */
+const tabHeadings = { propostas: 'Propostas do pedido', contrato: 'Contrato do pedido', pagamento: 'Pagamento do pedido', acompanhar: 'Acompanhamento do pedido' }
+
 /** Seções do pedido: cada aba é uma rota (/pedidos/:id, /propostas, /acompanhar). */
 function OrderTabs({ order, view }: { order: Order; view?: 'propostas' | 'acompanhar' | 'contrato' | 'pagamento' }) {
   const base = `/pedidos/${order.id}`
@@ -180,7 +183,8 @@ function OrderDetails({ order }: { order: Order }) {
 export function MyOrders({ orders, customerId, orderId, search, loading, error, requiresLogin, onRetry, view, proposalId, token, onProposalAccepted, onContractSigned, onContractCompleted, onPaid, heading: listHeading, filter, pager }: Props) {
   const location = useLocation()
   const heading = useRef<HTMLHeadingElement>(null)
-  useEffect(() => { heading.current?.focus() }, [orderId])
+  // Trocar de pedido ou de aba leva o foco ao título da página (abrir uma proposta também).
+  useEffect(() => { heading.current?.focus() }, [orderId, view, proposalId])
   const failure = error || (!customerId ? 'Entre na sua conta para consultar pedidos.' : '')
   const ownOrders = customerId ? customerOrders(orders, customerId) : []
   const selected = customerId && orderId !== undefined ? customerOrder(orders, customerId, orderId) : undefined
@@ -232,10 +236,11 @@ export function MyOrders({ orders, customerId, orderId, search, loading, error, 
     if (!visible.length) return (<>
       {filterBar}
       <div className="empty-state" role="status">
-        <h2>{ownOrders.length ? 'Nenhum pedido encontrado' : 'Você ainda não tem pedidos'}</h2>
+        <h2>{ownOrders.length ? 'Nenhum pedido encontrado' : filter?.value ? 'Nenhum pedido neste filtro' : 'Você ainda não tem pedidos'}</h2>
         <p>{ownOrders.length
           ? 'Tente buscar por outro identificador ou título entre os pedidos desta página.'
-          : 'Seus pedidos aparecerão aqui quando estiverem disponíveis.'}</p>
+          : filter?.value ? 'Escolha outro filtro para ver seus demais pedidos.' : 'Seus pedidos aparecerão aqui quando estiverem disponíveis.'}</p>
+        {!ownOrders.length && !filter?.value && <Link className="button button-primary" to="/pedidos/novo">Criar pedido</Link>}
       </div>
     </>)
     return (<>
@@ -282,7 +287,7 @@ export function MyOrders({ orders, customerId, orderId, search, loading, error, 
       <div className="page-heading">
         <div>
           <h1 ref={heading} tabIndex={-1}>
-            {orderId === undefined ? listHeading?.title ?? 'Meus pedidos' : 'Detalhes do pedido'}
+            {orderId === undefined ? listHeading?.title ?? 'Meus pedidos' : view ? tabHeadings[view] : 'Detalhes do pedido'}
           </h1>
           <p>{orderId === undefined ? listHeading?.description ?? 'Todos os seus pedidos, do mais recente ao mais antigo. A busca considera os pedidos desta página.' : 'Informações do pedido selecionado.'}</p>
         </div>
