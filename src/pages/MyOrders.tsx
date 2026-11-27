@@ -149,7 +149,7 @@ function OrderDetails({ order }: { order: Order }) {
       {order.status === 'completed' && <Link className="button button-primary" {...modalLink(location.pathname, location.search, 'avaliar', order.id)}>Avaliar serviço</Link>}
       {canChangeOrder(order) && (
         <div className="order-actions">
-          <Link className="button button-secondary" {...modalLink(location.pathname, location.search, 'editar-pedido', order.id)}>Editar pedido</Link>
+          <Link className="button button-secondary" to={`/pedidos/${order.id}/editar`}>Editar pedido</Link>
           <Link className="button button-secondary" {...modalLink(location.pathname, location.search, 'cancelar-pedido', order.id)}>Cancelar pedido</Link>
         </div>
       )}
